@@ -291,13 +291,13 @@ jobs:
       - uses: gradle/actions/setup-gradle@v5
         with:
           cache-disabled: true
-      # Xcode runs Gradle itself, without the version of the release, so the version goes in the Gradle settings of the user of the runner, which is thrown away after the run. The Release build of the framework studies the whole app at once and ran out of the 4 GB that the project asks for, so the Mac gives it 5 of its 7.
+      # Xcode runs Gradle itself, without the version of the release, so the version goes in the Gradle settings of the user of the runner, which is thrown away after the run. The Release build of the framework studies the whole app at once and ran out of 5 GB as the app grew, so the Mac gives it 6 of its 7.
       - name: Give Gradle the version
         env:
           VERSION: ${{ steps.version.outputs.name }}
         run: |
           mkdir -p ~/.gradle
-          printf 'app.version=%s\norg.gradle.jvmargs=-Xmx5g -Dfile.encoding=UTF-8\nkotlin.daemon.jvmargs=-Xmx5g\n' "$VERSION" >> ~/.gradle/gradle.properties
+          printf 'app.version=%s\norg.gradle.jvmargs=-Xmx6g -Dfile.encoding=UTF-8\nkotlin.daemon.jvmargs=-Xmx6g\n' "$VERSION" >> ~/.gradle/gradle.properties
       - name: Install XcodeGen
         run: brew install xcodegen
       - name: Build the app

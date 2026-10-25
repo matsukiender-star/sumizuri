@@ -61,6 +61,11 @@ jobs:
       - uses: gradle/actions/setup-gradle@v5
         with:
           cache-disabled: true
+      # The Release build of the framework studies the whole app at once, so the Mac gives it 6 of its 7 GB, as the release does.
+      - name: Give Gradle more memory
+        run: |
+          mkdir -p ~/.gradle
+          printf 'org.gradle.jvmargs=-Xmx6g -Dfile.encoding=UTF-8\nkotlin.daemon.jvmargs=-Xmx6g\n' >> ~/.gradle/gradle.properties
       - name: Install XcodeGen
         run: brew install xcodegen
       - name: Build the app for a phone
