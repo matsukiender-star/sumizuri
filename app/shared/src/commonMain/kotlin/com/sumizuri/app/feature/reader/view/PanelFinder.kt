@@ -2,6 +2,7 @@ package com.sumizuri.app.feature.reader.view
 
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.ImageBitmap
+import com.sumizuri.app.core.Lock
 import kotlin.math.abs
 import kotlin.math.max
 
@@ -25,16 +26,15 @@ private const val MostPanels = 16
 object PagePanels {
     private const val Keep = 64
     private val found = LinkedHashMap<String, List<List<List<Rect>>>>()
+    private val lock = Lock()
 
     // Whether pages are looked at for panels as they are read, which only the panel by panel reading needs.
     @kotlin.concurrent.Volatile
     var wanted = false
 
-    @Synchronized
-    fun get(url: String): List<List<List<Rect>>>? = found[url]
+    fun get(url: String): List<List<List<Rect>>>? = lock.withLock { found[url] }
 
-    @Synchronized
-    fun put(url: String, panels: List<List<List<Rect>>>) {
+    fun put(url: String, panels: List<List<List<Rect>>>) = lock.withLock {
         found.remove(url)
         found[url] = panels
         while (found.size > Keep) found.remove(found.keys.first())
