@@ -5,8 +5,9 @@
 -keep class * extends androidx.room.RoomDatabase { <init>(); }
 -keep class * extends androidx.room3.RoomDatabase { <init>(); }
 
-# JSch, which runs the SSH tunnel, picks its ciphers, key exchanges and key types from lists of class names, and the tunnel widens the window of a channel through methods it reaches by name. None of it may be dropped. The optional libraries JSch can use instead of its own code are not in the app.
+# JSch, which runs the SSH tunnel, picks its ciphers, key exchanges and key types from lists of class names, and the tunnel widens the window of a channel through methods it reaches by name. None of it may be dropped. The optional libraries JSch can use instead of its own code, and the Kerberos sign in Android does not have, are not in the app.
 -keep class com.jcraft.jsch.** { *; }
+-dontwarn org.ietf.jgss.**
 -dontwarn org.bouncycastle.**
 -dontwarn org.newsclub.net.unix.**
 -dontwarn com.sun.jna.**
