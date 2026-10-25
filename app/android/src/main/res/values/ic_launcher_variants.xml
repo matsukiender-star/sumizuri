@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- The backgrounds of the other app icons a person can pick. The book in its dark circle stays the same. -->
+    <color name="ic_launcher_paper">#EDE6D6</color>
+    <color name="ic_launcher_sakura">#E7A3B6</color>
+    <color name="ic_launcher_indigo">#2E3170</color>
+    <color name="ic_launcher_matcha">#6F8F55</color>
+</resources>

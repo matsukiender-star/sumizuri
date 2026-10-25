@@ -1,0 +1,276 @@
+/*
+  Moonlight over sumi ink: the default theme of the app, Sumizuri.
+  The colors are worked out from the six numbers of the preset in app/shared/.../ui/theme/spec/ThemePresets.kt
+  by the same steps as ThemeColorScheme.kt, so the site reads as the app does. Light is ink on warm paper, with the moon as its tint.
+  Dark is night slate with pale moon gold. The corners are the round look of the app: 16 for cards, 12 for buttons, 24 for large pieces.
+*/
+
+:root {
+  --vp-font-family-base: 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+
+  --sz-primary: #343a4a;
+  --sz-on-primary: #efeff1;
+  --sz-moon: #ece5c2;
+  --sz-ink: #191818;
+  --sz-page: #f5f4ef;
+  --sz-low: #edece7;
+  --sz-container: #e7e6e2;
+  --sz-high: #e2e1dd;
+  --sz-highest: #dcdcd7;
+  --sz-text-2: #666563;
+  --sz-outline: #92918e;
+  --sz-outline-variant: #c9c8c4;
+  --sz-secondary: #4e5260;
+  --sz-tertiary: #6b6a80;
+  --sz-error: #b3261e;
+
+  --sz-radius-card: 16px;
+  --sz-radius-button: 12px;
+  --sz-radius-large: 24px;
+
+  --vp-c-bg: var(--sz-page);
+  --vp-c-bg-alt: var(--sz-low);
+  --vp-c-bg-elv: var(--sz-page);
+  --vp-c-bg-soft: var(--sz-container);
+
+  --vp-c-text-1: var(--sz-ink);
+  --vp-c-text-2: var(--sz-text-2);
+  --vp-c-text-3: var(--sz-outline);
+
+  --vp-c-divider: var(--sz-outline-variant);
+  --vp-c-gutter: var(--sz-outline-variant);
+  --vp-c-border: var(--sz-outline-variant);
+
+  --vp-c-brand-1: var(--sz-primary);
+  --vp-c-brand-2: var(--sz-secondary);
+  --vp-c-brand-3: var(--sz-primary);
+  --vp-c-brand-soft: rgba(236, 229, 194, 0.7);
+
+  --vp-c-default-1: var(--sz-outline-variant);
+  --vp-c-default-2: var(--sz-highest);
+  --vp-c-default-3: var(--sz-outline);
+  --vp-c-default-soft: var(--sz-container);
+
+  --vp-c-tip-1: var(--sz-primary);
+  --vp-c-tip-soft: rgba(236, 229, 194, 0.7);
+  --vp-c-warning-1: #7a5a12;
+  --vp-c-warning-soft: rgba(236, 229, 194, 0.7);
+  --vp-c-danger-1: var(--sz-error);
+
+  --vp-button-brand-bg: var(--sz-primary);
+  --vp-button-brand-text: var(--sz-on-primary);
+  --vp-button-brand-border: transparent;
+  --vp-button-brand-hover-bg: var(--sz-secondary);
+  --vp-button-brand-hover-text: var(--sz-on-primary);
+  --vp-button-brand-hover-border: transparent;
+  --vp-button-brand-active-bg: var(--sz-secondary);
+  --vp-button-brand-active-text: var(--sz-on-primary);
+  --vp-button-brand-active-border: transparent;
+  --vp-button-alt-bg: var(--sz-container);
+  --vp-button-alt-text: var(--sz-ink);
+  --vp-button-alt-border: transparent;
+  --vp-button-alt-hover-bg: var(--sz-high);
+  --vp-button-alt-hover-text: var(--sz-ink);
+  --vp-button-alt-hover-border: transparent;
+
+  --vp-code-block-bg: var(--sz-low);
+  --vp-code-bg: var(--sz-container);
+  --vp-code-color: var(--sz-primary);
+  --vp-code-line-highlight-color: rgba(236, 229, 194, 0.7);
+
+  --vp-home-hero-name-color: transparent;
+  --vp-home-hero-name-background: linear-gradient(120deg, var(--sz-primary) 30%, var(--sz-tertiary));
+  --vp-home-hero-image-background-image: radial-gradient(circle at 50% 50%, rgba(236, 229, 194, 0.9), transparent 70%);
+  --vp-home-hero-image-filter: blur(48px);
+}
+
+.dark {
+  --sz-primary: #e8e0b0;
+  --sz-on-primary: #1c1b15;
+  --sz-moon: #2c2f38;
+  --sz-ink: #e7e7e8;
+  --sz-page: #0f1114;
+  --sz-low: #191a1d;
+  --sz-container: #1f2123;
+  --sz-high: #26282a;
+  --sz-highest: #2e3032;
+  --sz-text-2: #9b9c9d;
+  --sz-outline: #707173;
+  --sz-outline-variant: #3a3c3e;
+  --sz-secondary: #b9bfcc;
+  --sz-tertiary: #9aa6c2;
+  --sz-error: #e58592;
+
+  --vp-c-brand-2: #f1ebc9;
+  --vp-c-brand-soft: rgba(232, 224, 176, 0.16);
+
+  --vp-c-tip-soft: rgba(232, 224, 176, 0.14);
+  --vp-c-warning-1: #e8c46a;
+  --vp-c-warning-soft: rgba(232, 196, 106, 0.14);
+
+  --vp-button-brand-hover-bg: #f1ebc9;
+  --vp-button-brand-active-bg: #f1ebc9;
+
+  --vp-code-line-highlight-color: rgba(232, 224, 176, 0.12);
+
+  --vp-home-hero-name-background: linear-gradient(120deg, #e8e0b0 30%, #9aa6c2);
+  --vp-home-hero-image-background-image: radial-gradient(circle at 50% 50%, rgba(232, 224, 176, 0.35), transparent 70%);
+}
+
+/* The round look of the app: soft even corners on cards, buttons and blocks of code. */
+.VPButton {
+  border-radius: var(--sz-radius-button);
+  font-weight: 600;
+}
+
+.VPFeature {
+  border-radius: var(--sz-radius-card);
+  border: 1px solid var(--sz-outline-variant);
+  background: var(--sz-container);
+}
+
+.vp-doc div[class*='language-'],
+.vp-doc .custom-block {
+  border-radius: var(--sz-radius-card);
+}
+
+.vp-doc :not(pre) > code {
+  border-radius: 8px;
+}
+
+.vp-doc table {
+  border-radius: var(--sz-radius-card);
+  overflow: hidden;
+}
+
+.VPNavBar.has-sidebar .content,
+.VPNavBar:not(.home.top) {
+  backdrop-filter: blur(12px);
+}
+
+.VPSidebarItem.level-0 > .item .text {
+  font-weight: 600;
+}
+
+.VPHero .image-src {
+  max-width: 220px;
+  border-radius: var(--sz-radius-large);
+}
+
+.VPFooter {
+  border-top: 1px solid var(--sz-outline-variant);
+}
+
+/* A cleaner frame: a quiet top bar, room to breathe around the text, and links without loud underlines. */
+.VPNavBar {
+  border-bottom: 1px solid var(--sz-outline-variant);
+}
+.VPNavBar.home.top {
+  border-bottom-color: transparent;
+}
+.VPNavBarMenuLink,
+.VPNavBarMenuGroup .button {
+  font-weight: 600;
+}
+
+.vp-doc h1 {
+  letter-spacing: -0.02em;
+}
+.vp-doc h2 {
+  margin-top: 44px;
+  padding-top: 28px;
+  letter-spacing: -0.01em;
+}
+.vp-doc p,
+.vp-doc li {
+  line-height: 1.75;
+}
+.vp-doc a {
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+}
+
+.VPDoc.has-aside .content-container {
+  max-width: 760px;
+}
+
+.VPFooter a {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+/* A calmer reading page: the sidebar sits on the page and not on a panel of its own, headings are spaced and not ruled, and text is a little larger. */
+:root {
+  --vp-sidebar-bg-color: var(--vp-c-bg);
+  --vp-nav-bg-color: var(--vp-c-bg);
+}
+
+.VPSidebar {
+  border-right: 1px solid var(--sz-outline-variant);
+}
+.VPSidebarItem.level-0 > .item {
+  padding-bottom: 6px;
+}
+.VPSidebarItem .link {
+  border-radius: 10px;
+  padding: 0 10px;
+  margin: 1px 0;
+}
+.VPSidebarItem.is-active > .item > .link {
+  background: var(--vp-c-brand-soft);
+}
+.VPSidebarItem.is-active > .item > .link > .text {
+  color: var(--vp-c-brand-1);
+}
+
+.vp-doc {
+  font-size: 16.5px;
+}
+.vp-doc h1 {
+  font-size: 34px;
+  margin-bottom: 20px;
+}
+.vp-doc h2 {
+  border-top: 0;
+  margin: 52px 0 16px;
+  padding-top: 0;
+  font-size: 24px;
+}
+.vp-doc h3 {
+  margin: 36px 0 12px;
+  font-size: 19px;
+}
+.vp-doc div[class*='language-'] {
+  margin: 20px 0;
+  background: var(--sz-low);
+  border: 1px solid var(--sz-outline-variant);
+}
+.vp-doc table {
+  display: table;
+  width: 100%;
+  border: 1px solid var(--sz-outline-variant);
+}
+.vp-doc th {
+  background: var(--sz-container);
+}
+.vp-doc tr {
+  background: transparent;
+}
+.vp-doc tr:nth-child(2n) {
+  background: var(--sz-low);
+}
+
+.VPDocAsideOutline .outline-link {
+  font-size: 13px;
+}
+.VPDocAsideOutline .outline-title {
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.VPDoc.has-aside .content-container {
+  max-width: 740px;
+}
+.VPDoc:not(.has-sidebar) .container {
+  max-width: 760px;
+}

@@ -1,0 +1,43 @@
+# The Xcode project of the iPhone and iPad app for XcodeGen, made by running xcodegen in this folder and not kept in git, and the files in Sumizuri only open the Kotlin framework Gradle builds.
+name: Sumizuri
+options:
+  bundleIdPrefix: com.sumizuri
+  deploymentTarget:
+    iOS: "16.0"
+  createIntermediateGroups: true
+settings:
+  base:
+    SWIFT_VERSION: "5.0"
+    MARKETING_VERSION: "0.2.0"
+    CURRENT_PROJECT_VERSION: "2000"
+targets:
+  Sumizuri:
+    type: application
+    platform: iOS
+    sources:
+      - path: Sumizuri
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.sumizuri.app
+        PRODUCT_NAME: Sumizuri
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        INFOPLIST_FILE: Sumizuri/Info.plist
+        GENERATE_INFOPLIST_FILE: NO
+        TARGETED_DEVICE_FAMILY: "1,2"
+        CODE_SIGN_STYLE: Automatic
+        # Gradle writes into the folders of the project while Xcode builds, which the sandbox of scripts does not allow.
+        ENABLE_USER_SCRIPT_SANDBOXING: NO
+        # The debug builds of Xcode make a second library for the previews of SwiftUI, which this app has no use for and which broke the link.
+        ENABLE_DEBUG_DYLIB: NO
+        ENABLE_PREVIEWS: NO
+        # The simulator of an Intel Mac is not built, since the Kotlin framework is made for Apple silicon only.
+        "EXCLUDED_ARCHS[sdk=iphonesimulator*]": x86_64
+        # Where the Kotlin framework is put by the Gradle task below.
+        FRAMEWORK_SEARCH_PATHS: "$(inherited) $(SRCROOT)/../app/shared/build/xcode-frameworks/$(CONFIGURATION)/$(SDK_NAME)"
+        OTHER_LDFLAGS: "$(inherited) -framework Shared"
+    preBuildScripts:
+      - name: Build the Kotlin framework
+        basedOnDependencyAnalysis: false
+        script: |
+          cd "$SRCROOT/.."
+          ./gradlew :app:shared:embedAndSignAppleFrameworkForXcode

@@ -1,0 +1,138 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <uses-permission android:name="android.permission.INTERNET" />
+    <!-- The check of the library while the app is closed shows notices, and runs as a data sync while it shows its progress. -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
+    <!-- Saving chapters only on Wi-Fi looks at the kind of connection, and the lock of the app asks for the fingerprint or screen lock of the phone. -->
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.USE_BIOMETRIC" />
+    <!-- The updater installs a new version it downloaded from the releases of the app. -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
+
+    <application
+            android:allowBackup="true"
+            android:enableOnBackInvokedCallback="true"
+            android:name=".SumizuriApplication"
+            android:icon="@mipmap/ic_launcher"
+            android:label="@string/app_name"
+            android:supportsRtl="true"
+            android:theme="@android:style/Theme.Material.Light.NoActionBar">
+        <activity
+                android:exported="true"
+                android:launchMode="singleTop"
+                android:supportsPictureInPicture="true"
+                android:configChanges="orientation|screenSize|smallestScreenSize|screenLayout|keyboardHidden|keyboard|navigation"
+                android:name=".MainActivity">
+            <!-- An Open in Sumizuri button on the page of a repo, which asks to add that repo. -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="sumizuri" android:host="add-repo" />
+                <!-- A theme someone shared as a link, which asks to add that theme. -->
+                <data android:scheme="sumizuri" android:host="theme" />
+            </intent-filter>
+        </activity>
+        <!-- The app in the launcher, one entry for each icon a person can pick, of which one is on at a time. -->
+        <activity-alias
+                android:name=".IconInk"
+                android:targetActivity=".MainActivity"
+                android:icon="@mipmap/ic_launcher"
+                android:roundIcon="@mipmap/ic_launcher"
+                android:enabled="true"
+                android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN"/>
+                <category android:name="android.intent.category.LAUNCHER"/>
+            </intent-filter>
+            <meta-data android:name="android.app.shortcuts" android:resource="@xml/shortcuts" />
+        </activity-alias>
+        <activity-alias
+                android:name=".IconPaper"
+                android:targetActivity=".MainActivity"
+                android:icon="@mipmap/ic_launcher_paper"
+                android:roundIcon="@mipmap/ic_launcher_paper"
+                android:enabled="false"
+                android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN"/>
+                <category android:name="android.intent.category.LAUNCHER"/>
+            </intent-filter>
+            <meta-data android:name="android.app.shortcuts" android:resource="@xml/shortcuts" />
+        </activity-alias>
+        <activity-alias
+                android:name=".IconSakura"
+                android:targetActivity=".MainActivity"
+                android:icon="@mipmap/ic_launcher_sakura"
+                android:roundIcon="@mipmap/ic_launcher_sakura"
+                android:enabled="false"
+                android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN"/>
+                <category android:name="android.intent.category.LAUNCHER"/>
+            </intent-filter>
+            <meta-data android:name="android.app.shortcuts" android:resource="@xml/shortcuts" />
+        </activity-alias>
+        <activity-alias
+                android:name=".IconIndigo"
+                android:targetActivity=".MainActivity"
+                android:icon="@mipmap/ic_launcher_indigo"
+                android:roundIcon="@mipmap/ic_launcher_indigo"
+                android:enabled="false"
+                android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN"/>
+                <category android:name="android.intent.category.LAUNCHER"/>
+            </intent-filter>
+            <meta-data android:name="android.app.shortcuts" android:resource="@xml/shortcuts" />
+        </activity-alias>
+        <activity-alias
+                android:name=".IconMatcha"
+                android:targetActivity=".MainActivity"
+                android:icon="@mipmap/ic_launcher_matcha"
+                android:roundIcon="@mipmap/ic_launcher_matcha"
+                android:enabled="false"
+                android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN"/>
+                <category android:name="android.intent.category.LAUNCHER"/>
+            </intent-filter>
+            <meta-data android:name="android.app.shortcuts" android:resource="@xml/shortcuts" />
+        </activity-alias>
+        <activity
+                android:exported="false"
+                android:name=".ChallengeActivity" />
+        <service
+            android:name="androidx.work.impl.foreground.SystemForegroundService"
+            android:foregroundServiceType="dataSync"
+            tools:node="merge" />
+        <!-- Keeps long work such as migrating titles or saving chapters going while the app is out of sight, with a notice that shows it. -->
+        <service
+            android:name="com.sumizuri.app.data.work.BusyService"
+            android:exported="false"
+            android:foregroundServiceType="dataSync" />
+        <!-- The stop button on the notice of a running check of the library. -->
+        <receiver
+            android:name="com.sumizuri.app.data.sync.StopCheckReceiver"
+            android:exported="false" />
+        <!-- Marks the new chapters of a title read from its notice. -->
+        <receiver
+            android:name="com.sumizuri.app.data.sync.NewsReceiver"
+            android:exported="false" />
+        <!-- Hands a downloaded update to the installer of the system. -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.updates"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/update_paths" />
+        </provider>
+    </application>
+
+</manifest>

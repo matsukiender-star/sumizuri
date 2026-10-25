@@ -1,0 +1,4 @@
+# Only the built server goes into the image.
+*
+!build/install/server/
+!build/install/server/**

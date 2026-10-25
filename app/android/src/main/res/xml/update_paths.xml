@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The folders the updater saves new versions in and the pictures a person shares from the reader are kept in, handed to other apps by the file provider. -->
+<paths>
+    <cache-path name="updates" path="updates/" />
+    <cache-path name="shared" path="shared/" />
+</paths>

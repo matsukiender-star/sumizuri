@@ -1,0 +1,416 @@
+name: Release
+
+# Builds every app for a release, and on a version tag such as 0.2.0 or v0.2.0 puts them on a new release with that version, or when run by hand keeps them as files of the run for a day. Android and Windows build on the Windows runner of the developer, Linux on their Linux runner in WSL, and the Mac and the iPhone builds and the small jobs on the machines of GitHub.
+on:
+  workflow_dispatch:
+  push:
+    tags: ["v*", "[0-9]*"]
+
+# Two releases never build at once.
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+# The steps are written for bash, which Git for Windows brings to the runner.
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  # On a version tag, makes the release as a draft first, so each build puts its files straight on it and nobody sees it half done.
+  start:
+    name: Start the release
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    outputs:
+      release: ${{ steps.draft.outputs.result }}
+    steps:
+      - uses: actions/checkout@v7
+      - name: Make the draft release
+        id: draft
+        uses: actions/github-script@v8
+        with:
+          script: |
+            return await require("./scripts/release-assets.js").draft({ github, ...context.repo, tag: context.ref.replace("refs/tags/", "") })
+
+  windows-android:
+    name: Android and Windows
+    needs: start
+    # A run by hand has no start job, so the builds still run when it is skipped.
+    if: ${{ !failure() && !cancelled() }}
+    runs-on: [self-hosted, Windows, X64]
+    timeout-minutes: 90
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+      - name: Pick the version
+        id: version
+        run: bash scripts/release-version.sh
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: 21
+      # The runner keeps its Gradle files between runs, so they are not sent to the cache of GitHub as well.
+      - uses: gradle/actions/setup-gradle@v5
+        with:
+          cache-disabled: true
+      # The two apps build side by side, which needs more memory than a build of one app. Only this copy of the repo is changed, so builds on the computer of the developer stay as they are.
+      - name: Let Gradle build in parallel
+        run: |
+          printf '\norg.gradle.parallel=true\norg.gradle.jvmargs=-Xmx8g -Dfile.encoding=UTF-8\n' >> gradle.properties
+      # The Android SDK the user of the runner set, or the one Android Studio puts in their folder.
+      - name: Find the Android SDK
+        run: |
+          sdk="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-$LOCALAPPDATA\\Android\\Sdk}}"
+          if [ ! -d "$(cygpath -u "$sdk")/platforms" ]; then
+            echo "::error::There is no Android SDK at $sdk. Install Android Studio for the user of the runner, or set ANDROID_HOME."
+            exit 1
+          fi
+          echo "Android SDK: $sdk"
+          echo "ANDROID_HOME=$(cygpath -w "$sdk")" >> "$GITHUB_ENV"
+      # The installer ships a small libmpv built from source by our own script, kept in the tool folder of the runner and built again only when the script changes.
+      - name: Find the built libmpv
+        id: libmpv
+        run: |
+          store="$(cygpath -u "$RUNNER_TOOL_CACHE")/libmpv/$(sha256sum scripts/libmpv/build.sh | cut -c1-16)"
+          echo "store=$store" >> "$GITHUB_OUTPUT"
+          if [ -f "$store/libmpv-2.dll" ]; then
+            mkdir -p build/libmpv/out
+            cp "$store/libmpv-2.dll" build/libmpv/out/
+            echo "found=true" >> "$GITHUB_OUTPUT"
+            echo "Using the libmpv in $store"
+          fi
+      - name: Set up MSYS2 to build libmpv
+        if: steps.libmpv.outputs.found != 'true'
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: UCRT64
+          update: true
+          install: >-
+            mingw-w64-ucrt-x86_64-gcc mingw-w64-ucrt-x86_64-meson mingw-w64-ucrt-x86_64-ninja mingw-w64-ucrt-x86_64-pkgconf
+            mingw-w64-ucrt-x86_64-nasm mingw-w64-ucrt-x86_64-python mingw-w64-ucrt-x86_64-python-jinja
+            mingw-w64-ucrt-x86_64-dav1d mingw-w64-ucrt-x86_64-zlib make git diffutils tar xz
+      - name: Build libmpv
+        if: steps.libmpv.outputs.found != 'true'
+        shell: msys2 {0}
+        run: bash scripts/libmpv/build.sh build/libmpv
+      - name: Keep the built libmpv
+        if: steps.libmpv.outputs.found != 'true'
+        env:
+          STORE: ${{ steps.libmpv.outputs.store }}
+        run: |
+          mkdir -p "$STORE"
+          cp build/libmpv/out/libmpv-2.dll "$STORE/"
+      # The installer is made by Inno Setup 7, pinned to one release and checked against its hash, and set up once for the user of the runner, where the build finds it.
+      - name: Set up Inno Setup
+        env:
+          MSYS_NO_PATHCONV: 1
+        run: |
+          for place in "$LOCALAPPDATA/Programs/Inno Setup 7" "/c/Program Files/Inno Setup 7" "/c/Program Files (x86)/Inno Setup 7"; do
+            if [ -f "$place/ISCC.exe" ]; then echo "Inno Setup is already in $place"; exit 0; fi
+          done
+          curl -sSLf -o "$RUNNER_TEMP/innosetup.exe" https://github.com/jrsoftware/issrc/releases/download/is-7_1_0/innosetup-7.1.0-x64.exe
+          echo "0362a383ed217d4c4239b5933866dd96d3eb2102737da92f80f6057a4b40df2f  $RUNNER_TEMP/innosetup.exe" | sha256sum -c -
+          "$RUNNER_TEMP/innosetup.exe" /VERYSILENT /SUPPRESSMSGBOXES /NORESTART /SP- /CURRENTUSER
+      # Signed with the key kept in the GitHub secrets, the same key as on the computer of the developer, so every build installs over the one before it.
+      - name: Put the key in a file
+        run: echo "$ANDROID_KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/sumizuri-release.jks"
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+      # Both apps in one Gradle run, so the Android and the Windows build share the cores instead of taking turns. The installer holds the app with its own Java and the small libmpv, so nothing else needs to be installed first.
+      - name: Build the APKs and the installer
+        run: ./gradlew :app:android:assembleRelease :app:desktop:packageReleaseSetup -Pmpv.dll=build/libmpv/out/libmpv-2.dll ${{ steps.version.outputs.args }}
+        env:
+          ANDROID_KEYSTORE_PATH: ${{ runner.temp }}/sumizuri-release.jks
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+      # The key does not stay on the machine, even when the build failed.
+      - name: Remove the key
+        if: always()
+        run: rm -f "$RUNNER_TEMP/sumizuri-release.jks"
+      # One APK for each kind of processor and one universal APK, each named with the version and the processor at the end, which is how the app finds the one for its phone when it updates.
+      - name: Name the files after the version
+        env:
+          VERSION: ${{ steps.version.outputs.name }}
+        run: |
+          for apk in app/android/build/outputs/apk/release/android-*-release.apk; do
+            kind=$(basename "$apk" -release.apk)
+            cp "$apk" "Sumizuri-$VERSION-${kind#android-}.apk"
+          done
+          cp app/desktop/build/installer/*-setup.exe "Sumizuri-$VERSION-setup.exe"
+          ls -l Sumizuri-*
+      # On a version tag the files go straight on the draft release, so they never fill the storage of artifacts. A run by hand keeps them as files of the run.
+      - name: Put the files on the release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: actions/github-script@v8
+        env:
+          ID: ${{ needs.start.outputs.release }}
+        with:
+          script: |
+            await require("./scripts/release-assets.js").upload({ github, ...context.repo, id: Number(process.env.ID), prefix: "Sumizuri-" })
+      - uses: actions/upload-artifact@v7
+        if: ${{ !startsWith(github.ref, 'refs/tags/') }}
+        with:
+          name: sumizuri-windows-android
+          path: Sumizuri-*
+          retention-days: 1
+
+  # Runs on the Linux runner of the developer in WSL, since a Linux package can only be made on Linux.
+  linux:
+    name: Linux
+    needs: start
+    # A run by hand has no start job, so the builds still run when it is skipped.
+    if: ${{ !failure() && !cancelled() }}
+    runs-on: [self-hosted, Linux, X64]
+    timeout-minutes: 60
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+      - name: Pick the version
+        id: version
+        run: bash scripts/release-version.sh
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: 21
+      # The runner keeps its Gradle files between runs, so they are not sent to the cache of GitHub as well.
+      - uses: gradle/actions/setup-gradle@v5
+        with:
+          cache-disabled: true
+      # WSL has no IPv6 internet, so Java is kept on IPv4 and slow downloads are tried more times, in this copy of the repo only.
+      - name: Keep Gradle on IPv4 and retry downloads
+        run: |
+          printf '\nsystemProp.java.net.preferIPv4Stack=true\nsystemProp.org.gradle.internal.repository.max.retries=6\nsystemProp.org.gradle.internal.repository.initial.backoff=2000\n' >> gradle.properties
+      # The Debian package is made with fakeroot, so the files in it belong to root, and it was set up once by hand since sudo asks for a password there.
+      - name: Set up fakeroot
+        run: command -v fakeroot || sudo apt-get install -y fakeroot
+      # The player uses the libmpv of the system, from a package such as libmpv2, so nothing of mpv goes in.
+      - name: Build the Linux package and app folder
+        run: ./gradlew :app:desktop:packageReleaseDeb :app:desktop:createReleaseDistributable ${{ steps.version.outputs.args }}
+      # A .deb for Debian and Ubuntu, and the app folder packed for every other Linux.
+      - name: Name the files after the version
+        env:
+          VERSION: ${{ steps.version.outputs.name }}
+        run: |
+          cp app/desktop/build/compose/binaries/main-release/deb/*.deb "Sumizuri-$VERSION-linux-amd64.deb"
+          tar -C app/desktop/build/compose/binaries/main-release/app -czf "Sumizuri-$VERSION-linux-x64.tar.gz" Sumizuri
+          ls -l Sumizuri-*
+      # On a version tag the files go straight on the draft release, so they never fill the storage of artifacts. A run by hand keeps them as files of the run.
+      - name: Put the files on the release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: actions/github-script@v8
+        env:
+          ID: ${{ needs.start.outputs.release }}
+        with:
+          script: |
+            await require("./scripts/release-assets.js").upload({ github, ...context.repo, id: Number(process.env.ID), prefix: "Sumizuri-" })
+      - uses: actions/upload-artifact@v7
+        if: ${{ !startsWith(github.ref, 'refs/tags/') }}
+        with:
+          name: sumizuri-linux
+          path: Sumizuri-*
+          retention-days: 1
+
+  # The disk image of the Mac app, for the processors of Apple. It is signed and notarized only when the secrets of an Apple developer account are set, MAC_SIGN_IDENTITY with the certificate in the keychain of the runner and MAC_NOTARY_APPLE_ID, MAC_NOTARY_PASSWORD and MAC_NOTARY_TEAM_ID. Without them the disk image is not signed, and a Mac asks the person to allow the app once. The player uses the libmpv of the system, from Homebrew, so nothing of mpv goes in.
+  macos:
+    name: Mac
+    needs: start
+    # A run by hand has no start job, so the builds still run when it is skipped.
+    if: ${{ !failure() && !cancelled() }}
+    runs-on: macos-latest
+    timeout-minutes: 60
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+      - name: Pick the version
+        id: version
+        run: bash scripts/release-version.sh
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: 21
+      # A Mac of GitHub starts empty every run, and its cache would only fill the storage of Actions, so nothing is cached.
+      - uses: gradle/actions/setup-gradle@v5
+        with:
+          cache-disabled: true
+      - name: Build the disk image
+        run: ./gradlew :app:desktop:packageReleaseDmg ${{ steps.version.outputs.args }}
+        env:
+          MAC_SIGN_IDENTITY: ${{ secrets.MAC_SIGN_IDENTITY }}
+          MAC_NOTARY_APPLE_ID: ${{ secrets.MAC_NOTARY_APPLE_ID }}
+          MAC_NOTARY_PASSWORD: ${{ secrets.MAC_NOTARY_PASSWORD }}
+          MAC_NOTARY_TEAM_ID: ${{ secrets.MAC_NOTARY_TEAM_ID }}
+      - name: Name the file after the version
+        env:
+          VERSION: ${{ steps.version.outputs.name }}
+        run: |
+          cp app/desktop/build/compose/binaries/main-release/dmg/*.dmg "Sumizuri-$VERSION-macos-arm64.dmg"
+          ls -l Sumizuri-*
+      # On a version tag the files go straight on the draft release, so they never fill the storage of artifacts. A run by hand keeps them as files of the run.
+      - name: Put the files on the release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: actions/github-script@v8
+        env:
+          ID: ${{ needs.start.outputs.release }}
+        with:
+          script: |
+            await require("./scripts/release-assets.js").upload({ github, ...context.repo, id: Number(process.env.ID), prefix: "Sumizuri-" })
+      - uses: actions/upload-artifact@v7
+        if: ${{ !startsWith(github.ref, 'refs/tags/') }}
+        with:
+          name: sumizuri-macos
+          path: Sumizuri-*
+          retention-days: 1
+
+  # The iPhone and iPad app as an .ipa that is not signed. A person installs it with a tool such as AltStore or Sideloadly, which signs it with their own Apple ID, or it is signed with a developer account by hand for TestFlight and the App Store. Signing here would need the certificate and profile of a developer account.
+  ios:
+    name: iPhone
+    needs: start
+    # A run by hand has no start job, so the builds still run when it is skipped.
+    if: ${{ !failure() && !cancelled() }}
+    runs-on: macos-latest
+    timeout-minutes: 60
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+      - name: Pick the version
+        id: version
+        run: bash scripts/release-version.sh
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: 21
+      # A Mac of GitHub starts empty every run, and its cache would only fill the storage of Actions, so nothing is cached.
+      - uses: gradle/actions/setup-gradle@v5
+        with:
+          cache-disabled: true
+      # Xcode runs Gradle itself, without the version of the release, so the version goes in the Gradle settings of the user of the runner, which is thrown away after the run. The Release build of the framework studies the whole app at once and ran out of the 4 GB that the project asks for, so the Mac gives it 5 of its 7.
+      - name: Give Gradle the version
+        env:
+          VERSION: ${{ steps.version.outputs.name }}
+        run: |
+          mkdir -p ~/.gradle
+          printf 'app.version=%s\norg.gradle.jvmargs=-Xmx5g -Dfile.encoding=UTF-8\nkotlin.daemon.jvmargs=-Xmx5g\n' "$VERSION" >> ~/.gradle/gradle.properties
+      - name: Install XcodeGen
+        run: brew install xcodegen
+      - name: Build the app
+        working-directory: iosApp
+        env:
+          VERSION: ${{ steps.version.outputs.name }}
+        run: |
+          code=$(echo "${{ steps.version.outputs.args }}" | sed -E 's/.*app.versionCode=([0-9]+).*/\1/')
+          xcodegen
+          xcodebuild -project Sumizuri.xcodeproj -scheme Sumizuri -configuration Release -sdk iphoneos -destination "generic/platform=iOS" -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" MARKETING_VERSION="${VERSION%%-*}" CURRENT_PROJECT_VERSION="$code" build
+      - name: Pack the .ipa
+        env:
+          VERSION: ${{ steps.version.outputs.name }}
+        run: |
+          rm -rf Payload
+          mkdir Payload
+          cp -R iosApp/build/Build/Products/Release-iphoneos/Sumizuri.app Payload/
+          zip -qry "Sumizuri-$VERSION-ios-unsigned.ipa" Payload
+          ls -l Sumizuri-*
+      # On a version tag the files go straight on the draft release, so they never fill the storage of artifacts. A run by hand keeps them as files of the run.
+      - name: Put the files on the release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: actions/github-script@v8
+        env:
+          ID: ${{ needs.start.outputs.release }}
+        with:
+          script: |
+            await require("./scripts/release-assets.js").upload({ github, ...context.repo, id: Number(process.env.ID), prefix: "Sumizuri-" })
+      - uses: actions/upload-artifact@v7
+        if: ${{ !startsWith(github.ref, 'refs/tags/') }}
+        with:
+          name: sumizuri-ios
+          path: Sumizuri-*
+          retention-days: 1
+
+  # The sync server as a Docker image for x86 and ARM, on the container registry of GitHub. It builds on a Linux runner of GitHub, which has Docker, and is pushed for a version tag with the version and latest. A run by hand builds it without pushing, as a check. The server is built once, and the image only copies it, so the ARM image needs no slow emulated build.
+  server-image:
+    name: Sync server image
+    needs: start
+    # A run by hand has no start job, so the builds still run when it is skipped.
+    if: ${{ !failure() && !cancelled() }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: write
+      packages: write
+    steps:
+      - uses: actions/checkout@v7
+      - name: Pick the version
+        id: version
+        run: bash scripts/release-version.sh
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: 21
+      - uses: gradle/actions/setup-gradle@v5
+      - name: Build the server
+        run: ./gradlew :sync:server:installDist
+      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
+      - name: Sign in to the registry
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build and push the image
+        uses: docker/build-push-action@v6
+        with:
+          context: sync/server
+          platforms: linux/amd64,linux/arm64
+          push: ${{ startsWith(github.ref, 'refs/tags/') }}
+          tags: |
+            ghcr.io/${{ github.repository_owner }}/sumizuri-sync:${{ steps.version.outputs.name }}
+            ghcr.io/${{ github.repository_owner }}/sumizuri-sync:latest
+      # The files to run the image go on the release too, so people can start it from the release alone.
+      - name: Name the files to run it
+        run: |
+          cp sync/server/deploy/docker-compose.yml sumizuri-sync-docker-compose.yml
+          cp sync/server/deploy/sumizuri.env.example sumizuri-sync.env.example
+      # On a version tag the files go straight on the draft release, so they never fill the storage of artifacts. A run by hand keeps them as files of the run.
+      - name: Put the files on the release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: actions/github-script@v8
+        env:
+          ID: ${{ needs.start.outputs.release }}
+        with:
+          script: |
+            await require("./scripts/release-assets.js").upload({ github, ...context.repo, id: Number(process.env.ID), prefix: "sumizuri-sync" })
+      - uses: actions/upload-artifact@v7
+        if: ${{ !startsWith(github.ref, 'refs/tags/') }}
+        with:
+          name: sumizuri-sync-docker
+          path: sumizuri-sync-*
+          retention-days: 1
+
+  # Shows the draft once every build put its files on it. When a build fails, the draft stays hidden, and a new run fills them again.
+  publish:
+    name: Publish the release
+    needs: [start, windows-android, linux, macos, ios, server-image]
+    # The Mac and the iPhone builds are waited for, but the release goes out when the others passed even if one of those two failed, so a problem on a Mac of GitHub never holds back the Android, Windows and Linux files. A failed one shows in the Actions page, and a new run of it adds its file to the same release.
+    if: ${{ always() && startsWith(github.ref, 'refs/tags/') && needs.start.result == 'success' && needs.windows-android.result == 'success' && needs.linux.result == 'success' && needs.server-image.result == 'success' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+      - name: Publish the release
+        uses: actions/github-script@v8
+        env:
+          ID: ${{ needs.start.outputs.release }}
+        with:
+          script: |
+            await require("./scripts/release-assets.js").publish({ github, ...context.repo, id: Number(process.env.ID) })

@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The same icon for Android 7, which has no adaptive icons: a round of the color with the book over it. -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item>
+        <shape android:shape="oval">
+            <solid android:color="@color/ic_launcher_paper"/>
+        </shape>
+    </item>
+    <item android:drawable="@mipmap/ic_launcher_foreground"/>
+</layer-list>

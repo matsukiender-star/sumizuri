@@ -1,0 +1,90 @@
+name: Apple checks
+
+# Builds the iPhone app or the Mac app on a Mac of GitHub, which is the only place they can be built from here. It runs only when started by hand from the Actions page, since a minute on a Mac of GitHub costs ten times a minute on Linux in a private repo, and a push to main does not need one. Run the iPhone simulator build after a change to the iPhone code, and the device build once before a release tag, since the release builds the same way.
+on:
+  workflow_dispatch:
+    inputs:
+      what:
+        description: What to build
+        type: choice
+        default: iphone-simulator
+        options:
+          - iphone-simulator
+          - iphone-device
+          - mac
+
+# A newer run of the same kind stops the one before it.
+concurrency:
+  group: apple-checks-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # The Kotlin framework for the simulator of Apple silicon, and the whole app on it. It needs no signing.
+  iphone-simulator:
+    name: iPhone simulator
+    if: ${{ inputs.what == 'iphone-simulator' }}
+    runs-on: macos-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: 21
+      # A Mac of GitHub starts empty every run, and its cache would only fill the storage of Actions, so nothing is cached.
+      - uses: gradle/actions/setup-gradle@v5
+        with:
+          cache-disabled: true
+      # The Kotlin side alone, which shows an error in the code of the iPhone before the whole project is made.
+      - name: Build the Kotlin framework
+        run: ./gradlew :app:shared:linkDebugFrameworkIosSimulatorArm64
+      - name: Install XcodeGen
+        run: brew install xcodegen
+      - name: Build the app for the simulator
+        working-directory: iosApp
+        run: |
+          xcodegen
+          xcodebuild -project Sumizuri.xcodeproj -scheme Sumizuri -configuration Debug -sdk iphonesimulator -destination "generic/platform=iOS Simulator" -derivedDataPath build CODE_SIGNING_ALLOWED=NO build
+
+  # The app for a phone as the release builds it, in release mode and not signed. This is the longest build, so it is run once before a release tag and not on every change.
+  iphone-device:
+    name: iPhone device
+    if: ${{ inputs.what == 'iphone-device' }}
+    runs-on: macos-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: 21
+      - uses: gradle/actions/setup-gradle@v5
+        with:
+          cache-disabled: true
+      - name: Install XcodeGen
+        run: brew install xcodegen
+      - name: Build the app for a phone
+        working-directory: iosApp
+        run: |
+          xcodegen
+          xcodebuild -project Sumizuri.xcodeproj -scheme Sumizuri -configuration Release -sdk iphoneos -destination "generic/platform=iOS" -derivedDataPath build CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" build
+      - name: Check that the app is there
+        run: ls -l iosApp/build/Build/Products/Release-iphoneos/Sumizuri.app
+
+  # The code of the desktop app is compiled, and the app folder is made as the disk image would be.
+  mac:
+    name: Mac app
+    if: ${{ inputs.what == 'mac' }}
+    runs-on: macos-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: 21
+      - uses: gradle/actions/setup-gradle@v5
+        with:
+          cache-disabled: true
+      - name: Compile and make the app folder
+        run: ./gradlew :app:desktop:compileKotlin :app:desktop:createReleaseDistributable

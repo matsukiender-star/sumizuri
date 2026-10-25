@@ -1,0 +1,321 @@
+package com.sumizuri.app.feature.reader
+
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxScope
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.only
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.KeyboardDoubleArrowDown
+import androidx.compose.material.icons.outlined.KeyboardDoubleArrowUp
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalWindowInfo
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import com.sumizuri.app.data.model.reader.ReaderMode
+import com.sumizuri.app.data.model.reader.ReaderProgressBar
+import com.sumizuri.app.data.text.numberText
+import com.sumizuri.app.feature.reader.controls.DockPanel
+import com.sumizuri.app.feature.reader.controls.PagePreview
+import com.sumizuri.app.feature.reader.controls.PageTrack
+import com.sumizuri.app.feature.reader.controls.ReaderBottomBar
+import com.sumizuri.app.feature.reader.controls.ReaderTopBar
+import com.sumizuri.app.shared.resources.Res
+import com.sumizuri.app.shared.resources.reader_latest
+import com.sumizuri.app.shared.resources.reader_minutes_left
+import com.sumizuri.app.shared.resources.reader_next_chapter
+import com.sumizuri.app.shared.resources.reader_page_of
+import com.sumizuri.app.shared.resources.reader_previous_chapter
+import com.sumizuri.app.shared.resources.reader_units_left
+import com.sumizuri.app.ui.kit.dock.DockMargin
+import com.sumizuri.app.ui.kit.dock.DockShape
+import com.sumizuri.app.ui.kit.dock.dockEnter
+import com.sumizuri.app.ui.kit.dock.dockExit
+import com.sumizuri.app.ui.text.unitCount
+import com.sumizuri.app.ui.theme.LocalReduceMotion
+import org.jetbrains.compose.resources.stringResource
+
+// The widest the controls at the top and the bottom grow on a big window.
+private val BarWidth = 640.dp
+
+// What the controls over the pages show and what their buttons do.
+internal class ChromeCalls(
+    val onBack: () -> Unit,
+    val onBookmark: () -> Unit,
+    val onOpenBrowser: (() -> Unit)?,
+    val onPageMenu: (() -> Unit)?,
+    val onComments: (() -> Unit)?,
+    val onJump: (Int) -> Unit,
+    val onOpenChapter: (Long) -> Unit,
+    val onMode: (ReaderMode) -> Unit,
+    val onLight: (Float, Float) -> Unit,
+    val onLightDone: () -> Unit,
+    val onAuto: () -> Unit,
+    // The panel open in the dock, a way to open or close one, and what each panel shows.
+    val panel: DockPanel,
+    val onPanel: (DockPanel) -> Unit,
+    val panelContent: @Composable (DockPanel) -> Unit,
+    // Brings the controls out, as a tap on the resting pill does.
+    val onShowControls: () -> Unit,
+    // Makes a mode the default of every title without a mode of its own.
+    val onDefaultMode: (ReaderMode) -> Unit,
+    val preview: (Int) -> PagePreview?,
+)
+
+// The controls over the pages as two floating pieces in the colors of the theme that touch no edge of the screen: a capsule at the top with the chapter, and a dock at the bottom with the track and the actions. With them hidden only a small page number is left at the bottom, when the person keeps it.
+@Composable
+internal fun BoxScope.ReaderChrome(
+    state: ReaderState,
+    controls: Boolean,
+    page: Int,
+    total: Int,
+    minutesLeft: Int?,
+    bar: BarState,
+    calls: ChromeCalls,
+) {
+    val settings = state.settings
+    val reduce = LocalReduceMotion.current
+    // A panel in the dock takes at most a bit over half the height of the window, so the page and the top stay in sight.
+    val panelMax = with(LocalDensity.current) { (LocalWindowInfo.current.containerSize.height * 0.58f).toDp() }
+    // The number of a chapter of this title, for the buttons that open the one before and after.
+    val numberOf: (Long?) -> String? = { id ->
+        state.chapters
+            .firstOrNull { it.id == id }
+            ?.number
+            ?.numberText()
+    }
+    // How many chapters come after this one, said under its name.
+    val ahead = state.chapters.firstOrNull { it.id == state.chapterId }?.let { now ->
+        state.chapters.count {
+            it.number >
+                now.number
+        }
+    }
+    val chaptersLeft = when (ahead) {
+        null -> null
+        0 -> stringResource(Res.string.reader_latest)
+        else -> stringResource(Res.string.reader_units_left, unitCount(state.kind, ahead))
+    }
+    // The minutes left in this chapter and the chapters left in the title, said after its name.
+    val minutes = minutesLeft?.takeIf { it > 0 }?.let { stringResource(Res.string.reader_minutes_left, it) }
+    val left = listOfNotNull(minutes, chaptersLeft).joinToString("  ·  ").ifEmpty { null }
+    // The bars and pills in the container color of the theme, as solid as the person chose, with clear edges and no fade.
+    val fill = MaterialTheme.colorScheme.surfaceContainer.copy(alpha = settings.controlShade)
+    AnimatedVisibility(
+        controls,
+        Modifier.align(Alignment.TopCenter).fillMaxWidth(),
+        enter = dockEnter(fromTop = true, reduce),
+        exit = dockExit(fromTop = true, reduce),
+    ) {
+        // A capsule that floats clear of the edges of the screen, the same as the dock at the bottom.
+        Box(
+            Modifier
+                .fillMaxWidth()
+                .windowInsetsPadding(
+                    WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal),
+                ).padding(DockMargin),
+            contentAlignment = Alignment.TopCenter,
+        ) {
+            Surface(
+                Modifier.widthIn(max = BarWidth).fillMaxWidth().keepTaps(),
+                shape = DockShape,
+                color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = settings.controlShade),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)),
+            ) {
+                ReaderTopBar(
+                    state,
+                    calls.onBack,
+                    calls.onBookmark,
+                    calls.onOpenBrowser,
+                    calls.onPageMenu,
+                    Modifier.padding(horizontal = 4.dp),
+                    onComments = calls.onComments,
+                    left = left,
+                )
+            }
+        }
+    }
+    AnimatedVisibility(
+        controls && settings.progressBar == ReaderProgressBar.Vertical,
+        Modifier.align(Alignment.CenterEnd).windowInsetsPadding(WindowInsets.safeDrawing).padding(end = 8.dp),
+        enter = fadeIn(),
+        exit = fadeOut(),
+    ) {
+        SideTrack(
+            page,
+            total,
+            SideChapter(state.previousId, numberOf(state.previousId)),
+            SideChapter(state.nextId, numberOf(state.nextId)),
+            calls,
+            Modifier.fillMaxHeight(0.62f).keepTaps(),
+        )
+    }
+    // The dock is always there and changes its own shape: the full dock with the controls, a small pill with the page while they rest.
+    val resting = if (settings.pageNumber && total > 1 &&
+        !bar.auto
+    ) {
+        stringResource(Res.string.reader_page_of, page + 1, total)
+    } else {
+        null
+    }
+    ReaderBottomBar(
+        page = page,
+        total = total,
+        slider = settings.progressBar == ReaderProgressBar.Horizontal,
+        bar = bar,
+        previousId = state.previousId,
+        nextId = state.nextId,
+        previousLabel = numberOf(state.previousId),
+        nextLabel = numberOf(state.nextId),
+        strip = settings.pageStrip,
+        shade = settings.controlShade,
+        maxWidth = BarWidth,
+        preview = calls.preview,
+        onJump = calls.onJump,
+        onOpenChapter = calls.onOpenChapter,
+        onMode = calls.onMode,
+        onLight = calls.onLight,
+        onLightDone = calls.onLightDone,
+        onAuto = calls.onAuto,
+        panel = calls.panel,
+        onPanel = calls.onPanel,
+        panelMax = panelMax,
+        panelContent = calls.panelContent,
+        expanded = controls,
+        collapsed = resting,
+        onExpand = calls.onShowControls,
+        defaultMode = settings.mode,
+        onDefaultMode = calls.onDefaultMode,
+        modifier = Modifier.align(Alignment.BottomCenter),
+    )
+}
+
+// Taps on the controls stay on them, so a tap between two buttons does not turn the page or hide the controls.
+private fun Modifier.keepTaps(): Modifier = pointerInput(Unit) { detectTapGestures { } }
+
+// The chapter before or after, by its id and the number shown under its arrow.
+private class SideChapter(val id: Long?, val number: String?)
+
+// The page track down the side of the screen, in a slim pill in the surface color of the theme: the chapter before at the top, then the page and the count, the track, and the chapter after at the bottom, so all the moving through the title sits in one place.
+@Composable
+private fun SideTrack(
+    page: Int,
+    total: Int,
+    previous: SideChapter,
+    next: SideChapter,
+    calls: ChromeCalls,
+    modifier: Modifier,
+) {
+    if (total < 2) return
+    Column(
+        modifier
+            .width(
+                44.dp,
+            ).background(MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.95f), RoundedCornerShape(22.dp))
+            .padding(vertical = 10.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        SideChapterButton(
+            Icons.Outlined.KeyboardDoubleArrowUp,
+            stringResource(Res.string.reader_previous_chapter),
+            previous,
+            numberBelow = true,
+            calls.onOpenChapter,
+        )
+        SideRule()
+        Text(
+            (page + 1).toString(),
+            style = MaterialTheme.typography.labelLarge,
+            fontWeight = FontWeight.SemiBold,
+        )
+        Text(
+            total.toString(),
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        PageTrack(page, total, vertical = true, calls.preview, calls.onJump, Modifier.weight(1f).padding(top = 6.dp))
+        SideRule()
+        SideChapterButton(
+            Icons.Outlined.KeyboardDoubleArrowDown,
+            stringResource(Res.string.reader_next_chapter),
+            next,
+            numberBelow = false,
+            calls.onOpenChapter,
+        )
+    }
+}
+
+// A short line that keeps the chapter buttons apart from the page and the track, so their numbers are not read as one.
+@Composable
+private fun SideRule() {
+    Box(
+        Modifier
+            .padding(vertical = 6.dp)
+            .width(18.dp)
+            .height(1.dp)
+            .background(MaterialTheme.colorScheme.outlineVariant),
+    )
+}
+
+// An arrow to the chapter before or after with its number beside it, faded when there is none.
+@Composable
+private fun SideChapterButton(
+    icon: ImageVector,
+    label: String,
+    chapter: SideChapter,
+    numberBelow: Boolean,
+    onOpenChapter: (Long) -> Unit,
+) {
+    val enabled = chapter.id != null
+    val tint = if (enabled) {
+        MaterialTheme.colorScheme.onSurface
+    } else {
+        MaterialTheme.colorScheme.onSurface.copy(
+            alpha = 0.3f,
+        )
+    }
+    Column(
+        Modifier
+            .clip(RoundedCornerShape(16.dp))
+            .clickable(enabled = enabled, role = Role.Button, onClickLabel = label) { chapter.id?.let(onOpenChapter) }
+            .padding(horizontal = 6.dp, vertical = 4.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        if (!numberBelow) chapter.number?.let { Text(it, style = MaterialTheme.typography.labelSmall, color = tint) }
+        Icon(icon, label, Modifier.size(22.dp), tint = tint)
+        if (numberBelow) chapter.number?.let { Text(it, style = MaterialTheme.typography.labelSmall, color = tint) }
+    }
+}

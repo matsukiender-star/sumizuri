@@ -1,0 +1,52 @@
+*.iml
+.kotlin
+.gradle
+**/build/
+xcuserdata
+!src/**/build/
+local.properties
+.idea
+.DS_Store
+captures
+.externalNativeBuild
+.cxx
+*.xcodeproj/*
+!*.xcodeproj/project.pbxproj
+!*.xcodeproj/xcshareddata/
+!*.xcodeproj/project.xcworkspace/
+!*.xcworkspace/contents.xcworkspacedata
+**/xcshareddata/WorkspaceSettings.xcsettings
+node_modules/
+
+# The key that signs releases, which must never be committed.
+keystore.properties
+*.jks
+*.keystore
+
+# What a run, a crash or a profile of the app can leave behind.
+hs_err_pid*.log
+replay_pid*.log
+*.hprof
+*.jfr
+*.jsa
+*.log
+*.tmp
+
+# Release files copied out of the build folders, as the release workflow does.
+/Sumizuri-*.apk
+/Sumizuri-*-setup.exe
+
+# Editors and the system.
+.vscode/
+Thumbs.db
+
+# The settings and data of a sync server run on this computer.
+sync/server/.env
+sync/server/data/
+website/.vitepress/cache/
+website/.vitepress/dist/
+
+website/.firebase/
+
+# The Xcode project of the iPhone app is made by XcodeGen, so it is not kept.
+iosApp/Sumizuri.xcodeproj/

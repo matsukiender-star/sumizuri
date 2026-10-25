@@ -1,0 +1,16 @@
+# The Sumizuri sync server, started with docker compose up -d from a folder that also holds its settings file.
+
+# It speaks plain HTTP on port 8080, so put your own proxy in front for HTTPS, and a proxy in a container on the same network can reach sumizuri-sync:8080 without the ports lines.
+
+services:
+  sumizuri-sync:
+    image: ghcr.io/not-akari/sumizuri-sync:latest
+    restart: unless-stopped
+    env_file: sumizuri.env
+    ports:
+      - "127.0.0.1:8080:8080"
+    volumes:
+      - sumizuri-data:/data
+
+volumes:
+  sumizuri-data:

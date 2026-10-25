@@ -1,0 +1,16 @@
+{
+  "name": "sumizuri-website",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vitepress dev",
+    "build": "vitepress build",
+    "preview": "vitepress preview",
+    "deploy": "vitepress build && firebase deploy --only hosting"
+  },
+  "devDependencies": {
+    "@fontsource/inter": "^5.3.0",
+    "firebase-tools": "^15.34.0",
+    "vitepress": "^1.6.4"
+  }
+}

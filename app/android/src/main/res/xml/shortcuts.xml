@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+    <shortcut android:shortcutId="library" android:icon="@drawable/shortcut_library" android:shortcutShortLabel="@string/shortcut_library">
+        <intent android:action="android.intent.action.MAIN" android:targetPackage="com.sumizuri.app" android:targetClass="com.sumizuri.app.MainActivity">
+            <extra android:name="tab" android:value="Library" />
+        </intent>
+    </shortcut>
+    <shortcut android:shortcutId="updates" android:icon="@drawable/shortcut_updates" android:shortcutShortLabel="@string/shortcut_updates">
+        <intent android:action="android.intent.action.MAIN" android:targetPackage="com.sumizuri.app" android:targetClass="com.sumizuri.app.MainActivity">
+            <extra android:name="tab" android:value="Updates" />
+        </intent>
+    </shortcut>
+    <shortcut android:shortcutId="history" android:icon="@drawable/shortcut_history" android:shortcutShortLabel="@string/shortcut_history">
+        <intent android:action="android.intent.action.MAIN" android:targetPackage="com.sumizuri.app" android:targetClass="com.sumizuri.app.MainActivity">
+            <extra android:name="tab" android:value="History" />
+        </intent>
+    </shortcut>
+    <shortcut android:shortcutId="browse" android:icon="@drawable/shortcut_browse" android:shortcutShortLabel="@string/shortcut_browse">
+        <intent android:action="android.intent.action.MAIN" android:targetPackage="com.sumizuri.app" android:targetClass="com.sumizuri.app.MainActivity">
+            <extra android:name="tab" android:value="Browse" />
+        </intent>
+    </shortcut>
+    <shortcut android:shortcutId="profile" android:icon="@drawable/shortcut_profile" android:shortcutShortLabel="@string/shortcut_profile">
+        <intent android:action="android.intent.action.MAIN" android:targetPackage="com.sumizuri.app" android:targetClass="com.sumizuri.app.MainActivity">
+            <extra android:name="tab" android:value="Profile" />
+        </intent>
+    </shortcut>
+</shortcuts>
