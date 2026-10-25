@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
@@ -69,7 +70,7 @@ import com.sumizuri.app.ui.theme.background.ambientBackground
 import com.sumizuri.app.ui.theme.spec.AppThemeSpec
 import org.jetbrains.compose.resources.stringResource
 
-// Titles made up for the preview, with some read and some unread. A phone shows the first three and a desktop as many as its rows of covers hold.
+// Titles made up for the preview of an empty library, with some read and some unread. A phone shows the first three and a desktop as many as its rows of covers hold.
 private val Samples = listOf(
     Title(1, "Moonlit Garden", Kind.Manga, null, 3, Status.Ongoing, "", inLibrary = true, chapterCount = 20),
     Title(2, "Paper Lanterns", Kind.Manga, null, 8, Status.Ongoing, "", inLibrary = true, chapterCount = 24),
@@ -104,29 +105,33 @@ internal fun ThemePreview(
     desktop: Boolean,
     modifier: Modifier = Modifier,
     height: Dp = 0.dp,
+    titles: List<Title> = emptyList(),
 ) {
+    // The titles of the library when it has any, so the preview looks like the app as it is.
+    val shown = titles.ifEmpty { Samples }
     SumizuriTheme(if (dark) ThemeMode.Dark else ThemeMode.Light, spec) {
         if (desktop) {
             DesktopPage(
                 modifier.heightIn(min = height),
                 height,
+                shown,
             )
         } else {
-            PhonePage(modifier.heightIn(min = height))
+            PhonePage(modifier.heightIn(min = height), shown)
         }
     }
 }
 
 // The page as a phone has it: one column, with the floating bar at the bottom.
 @Composable
-private fun PhonePage(modifier: Modifier) {
+private fun PhonePage(modifier: Modifier, titles: List<Title>) {
     Column(
         modifier.ambientBackground().editTarget(EditorPart.App).padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp),
     ) {
         Heading()
         Tabs()
-        Covers(Samples.take(3))
+        Covers(titles.take(3), 3)
         Row(Modifier.editTarget(EditorPart.Cards), verticalAlignment = Alignment.CenterVertically) { Sample() }
         Buttons()
         Controls()
@@ -137,7 +142,7 @@ private fun PhonePage(modifier: Modifier) {
 
 // The page as a desktop window has it: the tabs in a column down the side, a grid of covers with as many across and down as the window has room for, and the rows and controls beside a dialog.
 @Composable
-private fun DesktopPage(modifier: Modifier, height: Dp) {
+private fun DesktopPage(modifier: Modifier, height: Dp, titles: List<Title>) {
     val rail = MaterialTheme.colorScheme.surfaceContainer
     val aspect = LocalThemeSpec.current.options.covers.aspect.ratio
     // The column of tabs is painted behind the row, so it reaches the bottom of the page however tall the page is.
@@ -163,7 +168,7 @@ private fun DesktopPage(modifier: Modifier, height: Dp) {
             Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
                 Heading()
                 Tabs()
-                for (row in Samples.take(across * down).chunked(across)) Covers(row)
+                for (row in titles.take(across * down).chunked(across)) Covers(row, across)
                 Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                     Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(14.dp)) {
                         Row(
@@ -190,17 +195,21 @@ private fun Heading() {
     )
 }
 
-// A row of covers, each read as far as its sample says. One that is read to the end has no bar.
+// A row of covers, each read as far as its title says, with empty room kept for missing ones so a short row does not stretch. One that is read to the end has no bar.
 @Composable
-private fun Covers(titles: List<Title>) {
+private fun Covers(titles: List<Title>, slots: Int) {
     Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
         for (title in titles) {
-            Cover(
-                title,
-                (title.chapterCount - title.unread).toFloat() / title.chapterCount,
-                Modifier.weight(1f),
-            )
+            val done = if (title.chapterCount >
+                0
+            ) {
+                (title.chapterCount - title.unread).toFloat() / title.chapterCount
+            } else {
+                0f
+            }
+            Cover(title, done.coerceIn(0f, 1f), Modifier.weight(1f))
         }
+        repeat(slots - titles.size) { Spacer(Modifier.weight(1f)) }
     }
 }
 

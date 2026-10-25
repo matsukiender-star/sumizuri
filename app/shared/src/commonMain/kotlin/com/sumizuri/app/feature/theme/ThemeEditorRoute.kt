@@ -210,6 +210,7 @@ private fun EditorLayout(state: ThemeEditorState, onClose: () -> Unit, onSave: (
 private fun PreviewPane(state: ThemeEditorState, desktop: Boolean, modifier: Modifier) {
     val selection = EditorSelection(state.focus, state.reveal, state::select)
     val frame = RoundedCornerShape(20.dp)
+    val titles = rememberPreviewTitles()
     CompositionLocalProvider(LocalEditorSelection provides selection) {
         BoxWithConstraints(modifier) {
             val height = maxHeight - 24.dp
@@ -232,6 +233,7 @@ private fun PreviewPane(state: ThemeEditorState, desktop: Boolean, modifier: Mod
                         }
                         ).shadow(8.dp, frame).clip(frame),
                     height,
+                    titles,
                 )
             }
         }

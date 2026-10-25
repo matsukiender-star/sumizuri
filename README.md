@@ -21,9 +21,10 @@ Sumizuri is one app for the things you read and watch. Open files from your devi
 > Sumizuri comes with no content and lists no sources by default. You choose what to add, and you are responsible for it.
 
 <p align="center">
-  <img src=".github/readme/screenshot-profile.jpg" alt="The profile page" width="32%">
-  &nbsp;
-  <img src=".github/readme/screenshot-settings.jpg" alt="The settings page" width="32%">
+  <img src=".github/readme/screenshot-library.jpg" alt="The library" width="24%">
+  <img src=".github/readme/screenshot-profile.jpg" alt="The profile page" width="24%">
+  <img src=".github/readme/screenshot-theme-editor.jpg" alt="The theme editor" width="24%">
+  <img src=".github/readme/screenshot-settings.jpg" alt="The settings page" width="24%">
 </p>
 
 ## Features
