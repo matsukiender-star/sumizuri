@@ -1,0 +1,45 @@
+name: Extension engine
+description: For extension authors. The engine runs a source wrongly, or the format is missing something you need.
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this for the engine that runs sources, not for one source that stopped working. The [extension guide](https://github.com/not-akari/sumizuri/blob/main/docs/extensions.md) says what the engine offers.
+
+        Please use a small example against your own server or a public API. Do not share links to sites that host content.
+  - type: dropdown
+    id: kind
+    attributes:
+      label: What kind of problem?
+      options:
+        - The engine does something wrong
+        - The format is missing something
+        - The editor or the Test tab does not work right
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: App version
+      placeholder: "0.4.0"
+    validations:
+      required: true
+  - type: textarea
+    id: what
+    attributes:
+      label: What happens, and what did you expect?
+    validations:
+      required: true
+  - type: textarea
+    id: code
+    attributes:
+      label: The smallest code that shows it
+      description: A short part of your source is enough.
+      render: javascript
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs
+      description: From the Test tab of the editor, or from Settings, Diagnostics.
+      render: text

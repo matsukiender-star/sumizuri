@@ -134,7 +134,7 @@ You need JDK 21, and the Android SDK for the Android app.
 
 The iPhone and iPad app needs a Mac with Xcode and [XcodeGen](https://github.com/yonaskolb/XcodeGen). Run `xcodegen` in `iosApp`, open `Sumizuri.xcodeproj`, pick a device and run. Xcode builds the Kotlin side through Gradle. With a free Apple ID, choose it under Signing & Capabilities to install on your own phone.
 
-Before a pull request, run `bash scripts/check-repo.sh`.
+Before a pull request, read the [contributing guide](CONTRIBUTING.md) and run `bash scripts/check-repo.sh`. To report a security problem, see the [security policy](SECURITY.md).
 
 ## Content
 

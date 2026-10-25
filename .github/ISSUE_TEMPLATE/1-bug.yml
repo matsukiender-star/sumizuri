@@ -1,0 +1,80 @@
+name: Bug report
+description: Something in the app or the sync server does not work as it should.
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for reporting this. A clear report gets fixed much faster.
+
+        A problem with one source belongs to whoever made that source, unless the app itself is at fault. For a security problem, use the [security policy](https://github.com/not-akari/sumizuri/security/policy) instead.
+  - type: dropdown
+    id: platform
+    attributes:
+      label: Where does it happen?
+      multiple: true
+      options:
+        - Android
+        - iPhone or iPad
+        - Windows
+        - Mac
+        - Linux
+        - Sync server
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: App version
+      description: Found in Settings, About.
+      placeholder: "0.4.0"
+    validations:
+      required: true
+  - type: input
+    id: device
+    attributes:
+      label: Device and system
+      placeholder: "Pixel 8, Android 16"
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: Say what you saw. If something froze or closed, say that too.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to make it happen
+      placeholder: |
+        1. Open the library
+        2. Long press a title
+        3. Pick Move to shelf
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What did you expect?
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs
+      description: Open Settings, Diagnostics, and copy the lines from around the time it happened. Remove anything private first.
+      render: text
+  - type: textarea
+    id: media
+    attributes:
+      label: Screenshots or video
+      description: Drag files here if they help show the problem.
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before you send
+      options:
+        - label: I am on the newest release.
+          required: true
+        - label: I looked for an open issue about this and found none.
+          required: true

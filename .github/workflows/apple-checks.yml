@@ -1,6 +1,6 @@
 name: Apple checks
 
-# Builds the iPhone app or the Mac app on a Mac of GitHub, which is the only place they can be built from here. It runs only when started by hand from the Actions page, since a minute on a Mac of GitHub costs ten times a minute on Linux in a private repo, and a push to main does not need one. Run the iPhone simulator build after a change to the iPhone code, and the device build once before a release tag, since the release builds the same way.
+# Builds the iPhone app or the Mac app on a Mac of GitHub, which is the only place they can be built from here. It runs only when started by hand from the Actions page, since a Mac build is long and a push to main does not need one. Run the iPhone simulator build after a change to the iPhone code, and the device build once before a release tag, since the release builds the same way.
 on:
   workflow_dispatch:
     inputs:
@@ -17,6 +17,10 @@ on:
 concurrency:
   group: apple-checks-${{ github.ref }}
   cancel-in-progress: true
+
+# These builds only read the repo, so the token of the run can do nothing else.
+permissions:
+  contents: read
 
 jobs:
   # The Kotlin framework for the simulator of Apple silicon, and the whole app on it. It needs no signing.

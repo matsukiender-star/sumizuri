@@ -1,0 +1,48 @@
+name: Feature idea
+description: Something new for the app, or a better way to do something it does now.
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Ideas of any size are welcome. Sumizuri ships no content, so ideas for built in sources or ways around paid access are closed.
+  - type: dropdown
+    id: area
+    attributes:
+      label: Which part of the app?
+      options:
+        - Library and shelves
+        - Reader
+        - Video player
+        - Browse and extensions
+        - Sync and backups
+        - Profile and statistics
+        - Settings and looks
+        - Something else
+    validations:
+      required: true
+  - type: textarea
+    id: need
+    attributes:
+      label: What do you want to do?
+      description: Say what you are trying to do and what gets in the way now.
+      placeholder: When I read a long series, I want to...
+    validations:
+      required: true
+  - type: textarea
+    id: idea
+    attributes:
+      label: How could it work?
+      description: Your idea of how it could look or work. A sketch or a screenshot of another app is fine.
+  - type: textarea
+    id: other
+    attributes:
+      label: Other ways you thought of
+      description: Anything you tried, or another way the same need could be met.
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before you send
+      options:
+        - label: I looked for an open issue about this and found none.
+          required: true

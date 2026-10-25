@@ -1,0 +1,23 @@
+name: Guides and website
+description: A guide or a page of the website is wrong, unclear or missing something.
+labels: ["documentation"]
+body:
+  - type: input
+    id: page
+    attributes:
+      label: Which page?
+      description: A link, or the name of the guide.
+      placeholder: https://sumizuri.notakari.com/sync-server
+    validations:
+      required: true
+  - type: textarea
+    id: what
+    attributes:
+      label: What is wrong or missing?
+    validations:
+      required: true
+  - type: textarea
+    id: better
+    attributes:
+      label: How should it read?
+      description: Your idea of a better text, if you have one.
