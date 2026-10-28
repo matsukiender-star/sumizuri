@@ -6,6 +6,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusDirection
@@ -19,6 +20,7 @@ import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.platform.LocalFocusManager
 import com.sumizuri.app.data.model.controls.AppShortcut
+import kotlinx.coroutines.launch
 
 // Listens for the shortcut keys over everything under it, before the page under it hears them. The callback says whether it did the shortcut, and a key it did not use goes on to the page.
 @Composable
@@ -31,10 +33,15 @@ fun Modifier.appShortcuts(onShortcut: (AppShortcut) -> Boolean): Modifier {
     // While the focus is only held here, the arrows of a TV remote step into the page instead of looking around a box as big as the window.
     val focusManager = LocalFocusManager.current
     val held = remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
     return this
         .mouseChords { chord -> gestures.shortcutFor(chord)?.let(act) ?: false }
         .focusRequester(focus)
-        .onFocusChanged { held.value = it.isFocused }
+        .onFocusChanged {
+            held.value = it.isFocused
+            // A page that goes away takes the focus with it, and with no focus the keys reach nothing, so it comes back here.
+            if (!it.hasFocus) scope.launch { focus.requestFocus() }
+        }
         .focusable()
         .onPreviewKeyEvent { event ->
             if (event.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
