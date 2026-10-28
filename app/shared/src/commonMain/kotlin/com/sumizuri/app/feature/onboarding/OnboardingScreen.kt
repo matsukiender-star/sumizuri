@@ -1,5 +1,12 @@
 package com.sumizuri.app.feature.onboarding
 
+import kotlinx.coroutines.delay
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.focusProperties
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.foundation.focusGroup
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.SizeTransform
 import androidx.compose.animation.core.FastOutSlowInEasing
@@ -62,6 +69,9 @@ import org.jetbrains.compose.resources.stringResource
 // The steps are never wider than this, so they read well on a wide window too.
 private val ContentWidth = 640.dp
 
+// How long a step takes to come in before the focus can go to its buttons.
+private const val StepFocusDelayMs = 400L
+
 // The first steps after installing, over the whole app: a welcome, the look, the profile, a backup to bring, how to read, new chapters, and the end. It stays until the person finishes or skips it, and the library it leaves them on is behind it all along.
 @Composable
 internal fun OnboardingScreen(onMigrate: (List<Long>) -> Unit, modifier: Modifier = Modifier) {
@@ -92,10 +102,17 @@ internal fun OnboardingScreen(onMigrate: (List<Long>) -> Unit, modifier: Modifie
         model.next()
     }
     // Stands in the way of every touch, so nothing reaches the app under it while it shows. It only listens and takes none of them, since taking them would also cancel a press on a button of its own whenever the pointer or the page moved during it.
+    // The focus of a TV remote is kept inside the steps too, so the arrows never wander to the library behind.
+    val trap = remember { FocusRequester() }
+    // Each step brings new buttons and the old one with the focus goes, so the focus is taken back once the step has come in.
+    LaunchedEffect(state.step) {
+        delay(StepFocusDelayMs)
+        trap.requestFocus()
+    }
     Box(
         modifier.fillMaxSize().ambientBackground().pointerInput(Unit) {
             awaitPointerEventScope { while (true) awaitPointerEvent() }
-        },
+        }.focusRequester(trap).focusProperties { onExit = { cancelFocusChange() } }.focusGroup(),
     ) {
         Column(
             Modifier
