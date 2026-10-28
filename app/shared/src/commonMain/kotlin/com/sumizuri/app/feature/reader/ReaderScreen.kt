@@ -17,6 +17,17 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusDirection
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.input.InputMode
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalInputModeManager
 import coil3.compose.LocalPlatformContext
 import com.sumizuri.app.data.model.controls.ReaderAction
 import com.sumizuri.app.data.model.reader.ReaderLookup
@@ -68,6 +79,9 @@ private const val AutoStep = 20
 private const val AutoMin = 20
 private const val AutoMax = 600
 
+// How long the controls take to be laid out before the focus can step into them.
+private const val ControlsFocusDelayMs = 150L
+
 @Composable
 private fun Reader(state: ReaderState, actions: ReaderActions) {
     val settings = state.settings
@@ -84,6 +98,19 @@ private fun Reader(state: ReaderState, actions: ReaderActions) {
         panel = which
     }
     LaunchedEffect(controls) { if (!controls) panel = DockPanel.None }
+    // With the remote of a TV the focus steps into the controls when they show and back to the page when they go, so the arrows move between the buttons or turn the pages.
+    val pageFocus = remember { FocusRequester() }
+    val focusManager = LocalFocusManager.current
+    val inputMode = LocalInputModeManager.current
+    LaunchedEffect(controls) {
+        if (inputMode.inputMode != InputMode.Keyboard) return@LaunchedEffect
+        if (controls) {
+            delay(ControlsFocusDelayMs)
+            focusManager.moveFocus(FocusDirection.Next)
+        } else {
+            pageFocus.requestFocus()
+        }
+    }
     var auto by remember { mutableStateOf(false) }
     // The light follows the sliders at once and is saved when they are let go.
     var dim by remember(settings.dim) { mutableFloatStateOf(settings.dim) }
@@ -196,10 +223,17 @@ private fun Reader(state: ReaderState, actions: ReaderActions) {
             pageFilterOf(settings.grayscale, settings.invertColors, settings.sepia, settings.contrast)
         }
     CompositionLocalProvider(LocalWordLookup provides lookup, LocalPageFilter provides pageFilter) {
-        Box(Modifier.fillMaxSize().background(settings.background.fill())) {
+        Box(
+            Modifier.fillMaxSize().background(settings.background.fill()).onPreviewKeyEvent { event ->
+                // The back key of a remote hides the controls before it leaves the chapter.
+                if (event.key != Key.Back || !controls) return@onPreviewKeyEvent false
+                if (event.type == KeyEventType.KeyUp) controls = false
+                true
+            },
+        ) {
             // A new chapter, mode, or page pairing starts the viewer at the right place and takes the zoom off.
             key(rootChapterId, state.mode, settings.dual) {
-                Box(Modifier.fillMaxSize().pinchZoom()) {
+                Box(Modifier.fillMaxSize().focusRequester(pageFocus).pinchZoom()) {
                     when {
                         state.mode == ReaderMode.Continuous -> ContinuousReader(state, view, actions.onOpenChapter)
                         state.isText -> NovelPagedReader(state, view, actions.onOpenChapter)
