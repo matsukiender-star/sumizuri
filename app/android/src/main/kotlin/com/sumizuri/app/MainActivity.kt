@@ -1,5 +1,7 @@
 package com.sumizuri.app
 
+import com.sumizuri.app.ui.controls.AppFocus
+import android.view.KeyEvent
 import android.app.PictureInPictureParams
 import android.content.Intent
 import android.content.res.Configuration
@@ -42,6 +44,13 @@ class MainActivity : ComponentActivity() {
             }
         }
         requestMaxRefreshRate()
+    }
+
+    // A key of a TV remote that nothing took, because the page that had the focus went away, gives the focus back to the app and is tried once more.
+    override fun dispatchKeyEvent(event: KeyEvent): Boolean {
+        if (super.dispatchKeyEvent(event)) return true
+        if (event.action != KeyEvent.ACTION_DOWN || event.keyCode !in RemoteKeys) return false
+        return AppFocus.restore() && super.dispatchKeyEvent(event)
     }
 
     override fun onResume() {
@@ -95,3 +104,12 @@ private fun MainActivity.pictureParams(aspect: Float): PictureInPictureParams? {
     val shape = aspect.coerceIn(0.42f, 2.39f)
     return PictureInPictureParams.Builder().setAspectRatio(Rational((shape * 1000).toInt(), 1000)).build()
 }
+
+private val RemoteKeys = setOf(
+    KeyEvent.KEYCODE_DPAD_UP,
+    KeyEvent.KEYCODE_DPAD_DOWN,
+    KeyEvent.KEYCODE_DPAD_LEFT,
+    KeyEvent.KEYCODE_DPAD_RIGHT,
+    KeyEvent.KEYCODE_DPAD_CENTER,
+)
+

@@ -2,11 +2,11 @@ package com.sumizuri.app.ui.controls
 
 import androidx.compose.foundation.focusable
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusDirection
@@ -20,7 +20,6 @@ import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.platform.LocalFocusManager
 import com.sumizuri.app.data.model.controls.AppShortcut
-import kotlinx.coroutines.launch
 
 // Listens for the shortcut keys over everything under it, before the page under it hears them. The callback says whether it did the shortcut, and a key it did not use goes on to the page.
 @Composable
@@ -33,14 +32,16 @@ fun Modifier.appShortcuts(onShortcut: (AppShortcut) -> Boolean): Modifier {
     // While the focus is only held here, the arrows of a TV remote step into the page instead of looking around a box as big as the window.
     val focusManager = LocalFocusManager.current
     val held = remember { mutableStateOf(false) }
-    val scope = rememberCoroutineScope()
+    DisposableEffect(focus) {
+        AppFocus.holder = focus
+        onDispose { if (AppFocus.holder === focus) AppFocus.holder = null }
+    }
     return this
         .mouseChords { chord -> gestures.shortcutFor(chord)?.let(act) ?: false }
         .focusRequester(focus)
         .onFocusChanged {
             held.value = it.isFocused
-            // A page that goes away takes the focus with it, and with no focus the keys reach nothing, so it comes back here.
-            if (!it.hasFocus) scope.launch { focus.requestFocus() }
+            AppFocus.inside = it.hasFocus
         }
         .focusable()
         .onPreviewKeyEvent { event ->
@@ -52,3 +53,16 @@ fun Modifier.appShortcuts(onShortcut: (AppShortcut) -> Boolean): Modifier {
 }
 
 private val RemoteKeys = setOf(Key.DirectionUp, Key.DirectionDown, Key.DirectionLeft, Key.DirectionRight, Key.DirectionCenter)
+
+// The holder of the focus for the whole app. A page that goes away takes the focus with it, and with no focus a key of a TV remote reaches nothing, so the window hands the focus back here.
+object AppFocus {
+    internal var holder: FocusRequester? = null
+    internal var inside = false
+
+    // Gives the focus back when nothing in the app has it, and says whether it did.
+    fun restore(): Boolean {
+        if (inside) return false
+        return holder?.let { runCatching { it.requestFocus() }.isSuccess } ?: false
+    }
+}
+
