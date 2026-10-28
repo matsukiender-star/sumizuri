@@ -1,5 +1,6 @@
 package com.sumizuri.app.feature.player
 
+import com.sumizuri.app.ui.controls.RemoteKeysDirect
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -120,6 +121,8 @@ internal fun PlayerScreen(session: PlayerSession, engine: PlayerEngine, onClose:
     val pickSubtitle =
         rememberFilePicker(FileKind.Subtitles) { path -> session.loadSubtitle(path.toString(), path.name) }
     PlayerSystemUi(keepOn = player.playing)
+    // The full player takes the keys of a TV remote, while the small one and a failure, with its buttons, leave them to the pointer.
+    if (!small && state.phase != PlayerPhase.Failed) RemoteKeysDirect.Take()
     // The back key of the phone closes an open choice first.
     val backState = rememberNavigationEventState(NavigationEventInfo.None)
     NavigationBackHandler(backState, isBackEnabled = picker != null) { picker = null }

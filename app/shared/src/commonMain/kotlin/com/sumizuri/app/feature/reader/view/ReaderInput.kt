@@ -1,5 +1,6 @@
 package com.sumizuri.app.feature.reader.view
 
+import com.sumizuri.app.ui.controls.RemoteKeysDirect
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.runtime.Composable
@@ -30,6 +31,7 @@ fun Modifier.readerInput(layout: TapLayout, onAction: (action: ReaderAction, tap
     val controls by rememberUpdatedState(LocalReaderControls.current)
     val act by rememberUpdatedState(onAction)
     LaunchedEffect(Unit) { focus.requestFocus() }
+    RemoteKeysDirect.Take()
     return this
         .mouseChords { chord -> controls.actionForKey(chord)?.let { act(it, false) } ?: false }
         .focusRequester(focus)
