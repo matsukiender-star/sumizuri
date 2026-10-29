@@ -118,8 +118,11 @@ internal class RemotePointer(private val activity: Activity) : View(activity) {
         ev.recycle()
     }
 
+    // The scroll is sent from the middle of the screen along the way it moves, since the edge itself is often a bar that does not scroll, such as the title at the top.
     private fun scroll(across: Int, down: Int, amount: Float) {
         val ev = pointerEvent(MotionEvent.ACTION_SCROLL, MotionEvent.TOOL_TYPE_MOUSE, InputDevice.SOURCE_MOUSE) {
+            if (across != 0) x = width / 2f
+            if (down != 0) y = height / 2f
             setAxisValue(MotionEvent.AXIS_HSCROLL, across * amount)
             setAxisValue(MotionEvent.AXIS_VSCROLL, down * amount)
         }
