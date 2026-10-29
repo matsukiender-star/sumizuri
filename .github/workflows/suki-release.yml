@@ -1,0 +1,267 @@
+name: Suki Release
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [suki]
+    tags: ["*-suki*"]
+
+concurrency:
+  group: suki-release
+  cancel-in-progress: true
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  start:
+    name: Start Suki release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    outputs:
+      release: ${{ steps.draft.outputs.result }}
+      version: ${{ steps.version.outputs.name }}
+      args: ${{ steps.version.outputs.args }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - name: Pick the version
+        id: version
+        run: |
+          git fetch -q --tags https://github.com/not-akari/sumizuri.git || true
+          if [[ "${GITHUB_REF:-}" == refs/tags/* ]]; then
+            tag="${GITHUB_REF_NAME#v}"
+          else
+            base=$(git describe --tags --abbrev=0 --match "[0-9]*" 2>/dev/null || grep '^app.version=' gradle.properties | cut -d= -f2 | tr -d '\r')
+            tag="${base%%-*}-suki"
+          fi
+          IFS=. read -r major minor patch <<< "${tag%%-*}"
+          code=$(( ${major:-0} * 1000000 + ${minor:-0} * 1000 + ${patch:-0} ))
+          echo "Release tag $tag, versionCode $code"
+          echo "name=$tag" >> "$GITHUB_OUTPUT"
+          echo "args=-Papp.version=$tag -Papp.versionCode=$code -Papp.updateRepo=https://github.com/${GITHUB_REPOSITORY}" >> "$GITHUB_OUTPUT"
+      - name: Make the draft release
+        id: draft
+        uses: actions/github-script@v8
+        env:
+          TAG: ${{ steps.version.outputs.name }}
+        with:
+          script: |
+            const tag = process.env.TAG;
+            const releases = await github.paginate(github.rest.repos.listReleases, { ...context.repo, per_page: 100 });
+            const found = releases.find((r) => r.tag_name === tag);
+            if (found) return found.id;
+            const made = await github.rest.repos.createRelease({
+              ...context.repo,
+              tag_name: tag,
+              target_commitish: context.sha,
+              name: `Sumizuri ${tag}`,
+              draft: true,
+            });
+            return made.data.id;
+
+  android:
+    name: Android
+    needs: start
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: 21
+      - uses: gradle/actions/setup-gradle@v5
+      - name: Configure Gradle memory and parallel build
+        run: |
+          printf '\norg.gradle.parallel=true\norg.gradle.jvmargs=-Xmx6g -Dfile.encoding=UTF-8\n' >> gradle.properties
+      - name: Put the signing key in place
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+        run: |
+          if [ -n "$ANDROID_KEYSTORE_BASE64" ]; then
+            echo "$ANDROID_KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/sumizuri-release.jks"
+            mkdir -p "$HOME/.android" "$HOME/.config/.android"
+            cp "$RUNNER_TEMP/sumizuri-release.jks" "$HOME/.android/debug.keystore"
+            cp "$RUNNER_TEMP/sumizuri-release.jks" "$HOME/.config/.android/debug.keystore"
+            echo "ANDROID_KEYSTORE_PATH=$RUNNER_TEMP/sumizuri-release.jks" >> "$GITHUB_ENV"
+          fi
+      - name: Build Android APKs
+        run: ./gradlew :app:android:assembleRelease :app:android:assembleDebug ${{ needs.start.outputs.args }}
+        env:
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+      - name: Remove the signing key
+        if: always()
+        run: rm -f "$RUNNER_TEMP/sumizuri-release.jks" "$HOME/.android/debug.keystore" "$HOME/.config/.android/debug.keystore"
+      - name: Name the APKs after the version
+        env:
+          VERSION: ${{ needs.start.outputs.version }}
+        run: |
+          for apk in app/android/build/outputs/apk/release/android-*-release.apk; do
+            kind=$(basename "$apk" -release.apk)
+            cp "$apk" "Sumizuri-$VERSION-${kind#android-}.apk"
+          done
+          for apk in app/android/build/outputs/apk/debug/android-*-debug.apk; do
+            kind=$(basename "$apk" -debug.apk)
+            cp "$apk" "Sumizuri-$VERSION-debug-${kind#android-}.apk"
+          done
+          ls -lh Sumizuri-*
+      - name: Put the APKs on the release
+        uses: actions/github-script@v8
+        env:
+          ID: ${{ needs.start.outputs.release }}
+        with:
+          script: |
+            await require("./scripts/release-assets.js").upload({ github, ...context.repo, id: Number(process.env.ID), prefix: "Sumizuri-" })
+      - uses: actions/upload-artifact@v7
+        with:
+          name: sumizuri-android
+          path: Sumizuri-*
+          retention-days: 7
+
+  linux:
+    name: Linux
+    needs: start
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: 21
+      - uses: gradle/actions/setup-gradle@v5
+      - name: Configure Gradle memory and parallel build
+        run: |
+          printf '\norg.gradle.parallel=true\norg.gradle.jvmargs=-Xmx6g -Dfile.encoding=UTF-8\n' >> gradle.properties
+      - name: Set up fakeroot
+        run: command -v fakeroot || (sudo apt-get update && sudo apt-get install -y fakeroot)
+      - name: Build Linux packages
+        run: ./gradlew :app:desktop:packageReleaseDeb :app:desktop:createReleaseDistributable ${{ needs.start.outputs.args }}
+      - name: Build AppImage and name the Linux files
+        env:
+          VERSION: ${{ needs.start.outputs.version }}
+        run: |
+          cp app/desktop/build/compose/binaries/main-release/deb/*.deb "Sumizuri-$VERSION-linux-amd64.deb"
+          tar -C app/desktop/build/compose/binaries/main-release/app -czf "Sumizuri-$VERSION-linux-x64.tar.gz" Sumizuri
+
+          curl -sSLf -o "$RUNNER_TEMP/appimagetool" https://github.com/AppImage/appimagetool/releases/download/1.9.1/appimagetool-x86_64.AppImage
+          echo "ed4ce84f0d9caff66f50bcca6ff6f35aae54ce8135408b3fa33abfc3cb384eb0  $RUNNER_TEMP/appimagetool" | sha256sum -c -
+          chmod +x "$RUNNER_TEMP/appimagetool"
+          rm -rf Sumizuri.AppDir
+          mkdir -p Sumizuri.AppDir/usr
+          cp -a app/desktop/build/compose/binaries/main-release/app/Sumizuri/* Sumizuri.AppDir/usr/
+          mkdir -p Sumizuri.AppDir/usr/lib/runtime/bin
+          cp "$JAVA_HOME/bin/java" Sumizuri.AppDir/usr/lib/runtime/bin/java
+          chmod +x Sumizuri.AppDir/usr/lib/runtime/bin/java
+          cp Sumizuri.AppDir/usr/lib/Sumizuri.png Sumizuri.AppDir/sumizuri.png
+          cp Sumizuri.AppDir/usr/lib/Sumizuri.png Sumizuri.AppDir/.DirIcon
+          cat > Sumizuri.AppDir/sumizuri.desktop << 'EOF'
+          [Desktop Entry]
+          Name=Sumizuri
+          Comment=Sumizuri
+          Exec=AppRun
+          Icon=sumizuri
+          Terminal=false
+          Type=Application
+          Categories=Graphics;Viewer;
+          StartupWMClass=com-sumizuri-app-MainKt
+          EOF
+          cat > Sumizuri.AppDir/AppRun << 'EOF'
+          #!/bin/sh
+          HERE="$(dirname "$(readlink -f "$0")")"
+          A="$HERE/usr/lib/app"
+          CP=$(grep '^app.classpath=' "$A/Sumizuri.cfg" | sed "s|app.classpath=\$APPDIR|$A|" | paste -sd:)
+          OPTS=$(grep '^java-options=' "$A/Sumizuri.cfg" | sed "s|java-options=||; s|\$APPDIR|$A|g" | grep -v SharedArchive)
+          export LD_BIND_NOW=1 LC_NUMERIC=C
+          exec "$HERE/usr/lib/runtime/bin/java" $OPTS -Djava.library.path="$A" -cp "$CP" com.sumizuri.app.MainKt "$@"
+          EOF
+          chmod +x Sumizuri.AppDir/AppRun
+          ARCH=x86_64 APPIMAGE_EXTRACT_AND_RUN=1 "$RUNNER_TEMP/appimagetool" Sumizuri.AppDir "Sumizuri-$VERSION-linux-x86_64.AppImage"
+          ls -lh Sumizuri-*
+      - name: Put the files on the release
+        uses: actions/github-script@v8
+        env:
+          ID: ${{ needs.start.outputs.release }}
+        with:
+          script: |
+            await require("./scripts/release-assets.js").upload({ github, ...context.repo, id: Number(process.env.ID), prefix: "Sumizuri-" })
+      - uses: actions/upload-artifact@v7
+        with:
+          name: sumizuri-linux
+          path: Sumizuri-*
+          retention-days: 7
+
+  windows:
+    name: Windows
+    needs: start
+    runs-on: windows-latest
+    timeout-minutes: 60
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: 21
+      - uses: gradle/actions/setup-gradle@v5
+      - name: Configure Gradle memory and parallel build
+        run: |
+          printf '\norg.gradle.parallel=true\norg.gradle.jvmargs=-Xmx6g -Dfile.encoding=UTF-8\n' >> gradle.properties
+      - name: Set up Inno Setup 7
+        env:
+          MSYS_NO_PATHCONV: 1
+        run: |
+          for place in "$LOCALAPPDATA/Programs/Inno Setup 7" "/c/Program Files/Inno Setup 7" "/c/Program Files (x86)/Inno Setup 7"; do
+            if [ -f "$place/ISCC.exe" ]; then echo "Inno Setup is already in $place"; exit 0; fi
+          done
+          curl -sSLf -o "$RUNNER_TEMP/innosetup.exe" https://github.com/jrsoftware/issrc/releases/download/is-7_1_0/innosetup-7.1.0-x64.exe
+          echo "0362a383ed217d4c4239b5933866dd96d3eb2102737da92f80f6057a4b40df2f  $RUNNER_TEMP/innosetup.exe" | sha256sum -c -
+          "$RUNNER_TEMP/innosetup.exe" /VERYSILENT /SUPPRESSMSGBOXES /NORESTART /SP- /CURRENTUSER
+      - name: Build Windows installer
+        run: ./gradlew :app:desktop:packageReleaseSetup ${{ needs.start.outputs.args }}
+      - name: Name the file after the version
+        env:
+          VERSION: ${{ needs.start.outputs.version }}
+        run: |
+          cp app/desktop/build/installer/*-setup.exe "Sumizuri-$VERSION-setup.exe"
+          ls -lh Sumizuri-*
+      - name: Put the file on the release
+        uses: actions/github-script@v8
+        env:
+          ID: ${{ needs.start.outputs.release }}
+        with:
+          script: |
+            await require("./scripts/release-assets.js").upload({ github, ...context.repo, id: Number(process.env.ID), prefix: "Sumizuri-" })
+      - uses: actions/upload-artifact@v7
+        with:
+          name: sumizuri-windows
+          path: Sumizuri-*
+          retention-days: 7
+
+  publish:
+    name: Publish Suki release
+    needs: [start, android, linux, windows]
+    if: ${{ always() && needs.start.result == 'success' && needs.android.result == 'success' && needs.linux.result == 'success' && needs.windows.result == 'success' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+      - name: Publish the release
+        uses: actions/github-script@v8
+        env:
+          ID: ${{ needs.start.outputs.release }}
+        with:
+          script: |
+            await require("./scripts/release-assets.js").publish({ github, ...context.repo, id: Number(process.env.ID) })
