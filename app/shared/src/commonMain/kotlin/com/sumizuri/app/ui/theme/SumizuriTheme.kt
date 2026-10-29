@@ -1,5 +1,6 @@
 package com.sumizuri.app.ui.theme
 
+import com.sumizuri.app.ui.controls.TvMode
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.LocalContentColor
@@ -50,7 +51,7 @@ fun SumizuriTheme(
             // Text that is not on a Material surface takes the color of the page text, since the default would be black.
             CompositionLocalProvider(
                 LocalContentColor provides shown.onBackground,
-                LocalRippleConfiguration provides RippleConfiguration(rippleAlpha = FocusRipple),
+                LocalRippleConfiguration provides if (TvMode.on) RippleConfiguration(rippleAlpha = FocusRipple) else RippleConfiguration(),
                 content = content,
             )
         }

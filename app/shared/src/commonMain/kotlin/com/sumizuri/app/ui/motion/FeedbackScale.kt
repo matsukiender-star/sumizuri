@@ -16,6 +16,7 @@ import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.dp
+import com.sumizuri.app.ui.controls.TvMode
 import com.sumizuri.app.ui.theme.LocalReduceMotion
 import com.sumizuri.app.ui.theme.LocalThemeSpec
 
@@ -26,7 +27,7 @@ fun Modifier.feedbackScale(source: MutableInteractionSource): Modifier {
     val ring = MaterialTheme.colorScheme.primary
     val ringed = Modifier.drawWithContent {
         drawContent()
-        if (focused) {
+        if (focused && TvMode.on) {
             val width = 3.dp.toPx()
             drawRoundRect(ring, cornerRadius = CornerRadius(12.dp.toPx()), style = Stroke(width))
         }
@@ -38,7 +39,7 @@ fun Modifier.feedbackScale(source: MutableInteractionSource): Modifier {
     val scale by animateFloatAsState(
         if (pressed) {
             motion.pressScale
-        } else if (focused) {
+        } else if (focused && TvMode.on) {
             maxOf(motion.hoverScale, 1.06f)
         } else if (hovered) {
             motion.hoverScale

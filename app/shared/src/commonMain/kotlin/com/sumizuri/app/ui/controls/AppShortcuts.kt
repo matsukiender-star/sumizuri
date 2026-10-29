@@ -54,6 +54,11 @@ fun Modifier.appShortcuts(onShortcut: (AppShortcut) -> Boolean): Modifier {
 
 private val RemoteKeys = setOf(Key.DirectionUp, Key.DirectionDown, Key.DirectionLeft, Key.DirectionRight, Key.DirectionCenter)
 
+// Set by the Android app when it runs on a TV, so the strong marks of the focus only show there and not on a phone or a computer.
+object TvMode {
+    var on = false
+}
+
 // The holder of the focus for the whole app. A page that goes away takes the focus with it, and with no focus a key of a TV remote reaches nothing, so the window hands the focus back here.
 object AppFocus {
     internal var holder: FocusRequester? = null

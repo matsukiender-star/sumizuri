@@ -1,6 +1,7 @@
 package com.sumizuri.app
 
 import com.sumizuri.app.ui.controls.AppFocus
+import com.sumizuri.app.ui.controls.TvMode
 import android.view.KeyEvent
 import android.app.PictureInPictureParams
 import android.content.Intent
@@ -50,6 +51,7 @@ class MainActivity : ComponentActivity() {
         requestMaxRefreshRate()
         // On a TV the arrows of the remote move a pointer over the app.
         if (packageManager.hasSystemFeature(PackageManager.FEATURE_LEANBACK)) {
+            TvMode.on = true
             pointer = RemotePointer(this).also {
                 (window.decorView as ViewGroup).addView(it, ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
             }
