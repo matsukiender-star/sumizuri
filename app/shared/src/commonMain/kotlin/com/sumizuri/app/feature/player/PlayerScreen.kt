@@ -1,5 +1,6 @@
 package com.sumizuri.app.feature.player
 
+import com.sumizuri.app.ui.controls.RemoteKeysDirect
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -28,8 +29,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.key.Key
@@ -39,6 +42,7 @@ import androidx.compose.ui.input.key.isCtrlPressed
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.dp
@@ -110,15 +114,22 @@ internal fun PlayerScreen(session: PlayerSession, engine: PlayerEngine, onClose:
     var logShown by remember(prefs.showLog) { mutableStateOf(prefs.showLog) }
     var aspect by remember(prefs.aspect) { mutableStateOf(prefs.aspect) }
     val focus = remember { FocusRequester() }
+    val focusManager = LocalFocusManager.current
+    // Whether the player itself has the focus, rather than one of its buttons the remote of a TV moved to.
+    var ownFocus by remember { mutableStateOf(false) }
     val failed = state.phase == PlayerPhase.Failed
     val pickSubtitle =
         rememberFilePicker(FileKind.Subtitles) { path -> session.loadSubtitle(path.toString(), path.name) }
     PlayerSystemUi(keepOn = player.playing)
+    // The full player takes the keys of a TV remote, while the small one and a failure, with its buttons, leave them to the pointer.
+    if (!small && state.phase != PlayerPhase.Failed) RemoteKeysDirect.Take()
     // The back key of the phone closes an open choice first.
     val backState = rememberNavigationEventState(NavigationEventInfo.None)
     NavigationBackHandler(backState, isBackEnabled = picker != null) { picker = null }
 
     LaunchedEffect(Unit) { focus.requestFocus() }
+    // Once the controls go, the focus comes back to the player so the keys of the remote keep working.
+    LaunchedEffect(visible) { if (!visible) focus.requestFocus() }
     // The controls go a few seconds after the last touch while the video plays, and stay while the line is dragged or a choice is open.
     LaunchedEffect(tick, player.playing, visible, scrubbing, picker) {
         if (visible && player.playing && !scrubbing && picker == null && prefs.hideControlsSeconds > 0) {
@@ -282,18 +293,53 @@ internal fun PlayerScreen(session: PlayerSession, engine: PlayerEngine, onClose:
             .fillMaxSize()
             .background(Color.Black)
             .focusRequester(focus)
+            .onFocusChanged { ownFocus = it.isFocused }
             .focusable()
             .onPreviewKeyEvent { event ->
-                val plain = event.type == KeyEventType.KeyDown && !event.isCtrlPressed && !event.isAltPressed
+                val down = event.type == KeyEventType.KeyDown
+                // The media keys of a remote work wherever the focus is.
+                val media: (() -> Unit)? = when (event.key) {
+                    Key.MediaPlayPause -> ::playPause
+                    Key.MediaPlay -> ({ engine.play(); show() })
+                    Key.MediaPause -> ({ engine.pause(); show() })
+                    Key.MediaFastForward -> ({ skip(true) })
+                    Key.MediaRewind -> ({ skip(false) })
+                    Key.MediaNext -> ({ if (state.hasNext) session.nextEpisode() })
+                    Key.MediaPrevious -> ({ if (state.hasPrevious) session.previousEpisode() })
+                    else -> null
+                }
+                if (media != null) {
+                    if (down) media()
+                    return@onPreviewKeyEvent true
+                }
+                // While a button has the focus the arrows move between the buttons, and back hands the focus to the player and hides them.
+                if (!ownFocus) {
+                    if (event.key == Key.Back) {
+                        if (down) {
+                            focus.requestFocus()
+                            visible = false
+                            picker = null
+                        }
+                        return@onPreviewKeyEvent true
+                    }
+                    if (down) show()
+                    return@onPreviewKeyEvent false
+                }
+                val plain = down && !event.isCtrlPressed && !event.isAltPressed
                 if (!plain) return@onPreviewKeyEvent false
                 when (event.key) {
+                    // OK plays or pauses, and up or down brings the controls and steps into them.
+                    Key.DirectionCenter, Key.Enter, Key.NumPadEnter -> playPause()
+                    Key.DirectionUp, Key.DirectionDown -> if (touchPlayer) {
+                        if (visible) focusManager.moveFocus(FocusDirection.Enter) else show()
+                    } else {
+                        volumeBy(if (event.key == Key.DirectionUp) 5 else -5)
+                    }
                     Key.Spacebar, Key.K -> playPause()
                     Key.DirectionLeft -> seekBy(-ArrowJumpMs)
                     Key.DirectionRight -> seekBy(ArrowJumpMs)
                     Key.J -> skip(false)
                     Key.L -> skip(true)
-                    Key.DirectionUp -> volumeBy(5)
-                    Key.DirectionDown -> volumeBy(-5)
                     Key.M -> engine.setVolume(if (engine.state.value.volume > 0) 0 else 100)
                     Key.F -> fullscreen?.toggle()
                     Key.N -> if (state.hasNext) session.nextEpisode()

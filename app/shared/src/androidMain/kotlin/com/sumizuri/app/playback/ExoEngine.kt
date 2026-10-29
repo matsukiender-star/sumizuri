@@ -12,6 +12,7 @@ import androidx.media3.common.TrackSelectionOverride
 import androidx.media3.common.Tracks
 import androidx.media3.common.VideoSize
 import androidx.media3.datasource.okhttp.OkHttpDataSource
+import androidx.media3.exoplayer.DefaultLoadControl
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.exoplayer.source.MergingMediaSource
@@ -30,11 +31,24 @@ import okhttp3.OkHttpClient
 // How often the position is read while a video plays, in milliseconds.
 private const val TickMs = 250L
 
+// Some servers send a video barely as fast as it plays, so the player keeps loading up to five minutes ahead, within a size a TV with little memory can hold, and after it runs dry it waits for twenty seconds of video before going on.
+private const val AheadMs = 300_000
+private const val AheadBytes = 96 * 1024 * 1024
+private const val AfterStallMs = 20_000
+
 // Plays video with Media3, which streams the usual files and the adaptive HLS and DASH streams, sends the headers a site wants with every request, and shows the subtitles itself.
 class ExoEngine(context: Context) : PlayerEngine {
     private val appContext = context.applicationContext
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
-    val exo: ExoPlayer = ExoPlayer.Builder(appContext).build()
+    val exo: ExoPlayer = ExoPlayer.Builder(appContext)
+        .setLoadControl(
+            DefaultLoadControl.Builder()
+                .setBufferDurationsMs(AheadMs, AheadMs, DefaultLoadControl.DEFAULT_BUFFER_FOR_PLAYBACK_MS, AfterStallMs)
+                .setTargetBufferBytes(AheadBytes)
+                .setPrioritizeTimeOverSizeThresholds(false)
+                .build(),
+        )
+        .build()
     private val mutable = MutableStateFlow(PlayerState())
     override val state: StateFlow<PlayerState> = mutable
 
