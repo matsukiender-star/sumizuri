@@ -1,5 +1,7 @@
 > [!IMPORTANT]
-> Este es el fork de **Matsuki Ender** con los parches **Suki**: traducción al español, arreglos para Linux y para las imágenes de algunas fuentes. La app original es de Akari: [not-akari/sumizuri](https://github.com/not-akari/sumizuri). Los enlaces de descarga de abajo llevan a las versiones oficiales de Akari.
+> Este es el fork de **Matsuki Ender** con los parches **Suki**: traducción al español, arreglos para Linux y para las imágenes de algunas fuentes. La app original es de Akari: [not-akari/sumizuri](https://github.com/not-akari/sumizuri). Los enlaces de descarga de abajo llevan a las versiones oficiales de Akari. Las versiones Suki (Windows, Linux con AppImage y Android) están en los [releases de este fork](https://github.com/matsukiender-star/sumizuri/releases).
+>
+> **Traducción al español:** [![Traducción al español](https://weblate.notakari.com/widget/app/-/es/svg-badge.svg)](https://weblate.notakari.com/projects/app/-/es/) (se actualiza solo; se traduce en el Weblate de Akari).
 
 <p align="center">
   <picture>
