@@ -36,10 +36,14 @@ jobs:
             tag="${GITHUB_REF_NAME#v}"
           else
             base=$(git describe --tags --abbrev=0 --match "[0-9]*" 2>/dev/null || grep '^app.version=' gradle.properties | cut -d= -f2 | tr -d '\r')
-            tag="${base%%-*}-suki"
+            base="${base%%-*}"
+            # Each build of the patches on the same version of Akari gets the next number: 0.4.1-suki.1, .2, ...
+            last=$(git tag -l "$base-suki.*" | sed 's/.*-suki\.//' | sort -n | tail -1)
+            tag="$base-suki.$(( ${last:-0} + 1 ))"
           fi
+          n=$(sed -n 's/.*-suki\.\([0-9]*\)$/\1/p' <<< "$tag")
           IFS=. read -r major minor patch <<< "${tag%%-*}"
-          code=$(( ${major:-0} * 1000000 + ${minor:-0} * 1000 + ${patch:-0} ))
+          code=$(( (${major:-0} * 1000000 + ${minor:-0} * 1000 + ${patch:-0}) * 100 + ${n:-0} ))
           echo "Release tag $tag, versionCode $code"
           echo "name=$tag" >> "$GITHUB_OUTPUT"
           echo "args=-Papp.version=$tag -Papp.versionCode=$code -Papp.updateRepo=https://github.com/${GITHUB_REPOSITORY}" >> "$GITHUB_OUTPUT"
