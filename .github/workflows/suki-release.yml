@@ -23,6 +23,7 @@ jobs:
     outputs:
       release: ${{ steps.draft.outputs.result }}
       version: ${{ steps.version.outputs.name }}
+      notes: ${{ steps.version.outputs.notes }}
       args: ${{ steps.version.outputs.args }}
     steps:
       - uses: actions/checkout@v7
@@ -31,7 +32,7 @@ jobs:
       - name: Pick the version
         id: version
         run: |
-          git fetch -q --tags https://github.com/not-akari/sumizuri.git || true
+          git fetch -q --tags https://github.com/not-akari/sumizuri.git main:refs/remotes/akari/main || true
           if [[ "${GITHUB_REF:-}" == refs/tags/* ]]; then
             tag="${GITHUB_REF_NAME#v}"
           else
@@ -46,12 +47,23 @@ jobs:
           code=$(( (${major:-0} * 1000000 + ${minor:-0} * 1000 + ${patch:-0}) * 100 + ${n:-0} ))
           echo "Release tag $tag, versionCode $code"
           echo "name=$tag" >> "$GITHUB_OUTPUT"
+          # The patches of this build, so a release never goes out without notes. The full notes in Spanish are written over them by hand.
+          {
+            echo "notes<<NOTES_EOF"
+            echo "Versión Suki de Sumizuri sobre la ${tag%%-*} de Akari ([not-akari/sumizuri](https://github.com/not-akari/sumizuri))."
+            echo
+            echo "## Cambios de los parches"
+            git log --no-merges --format='- %s' akari/main..HEAD -- . ':!app/shared/src/commonMain/composeResources/values-*' | grep -v 'chore(l10n)' || true
+            echo "- Traducción al español al día con el Weblate de Akari."
+            echo "NOTES_EOF"
+          } >> "$GITHUB_OUTPUT"
           echo "args=-Papp.version=$tag -Papp.versionCode=$code -Papp.updateRepo=https://github.com/${GITHUB_REPOSITORY}" >> "$GITHUB_OUTPUT"
       - name: Make the draft release
         id: draft
         uses: actions/github-script@v8
         env:
           TAG: ${{ steps.version.outputs.name }}
+          NOTES: ${{ steps.version.outputs.notes }}
         with:
           script: |
             const tag = process.env.TAG;
@@ -63,6 +75,7 @@ jobs:
               tag_name: tag,
               target_commitish: context.sha,
               name: `Sumizuri ${tag}`,
+              body: process.env.NOTES,
               draft: true,
             });
             return made.data.id;
