@@ -39,6 +39,7 @@ fun PlayerRoute(chapterId: Long, onBack: () -> Unit) {
             container.solver,
             container.playerPrefs,
             container.reading,
+            container.downloads,
         )
     }
     DisposableEffect(session) {
