@@ -1,5 +1,6 @@
 package com.sumizuri.app.ui.kit.input
 
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
@@ -88,6 +89,8 @@ fun AppSearchBar(
                 onValueChange = change,
                 modifier = Modifier.weight(1f).padding(horizontal = 10.dp).focusRequester(requester),
                 singleLine = true,
+                // Passing over the bar with the remote of a TV does not open the keyboard, only OK or a touch does.
+                keyboardOptions = KeyboardOptions(showKeyboardOnFocus = false),
                 textStyle = MaterialTheme.typography.bodyMedium.copy(color = MaterialTheme.colorScheme.onSurface),
                 cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
                 decorationBox = { field ->

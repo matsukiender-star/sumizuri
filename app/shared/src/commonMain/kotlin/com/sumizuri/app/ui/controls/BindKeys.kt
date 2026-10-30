@@ -36,6 +36,7 @@ private val Others = listOf(
     BindKey("Right", Key.DirectionRight, "Right"),
     BindKey("Up", Key.DirectionUp, "Up"),
     BindKey("Down", Key.DirectionDown, "Down"),
+    BindKey("Center", Key.DirectionCenter, "OK"),
     BindKey("Comma", Key.Comma, ","),
     BindKey("Period", Key.Period, "."),
     BindKey("Slash", Key.Slash, "/"),

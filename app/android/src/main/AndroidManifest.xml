@@ -12,12 +12,16 @@
     <uses-permission android:name="android.permission.USE_BIOMETRIC" />
     <!-- The updater installs a new version it downloaded from the releases of the app. -->
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
+    <!-- The app also runs on a TV, moved with the arrows of its remote. -->
+    <uses-feature android:name="android.hardware.touchscreen" android:required="false" />
+    <uses-feature android:name="android.software.leanback" android:required="false" />
 
     <application
             android:allowBackup="true"
             android:enableOnBackInvokedCallback="true"
             android:name=".SumizuriApplication"
             android:icon="@mipmap/ic_launcher"
+            android:banner="@drawable/tv_banner"
             android:label="@string/app_name"
             android:supportsRtl="true"
             android:theme="@android:style/Theme.Material.Light.NoActionBar">
@@ -26,6 +30,7 @@
                 android:launchMode="singleTop"
                 android:supportsPictureInPicture="true"
                 android:configChanges="orientation|screenSize|smallestScreenSize|screenLayout|keyboardHidden|keyboard|navigation"
+                android:windowSoftInputMode="stateHidden"
                 android:name=".MainActivity">
             <!-- An Open in Sumizuri button on the page of a repo, which asks to add that repo. -->
             <intent-filter>
@@ -48,6 +53,11 @@
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
+            </intent-filter>
+            <!-- The row of apps on the home screen of a TV. -->
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN"/>
+                <category android:name="android.intent.category.LEANBACK_LAUNCHER"/>
             </intent-filter>
             <meta-data android:name="android.app.shortcuts" android:resource="@xml/shortcuts" />
         </activity-alias>
