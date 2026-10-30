@@ -1,11 +1,16 @@
 package com.sumizuri.app
 
+import com.sumizuri.app.ui.controls.AppFocus
+import com.sumizuri.app.ui.controls.TvMode
+import android.view.KeyEvent
 import android.app.PictureInPictureParams
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.content.res.Configuration
 import android.os.Build
 import android.os.Bundle
 import android.util.Rational
+import android.view.ViewGroup
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -28,6 +33,8 @@ class MainActivity : ComponentActivity() {
     // Whether the video shows small in picture in picture, which hides the controls of the player.
     private var inPicture by mutableStateOf(false)
 
+    private var pointer: RemotePointer? = null
+
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
@@ -42,6 +49,21 @@ class MainActivity : ComponentActivity() {
             }
         }
         requestMaxRefreshRate()
+        // On a TV the arrows of the remote move a pointer over the app.
+        if (packageManager.hasSystemFeature(PackageManager.FEATURE_LEANBACK)) {
+            TvMode.on = true
+            pointer = RemotePointer(this).also {
+                (window.decorView as ViewGroup).addView(it, ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
+            }
+        }
+    }
+
+    // A key of a TV remote that nothing took, because the page that had the focus went away, gives the focus back to the app and is tried once more.
+    override fun dispatchKeyEvent(event: KeyEvent): Boolean {
+        if (pointer?.handle(event) == true) return true
+        if (super.dispatchKeyEvent(event)) return true
+        if (event.action != KeyEvent.ACTION_DOWN || event.keyCode !in RemoteKeys) return false
+        return AppFocus.restore() && super.dispatchKeyEvent(event)
     }
 
     override fun onResume() {
@@ -95,3 +117,12 @@ private fun MainActivity.pictureParams(aspect: Float): PictureInPictureParams? {
     val shape = aspect.coerceIn(0.42f, 2.39f)
     return PictureInPictureParams.Builder().setAspectRatio(Rational((shape * 1000).toInt(), 1000)).build()
 }
+
+private val RemoteKeys = setOf(
+    KeyEvent.KEYCODE_DPAD_UP,
+    KeyEvent.KEYCODE_DPAD_DOWN,
+    KeyEvent.KEYCODE_DPAD_LEFT,
+    KeyEvent.KEYCODE_DPAD_RIGHT,
+    KeyEvent.KEYCODE_DPAD_CENTER,
+)
+
