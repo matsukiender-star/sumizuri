@@ -53,6 +53,7 @@ import com.sumizuri.app.feature.reader.controls.PagePreview
 import com.sumizuri.app.feature.reader.controls.PageTrack
 import com.sumizuri.app.feature.reader.controls.ReaderBottomBar
 import com.sumizuri.app.feature.reader.controls.ReaderTopBar
+import com.sumizuri.app.feature.reader.translate.NovelTranslator
 import com.sumizuri.app.shared.resources.Res
 import com.sumizuri.app.shared.resources.reader_latest
 import com.sumizuri.app.shared.resources.reader_minutes_left
@@ -93,6 +94,8 @@ internal class ChromeCalls(
     // Makes a mode the default of every title without a mode of its own.
     val onDefaultMode: (ReaderMode) -> Unit,
     val preview: (Int) -> PagePreview?,
+    // Translates the words of a novel, or null for a chapter of pictures.
+    val translator: NovelTranslator? = null,
 )
 
 // The controls over the pages as two floating pieces in the colors of the theme that touch no edge of the screen: a capsule at the top with the chapter, and a dock at the bottom with the track and the actions. With them hidden only a small page number is left at the bottom, when the person keeps it.
@@ -164,6 +167,7 @@ internal fun BoxScope.ReaderChrome(
                     Modifier.padding(horizontal = 4.dp),
                     onComments = calls.onComments,
                     left = left,
+                    translator = calls.translator,
                 )
             }
         }

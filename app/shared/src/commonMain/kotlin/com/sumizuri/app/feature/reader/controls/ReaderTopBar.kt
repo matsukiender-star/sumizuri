@@ -16,7 +16,9 @@ import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.outlined.BookmarkBorder
 import androidx.compose.material.icons.outlined.Image
 import androidx.compose.material.icons.outlined.MoreVert
+import androidx.compose.material.icons.outlined.Translate
 import androidx.compose.material.icons.outlined.VisibilityOff
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
@@ -34,6 +36,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.sumizuri.app.feature.reader.ReaderState
+import com.sumizuri.app.feature.reader.translate.NovelTranslator
+import com.sumizuri.app.feature.reader.translate.TranslateStatus
 import com.sumizuri.app.shared.resources.Res
 import com.sumizuri.app.shared.resources.bookmark_add
 import com.sumizuri.app.shared.resources.bookmark_remove
@@ -42,6 +46,8 @@ import com.sumizuri.app.shared.resources.more
 import com.sumizuri.app.shared.resources.reader_action_page_menu
 import com.sumizuri.app.shared.resources.reader_incognito
 import com.sumizuri.app.shared.resources.reader_open_browser
+import com.sumizuri.app.shared.resources.reader_translate
+import com.sumizuri.app.shared.resources.reader_translate_off
 import com.sumizuri.app.ui.kit.input.BackButton
 import com.sumizuri.app.ui.text.numberedUnit
 import org.jetbrains.compose.resources.stringResource
@@ -58,6 +64,8 @@ fun ReaderTopBar(
     onComments: (() -> Unit)? = null,
     // How far the title goes on after this chapter, such as 12 chapters left, said after its name.
     left: String? = null,
+    // Translates the words of a novel, or null where there are none.
+    translator: NovelTranslator? = null,
 ) {
     Row(modifier.fillMaxWidth().padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
         BackButton(onBack)
@@ -88,6 +96,7 @@ fun ReaderTopBar(
                 tint = if (state.bookmarked) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
+        if (translator != null) TranslateButton(translator)
         if (onComments != null) {
             IconButton(onComments) { Icon(Icons.AutoMirrored.Outlined.Comment, stringResource(Res.string.comments_chapter_title)) }
         }
@@ -95,6 +104,26 @@ fun ReaderTopBar(
         when {
             onPageMenu != null -> IconButton(onPageMenu) { Icon(Icons.Outlined.MoreVert, stringResource(Res.string.more)) }
             onOpenBrowser != null -> IconButton(onOpenBrowser) { Icon(Icons.AutoMirrored.Outlined.OpenInNew, stringResource(Res.string.reader_open_browser)) }
+        }
+    }
+}
+
+// Turns the translation of the words on and off. It turns while the translation is made, takes the main color while it is on, and the color of errors when the service did not answer, where a tap tries again.
+@Composable
+private fun TranslateButton(translator: NovelTranslator) {
+    IconButton(translator::toggle) {
+        if (translator.status == TranslateStatus.Working) {
+            CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
+        } else {
+            Icon(
+                Icons.Outlined.Translate,
+                stringResource(if (translator.active) Res.string.reader_translate_off else Res.string.reader_translate),
+                tint = when (translator.status) {
+                    TranslateStatus.On -> MaterialTheme.colorScheme.primary
+                    TranslateStatus.Failed -> MaterialTheme.colorScheme.error
+                    else -> MaterialTheme.colorScheme.onSurfaceVariant
+                },
+            )
         }
     }
 }
