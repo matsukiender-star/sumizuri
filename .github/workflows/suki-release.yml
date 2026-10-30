@@ -162,6 +162,9 @@ jobs:
           printf '\norg.gradle.parallel=true\norg.gradle.jvmargs=-Xmx6g -Dfile.encoding=UTF-8\n' >> gradle.properties
       - name: Set up fakeroot
         run: command -v fakeroot || (sudo apt-get update && sudo apt-get install -y fakeroot)
+      # The AppImage carries its own libmpv, taken with the libraries it needs from the packages of this machine.
+      - name: Set up libmpv and patchelf
+        run: sudo apt-get update && sudo apt-get install -y libmpv2 patchelf
       - name: Build Linux packages
         run: ./gradlew :app:desktop:packageReleaseDeb :app:desktop:createReleaseDistributable ${{ needs.start.outputs.args }}
       - name: Build AppImage and name the Linux files
@@ -180,6 +183,7 @@ jobs:
           mkdir -p Sumizuri.AppDir/usr/lib/runtime/bin
           cp "$JAVA_HOME/bin/java" Sumizuri.AppDir/usr/lib/runtime/bin/java
           chmod +x Sumizuri.AppDir/usr/lib/runtime/bin/java
+          bash scripts/libmpv/bundle-linux.sh Sumizuri.AppDir/usr/lib/mpv
           cp Sumizuri.AppDir/usr/lib/Sumizuri.png Sumizuri.AppDir/sumizuri.png
           cp Sumizuri.AppDir/usr/lib/Sumizuri.png Sumizuri.AppDir/.DirIcon
           cat > Sumizuri.AppDir/sumizuri.desktop << 'EOF'
@@ -200,7 +204,7 @@ jobs:
           CP=$(grep '^app.classpath=' "$A/Sumizuri.cfg" | sed "s|app.classpath=\$APPDIR|$A|" | paste -sd:)
           OPTS=$(grep '^java-options=' "$A/Sumizuri.cfg" | sed "s|java-options=||; s|\$APPDIR|$A|g" | grep -v SharedArchive)
           export LD_BIND_NOW=1 LC_NUMERIC=C
-          exec "$HERE/usr/lib/runtime/bin/java" $OPTS -Djava.library.path="$A" -cp "$CP" com.sumizuri.app.MainKt "$@"
+          exec "$HERE/usr/lib/runtime/bin/java" $OPTS -Djava.library.path="$A" -Dsumizuri.mpv.dir="$HERE/usr/lib/mpv" -cp "$CP" com.sumizuri.app.MainKt "$@"
           EOF
           chmod +x Sumizuri.AppDir/AppRun
           ARCH=x86_64 APPIMAGE_EXTRACT_AND_RUN=1 "$RUNNER_TEMP/appimagetool" Sumizuri.AppDir "Sumizuri-$VERSION-linux-x86_64.AppImage"
