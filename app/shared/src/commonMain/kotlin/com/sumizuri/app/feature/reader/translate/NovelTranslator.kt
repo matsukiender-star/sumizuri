@@ -13,6 +13,7 @@ import io.ktor.http.HttpStatusCode
 import io.ktor.http.encodeURLParameter
 import io.ktor.http.parameters
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.delay
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonArray
@@ -20,6 +21,16 @@ import kotlinx.serialization.json.jsonPrimitive
 
 // The free service of Google Translate that the translate pages of browsers use. It finds the language of the text by itself, and the language to translate to goes at the end.
 private const val TranslateAddress = "https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&dt=t&tl="
+
+// The same translator behind the address the Chrome extension uses, with limits of its own, for when the first one does not answer. It answers with the whole text and its language.
+private const val SpareAddress = "https://clients5.google.com/translate_a/t?client=dict-chrome-ex&sl=auto&tl="
+
+// How long to wait before asking again once both addresses failed.
+private const val RetryAfterMs = 1_500L
+
+// How many paragraphs are kept translated while the app runs, so a long reading does not fill the memory.
+// ponytail: dropped all at once when full; a least-recently-used map if rereading old chapters matters.
+private const val KeepAtMost = 5_000
 
 // How long the service has to answer one batch, and how many letters go in one batch, below what it takes in one call.
 private const val AnswerWithinMs = 20_000L
@@ -63,14 +74,16 @@ class NovelTranslator : AutoCloseable {
     // Translates the paragraphs of the pages that have no translation yet, to the language with the code given, such as es.
     suspend fun translate(pages: List<ReaderPage>, language: String) {
         // Translations to another language are no use once the app speaks a new one.
-        if (Kept.language != language) {
+        if (Kept.language != language || done.size > KeepAtMost) {
             done.clear()
             Kept.language = language
         }
         val missing = pages.mapNotNull { it.text }.filter { it.isNotBlank() && it !in done }.distinct()
         translations = done.toMap()
-        try {
-            for (batch in batchesOf(missing)) {
+        // A batch that fails leaves its paragraphs as the source gave them and the others go on; the next pass asks for them again.
+        var failed = 0
+        for (batch in batchesOf(missing)) {
+            try {
                 val answer = ask(batch.joinToString(Gap), language)
                 val parts = answer.split(BlankLine).map { it.trim() }
                 // When the paragraphs did not come back one for one, each is sent alone.
@@ -80,13 +93,14 @@ class NovelTranslator : AutoCloseable {
                     batch.forEach { text -> done[text] = ask(text, language).trim() }
                 }
                 translations = done.toMap()
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (_: Exception) {
+                failed++
             }
-            status = TranslateStatus.On
-        } catch (cancelled: CancellationException) {
-            throw cancelled
-        } catch (_: Exception) {
-            status = TranslateStatus.Failed
         }
+        // Failed only when nothing at all came back.
+        status = if (failed > 0 && translations.isEmpty()) TranslateStatus.Failed else TranslateStatus.On
     }
 
     // The paragraphs in groups that each stay under the size of one call. A paragraph longer than that goes alone.
@@ -104,8 +118,18 @@ class NovelTranslator : AutoCloseable {
         return batches
     }
 
-    // The service answers with the text cut in sentences, each with its translation first.
+    // Asks the first address, then the spare one, and both once more after a short wait.
     private suspend fun ask(text: String, language: String): String {
+        repeat(2) { round ->
+            if (round > 0) delay(RetryAfterMs)
+            runCatching { return askMain(text, language) }.onFailure { if (it is CancellationException) throw it }
+            runCatching { return askSpare(text, language) }.onFailure { if (it is CancellationException) throw it }
+        }
+        error("The translate service did not answer")
+    }
+
+    // The service answers with the text cut in sentences, each with its translation first.
+    private suspend fun askMain(text: String, language: String): String {
         val response = http.submitForm(
             TranslateAddress + language.encodeURLParameter(),
             parameters { append("q", text) },
@@ -117,6 +141,23 @@ class NovelTranslator : AutoCloseable {
             .first()
             .jsonArray
             .joinToString("") { sentence -> sentence.jsonArray.firstOrNull()?.jsonPrimitive?.contentOrNull.orEmpty() }
+    }
+
+    // The spare address answers with a list holding the translation and the language it found.
+    private suspend fun askSpare(text: String, language: String): String {
+        val response = http.submitForm(
+            SpareAddress + language.encodeURLParameter(),
+            parameters { append("q", text) },
+        )
+        if (response.status != HttpStatusCode.OK) error("The spare translate service answered ${response.status}")
+        return Json
+            .parseToJsonElement(response.bodyAsText())
+            .jsonArray
+            .first()
+            .jsonArray
+            .first()
+            .jsonPrimitive
+            .content
     }
 
     override fun close() = http.close()

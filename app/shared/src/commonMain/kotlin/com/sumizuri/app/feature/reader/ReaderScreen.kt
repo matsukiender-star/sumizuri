@@ -17,7 +17,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.intl.Locale
 import coil3.compose.LocalPlatformContext
 import com.sumizuri.app.data.model.controls.ReaderAction
 import com.sumizuri.app.data.model.reader.ReaderLookup
@@ -57,7 +56,7 @@ fun ReaderScreen(state: ReaderState, actions: ReaderActions) {
     // Words can be shown in the language of the app in place of those of the source. Once turned on, the chapters after open translated too.
     val translator = remember { NovelTranslator() }
     DisposableEffect(translator) { onDispose { translator.close() } }
-    val language = Locale.current.language
+    val language = androidx.compose.ui.text.intl.Locale.current.language
     LaunchedEffect(translator.active, state.pages, language) {
         if (translator.active && state.isText && state.pages.isNotEmpty()) translator.translate(state.pages, language)
     }
