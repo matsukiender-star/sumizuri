@@ -5,6 +5,7 @@ import com.sun.jna.Library
 import com.sun.jna.Memory
 import com.sun.jna.Native
 import com.sun.jna.NativeLibrary
+import com.sun.jna.Platform
 import com.sun.jna.Pointer
 import com.sun.jna.ptr.PointerByReference
 import java.io.File
@@ -28,6 +29,11 @@ internal interface MpvApi : Library {
     fun mpv_render_context_update(context: Pointer): Long
     fun mpv_render_context_render(context: Pointer, params: Pointer): Int
     fun mpv_render_context_free(context: Pointer)
+}
+
+// The call of the C library that sets how numbers are read and written.
+private interface LocaleApi : Library {
+    fun setlocale(category: Int, locale: String): String?
 }
 
 // Called by mpv from its own thread when a new frame can be drawn. Nothing of mpv may be called from inside it.
@@ -100,6 +106,11 @@ internal object MpvLibrary {
             if ("mac" in system) addAll(listOf("/opt/homebrew/lib", "/usr/local/lib"))
         }.filter { File(it).isDirectory }
         for (name in names) for (folder in folders) NativeLibrary.addSearchPath(name, folder)
+        // libmpv refuses to start when numbers are not written the C way, and the app takes the language of the user, which may write a comma for decimals.
+        if ("win" !in system) {
+            val numeric = if ("mac" in system) 4 else 1
+            runCatching { Native.load(Platform.C_LIBRARY_NAME, LocaleApi::class.java).setlocale(numeric, "C") }
+        }
         for (name in names) {
             val api = runCatching { Native.load(name, MpvApi::class.java) }.getOrNull()
             if (api != null) return api
