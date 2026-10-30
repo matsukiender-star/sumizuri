@@ -167,6 +167,7 @@ import com.sumizuri.app.shared.resources.perf_overlay
 import com.sumizuri.app.shared.resources.player_aspect
 import com.sumizuri.app.shared.resources.player_set_audio_pref
 import com.sumizuri.app.shared.resources.player_set_auto_next
+import com.sumizuri.app.shared.resources.player_set_auto_server
 import com.sumizuri.app.shared.resources.player_set_double_tap
 import com.sumizuri.app.shared.resources.player_set_hide
 import com.sumizuri.app.shared.resources.player_set_hold_speed
@@ -286,6 +287,7 @@ val SettingIcons: Map<StringResource, ImageVector> by lazy {
         Res.string.player_set_audio_pref to Icons.Outlined.Audiotrack,
         Res.string.player_set_resume to Icons.Outlined.History,
         Res.string.player_set_auto_next to Icons.Outlined.SkipNext,
+        Res.string.player_set_auto_server to Icons.Outlined.SwapHoriz,
         Res.string.player_set_watched to Icons.Outlined.TaskAlt,
         Res.string.player_set_seek to Icons.Outlined.Forward10,
         Res.string.player_set_skip to Icons.Outlined.FastForward,
