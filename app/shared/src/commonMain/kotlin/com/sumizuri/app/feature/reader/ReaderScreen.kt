@@ -17,6 +17,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.intl.Locale
 import coil3.compose.LocalPlatformContext
 import com.sumizuri.app.data.model.controls.ReaderAction
 import com.sumizuri.app.data.model.reader.ReaderLookup
@@ -35,6 +36,8 @@ import com.sumizuri.app.feature.reader.lookup.LookupResult
 import com.sumizuri.app.feature.reader.lookup.WordLookupPanel
 import com.sumizuri.app.feature.reader.lookup.webSearchFor
 import com.sumizuri.app.feature.reader.novel.NovelPagedReader
+import com.sumizuri.app.feature.reader.translate.NovelTranslator
+import com.sumizuri.app.feature.reader.translate.translatedWith
 import com.sumizuri.app.feature.reader.view.ContinuousReader
 import com.sumizuri.app.feature.reader.view.PagedReader
 import com.sumizuri.app.feature.reader.view.ProbeAspect
@@ -51,6 +54,13 @@ import kotlinx.coroutines.delay
 // A chapter in the mode that was chosen. A tap in the middle shows the bars, the page slider, the chapter list and the options.
 @Composable
 fun ReaderScreen(state: ReaderState, actions: ReaderActions) {
+    // Words can be shown in the language of the app in place of those of the source. Once turned on, the chapters after open translated too.
+    val translator = remember { NovelTranslator() }
+    DisposableEffect(translator) { onDispose { translator.close() } }
+    val language = Locale.current.language
+    LaunchedEffect(translator.active, state.pages, language) {
+        if (translator.active && state.isText && state.pages.isNotEmpty()) translator.translate(state.pages, language)
+    }
     if (state.loading || state.message != null || state.pages.isEmpty() || !state.modeKnown) {
         ReadableColumn { ReaderStatus(state, actions.onRetry, actions.onSolve, actions.onBack) }
         if (!state.loading &&
@@ -59,7 +69,8 @@ fun ReaderScreen(state: ReaderState, actions: ReaderActions) {
             ProbeAspect(sampleUrls(state.pages), state.imageHeaders, actions.onAspects)
         }
     } else {
-        Reader(state, actions)
+        val shown = if (translator.active) state.translatedWith(translator.translations) else state
+        Reader(shown, actions, translator.takeIf { state.isText })
     }
 }
 
@@ -69,7 +80,7 @@ private const val AutoMin = 20
 private const val AutoMax = 600
 
 @Composable
-private fun Reader(state: ReaderState, actions: ReaderActions) {
+private fun Reader(state: ReaderState, actions: ReaderActions, translator: NovelTranslator?) {
     val settings = state.settings
     val rootChapterId = state.segments.firstOrNull()?.chapterId ?: state.chapterId
     // The number of pages the viewer made, which for words in pages is not the number the source gave.
@@ -288,6 +299,7 @@ private fun Reader(state: ReaderState, actions: ReaderActions) {
                     panelContent = panelView,
                     onShowControls = { controls = true },
                     onDefaultMode = actions.onDefaultMode,
+                    translator = translator,
                     preview = { at ->
                         state.pages
                             .getOrNull(first + at)
