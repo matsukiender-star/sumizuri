@@ -113,8 +113,25 @@ internal object MpvLibrary {
         }
         for (name in names) {
             val api = runCatching { Native.load(name, MpvApi::class.java) }.getOrNull()
-            if (api != null) return api
+            if (api != null) {
+                if ("win" !in system) numbersInC(mac = "mac" in system)
+                return api
+            }
         }
         return null
     }
+
+    // Java takes the locale of the system when it starts, and libmpv refuses to start unless numbers are written the C way with a dot, so a Spanish or German system would have no player.
+    private fun numbersInC(mac: Boolean) {
+        val numeric = if (mac) MacNumeric else LinuxNumeric
+        runCatching { Native.load(Platform.C_LIBRARY_NAME, LibC::class.java).setlocale(numeric, "C") }
+    }
+}
+
+// The number of the numbers part of the locale, which differs between the C library of Linux and of a Mac.
+private const val LinuxNumeric = 1
+private const val MacNumeric = 4
+
+private interface LibC : Library {
+    fun setlocale(category: Int, locale: String?): Pointer?
 }

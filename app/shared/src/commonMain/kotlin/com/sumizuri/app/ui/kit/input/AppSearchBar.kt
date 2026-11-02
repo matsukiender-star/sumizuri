@@ -29,6 +29,7 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.unit.dp
+import com.sumizuri.app.navigation.LocalTabShown
 import com.sumizuri.app.shared.resources.Res
 import com.sumizuri.app.shared.resources.clear
 import kotlinx.coroutines.delay
@@ -71,9 +72,10 @@ fun AppSearchBar(
         }
     }
     val requester = remember { FocusRequester() }
-    // Listed while it is on screen, so the shortcut for the search can put the cursor here.
-    DisposableEffect(requester) {
-        SearchFocus.add(requester)
+    // Listed while it is on screen, so the shortcut for the search can put the cursor here. A bar on a kept tab out of sight is not.
+    val inSight = LocalTabShown.current
+    DisposableEffect(requester, inSight) {
+        if (inSight) SearchFocus.add(requester)
         onDispose { SearchFocus.remove(requester) }
     }
     Surface(

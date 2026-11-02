@@ -9,6 +9,7 @@ import android.content.pm.PackageManager
 import android.content.res.Configuration
 import android.os.Build
 import android.os.Bundle
+import android.os.SystemClock
 import android.util.Rational
 import android.view.ViewGroup
 import androidx.activity.ComponentActivity
@@ -18,6 +19,8 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
+import androidx.lifecycle.lifecycleScope
 import com.sumizuri.app.navigation.AppLinks
 import com.sumizuri.app.navigation.Destination
 import com.sumizuri.app.navigation.requestedTabOf
@@ -25,6 +28,7 @@ import com.sumizuri.app.playback.LocalMiniPlayer
 import com.sumizuri.app.playback.MiniPlayerControl
 import com.sumizuri.app.playback.PlayingNow
 import com.sumizuri.app.ui.requestMaxRefreshRate
+import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
     // The tab a shortcut of the launcher asked for, until the app has opened it.
@@ -36,6 +40,13 @@ class MainActivity : ComponentActivity() {
     private var pointer: RemotePointer? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        // The splash screen stays until the first page has drawn in the colors of the person, or a few seconds at most.
+        val opened = SystemClock.uptimeMillis()
+        installSplashScreen().setKeepOnScreenCondition {
+            !AppStart.drawn.value &&
+                SystemClock.uptimeMillis() - opened < SplashMostMs
+        }
+        StartLook.load(this)
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
         val profiles = (application as SumizuriApplication).profiles
@@ -56,6 +67,7 @@ class MainActivity : ComponentActivity() {
                 (window.decorView as ViewGroup).addView(it, ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
             }
         }
+        lifecycleScope.launch { StartLook.keep(this@MainActivity) }
     }
 
     // A key of a TV remote that nothing took, because the page that had the focus went away, gives the focus back to the app and is tried once more.
@@ -126,3 +138,5 @@ private val RemoteKeys = setOf(
     KeyEvent.KEYCODE_DPAD_CENTER,
 )
 
+// The longest the splash screen waits for the first page, so a slow start still opens.
+private const val SplashMostMs = 3000L
