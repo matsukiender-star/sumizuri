@@ -28,6 +28,10 @@ val LocalMiniPlayer = staticCompositionLocalOf<MiniPlayerControl?> { null }
 object PlayingNow {
     @kotlin.concurrent.Volatile
     var aspect: Float? = null
+
+    // Pauses the video, for a TV, which has no picture in picture to leave it playing in.
+    @kotlin.concurrent.Volatile
+    var pause: (() -> Unit)? = null
 }
 
 // On a phone, turns the screen sideways and hides the bars of the system from the moment an episode is opened until it is left.

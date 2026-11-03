@@ -99,6 +99,10 @@ internal fun PlayerScreen(session: PlayerSession, engine: PlayerEngine, onClose:
     }
     LaunchedEffect(player.playing, shape) { PlayingNow.aspect = shape.takeIf { player.playing } }
     DisposableEffect(Unit) { onDispose { PlayingNow.aspect = null } }
+    DisposableEffect(engine) {
+        PlayingNow.pause = engine::pause
+        onDispose { PlayingNow.pause = null }
+    }
     var visible by remember { mutableStateOf(true) }
     var tick by remember { mutableIntStateOf(0) }
     var scrubbing by remember { mutableStateOf(false) }

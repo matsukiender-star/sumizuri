@@ -107,6 +107,11 @@ class MainActivity : ComponentActivity() {
 
     override fun onUserLeaveHint() {
         super.onUserLeaveHint()
+        // A TV has no corner to keep a video in: its home screen plays its own videos, which stop this one. The video waits paused.
+        if (TvMode.on) {
+            PlayingNow.pause?.invoke()
+            return
+        }
         PlayingNow.aspect?.let(::enterPicture)
     }
 
