@@ -1,5 +1,7 @@
 package com.sumizuri.app
 
+import androidx.compose.ui.focus.focusProperties
+import androidx.compose.foundation.focusGroup
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -306,6 +308,8 @@ private fun AppContent(container: AppContainer, windowBar: (@Composable () -> Un
                                 if (place.restored && onboardingDone != null) {
                                     Box(Modifier.fillMaxSize()) {
                                         // The tabs are the page under the first one, so they give way to it and come back in the same motion.
+                                        // While the first steps show, the focus of a TV remote stays out of the app behind them.
+                                        Box(Modifier.fillMaxSize().focusProperties { onEnter = { if (onboardingDone == false) cancelFocusChange() } }.focusGroup()) {
                                         PageStack(place, navigation, backState, pageBack) {
                                             MainScaffold(tabs, navStyle, navLabels, navSwipe, place.tab, navAvatar, badges, onSelect = onSelectTab) {
                                                 // The next tab moves in from the side it sits on, quicker than a page, in the style the person chose, and each tab is kept once made.
@@ -313,6 +317,7 @@ private fun AppContent(container: AppContainer, windowBar: (@Composable () -> Un
                                                     AppTab(tab, tabs, navigation)
                                                 }
                                             }
+                                        }
                                         }
                                         CoverFlightLayer(flight)
                                         // An offer to go on with a title that was read further on another device.

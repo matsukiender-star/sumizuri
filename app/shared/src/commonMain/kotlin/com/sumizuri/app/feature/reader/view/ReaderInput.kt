@@ -20,6 +20,7 @@ import com.sumizuri.app.data.model.controls.ReaderAction
 import com.sumizuri.app.data.model.controls.TapLayout
 import com.sumizuri.app.feature.reader.at
 import com.sumizuri.app.ui.controls.LocalReaderControls
+import com.sumizuri.app.ui.controls.RemoteKeysDirect
 import com.sumizuri.app.ui.controls.mouseChords
 import com.sumizuri.app.ui.controls.toChord
 
@@ -30,6 +31,7 @@ fun Modifier.readerInput(layout: TapLayout, onAction: (action: ReaderAction, tap
     val controls by rememberUpdatedState(LocalReaderControls.current)
     val act by rememberUpdatedState(onAction)
     LaunchedEffect(Unit) { focus.requestFocus() }
+    RemoteKeysDirect.Take()
     return this
         .mouseChords { chord -> controls.actionForKey(chord)?.let { act(it, false) } ?: false }
         .focusRequester(focus)
