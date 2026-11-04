@@ -8,7 +8,6 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -64,7 +63,7 @@ private val CellWidth = 170.dp
 
 // How far the page scrolls before the bar gets its backdrop, and before the name shows in it.
 private const val BarFade = 80f
-private val NamedAfter = 160.dp
+private val NamedAfter = 40.dp
 
 // The wide page in the way of a streaming app. The art lies behind the window and stays put: the sharp cover stands on the left in its own shape and melts into the page. The name, the buttons, the facts and the chapters scroll in a column beside it, over a wash of the page color.
 @Composable
@@ -78,6 +77,7 @@ internal fun SplitTitle(
     val list = rememberLazyListState()
     var openSeason by rememberOpenSeason()
     val model = rememberChapterListModel(state, openSeason)
+    val settled = rememberSettled()
     val density = LocalDensity.current
     var aspect by remember(title.coverUrl) {
         mutableFloatStateOf(title.coverUrl?.let { KnownAspects[it] } ?: LikelyAspect)
@@ -87,7 +87,7 @@ internal fun SplitTitle(
         derivedStateOf {
             list.layoutInfo.visibleItemsInfo
                 .firstOrNull { it.index == 0 }
-                ?.let { -it.offset } ?: Int.MAX_VALUE / 4
+                ?.let { -it.offset } ?: (Int.MAX_VALUE / 4)
         }
     }
     val fade = rememberPageFade()
@@ -121,7 +121,12 @@ internal fun SplitTitle(
             BoxWithConstraints(Modifier.fillMaxSize().padding(start = TextStart)) {
                 val columns = maxOf(2, ((maxWidth - PageGutter * 2) / CellWidth).toInt())
                 LazyColumn(
-                    Modifier.fillMaxSize().mouseDragScroll(list),
+                    Modifier
+                        .fillMaxSize()
+                        .fadeUnderBar(
+                            titleBarRoom(),
+                        ) { (scrolled / BarFade).coerceIn(0f, 1f) }
+                        .mouseDragScroll(list),
                     state = list,
                     contentPadding = titleListPadding(),
                 ) {
@@ -139,7 +144,11 @@ internal fun SplitTitle(
                             )
                         }
                     }
-                    chapterSection(state, calls, model, columns, onSeason = { openSeason = it }, wideRows = true)
+                    if (settled) {
+                        chapterSection(state, calls, model, columns, onSeason = { openSeason = it }, wideRows = true)
+                    } else {
+                        chaptersWait()
+                    }
                 }
             }
             if (state.selecting) {
