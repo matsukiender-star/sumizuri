@@ -42,17 +42,21 @@ fun Modifier.appShortcuts(onShortcut: (AppShortcut) -> Boolean): Modifier {
         .onFocusChanged {
             held.value = it.isFocused
             AppFocus.inside = it.hasFocus
-        }
-        .focusable()
+        }.focusable()
         .onPreviewKeyEvent { event ->
             if (event.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
-            if (held.value && event.key in RemoteKeys) return@onPreviewKeyEvent focusManager.moveFocus(FocusDirection.Enter)
+            if (held.value &&
+                event.key in RemoteKeys
+            ) {
+                return@onPreviewKeyEvent focusManager.moveFocus(FocusDirection.Enter)
+            }
             val shortcut = event.toChord()?.let { gestures.shortcutFor(it) } ?: return@onPreviewKeyEvent false
             act(shortcut)
         }
 }
 
-private val RemoteKeys = setOf(Key.DirectionUp, Key.DirectionDown, Key.DirectionLeft, Key.DirectionRight, Key.DirectionCenter)
+private val RemoteKeys =
+    setOf(Key.DirectionUp, Key.DirectionDown, Key.DirectionLeft, Key.DirectionRight, Key.DirectionCenter)
 
 // Set by the Android app when it runs on a TV, so the strong marks of the focus only show there and not on a phone or a computer.
 object TvMode {
@@ -70,4 +74,3 @@ object AppFocus {
         return holder?.let { runCatching { it.requestFocus() }.isSuccess } ?: false
     }
 }
-

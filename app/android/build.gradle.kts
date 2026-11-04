@@ -17,6 +17,8 @@ dependencies {
     implementation(project(":app:shared"))
 
     implementation(libs.androidx.activity.compose)
+    // The splash screen of Android, kept up until the first page has drawn in the colors of the person.
+    implementation(libs.androidx.core.splashscreen)
 
     implementation(libs.compose.uiToolingPreview)
     debugImplementation(libs.compose.uiTooling)
@@ -51,6 +53,10 @@ android {
             .toInt()
         versionCode = providers.gradleProperty("app.versionCode").get().toInt()
         versionName = providers.gradleProperty("app.version").get()
+    }
+    // The texts of the app sit in one file that each text is read from at its own place, which a packed file has to unpack from the start for every text, on the thread that draws.
+    androidResources {
+        noCompress += "cvr"
     }
     packaging {
         resources {

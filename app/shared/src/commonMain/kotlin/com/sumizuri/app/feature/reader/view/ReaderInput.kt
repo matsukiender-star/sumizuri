@@ -1,6 +1,5 @@
 package com.sumizuri.app.feature.reader.view
 
-import com.sumizuri.app.ui.controls.RemoteKeysDirect
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.runtime.Composable
@@ -21,6 +20,7 @@ import com.sumizuri.app.data.model.controls.ReaderAction
 import com.sumizuri.app.data.model.controls.TapLayout
 import com.sumizuri.app.feature.reader.at
 import com.sumizuri.app.ui.controls.LocalReaderControls
+import com.sumizuri.app.ui.controls.RemoteKeysDirect
 import com.sumizuri.app.ui.controls.mouseChords
 import com.sumizuri.app.ui.controls.toChord
 

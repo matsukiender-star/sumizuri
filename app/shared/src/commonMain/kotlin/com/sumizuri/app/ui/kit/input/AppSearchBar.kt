@@ -1,6 +1,5 @@
 package com.sumizuri.app.ui.kit.input
 
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
@@ -8,6 +7,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.Search
@@ -29,6 +29,7 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.unit.dp
+import com.sumizuri.app.navigation.LocalTabShown
 import com.sumizuri.app.shared.resources.Res
 import com.sumizuri.app.shared.resources.clear
 import kotlinx.coroutines.delay
@@ -71,9 +72,10 @@ fun AppSearchBar(
         }
     }
     val requester = remember { FocusRequester() }
-    // Listed while it is on screen, so the shortcut for the search can put the cursor here.
-    DisposableEffect(requester) {
-        SearchFocus.add(requester)
+    // Listed while it is on screen, so the shortcut for the search can put the cursor here. A bar on a kept tab out of sight is not.
+    val inSight = LocalTabShown.current
+    DisposableEffect(requester, inSight) {
+        if (inSight) SearchFocus.add(requester)
         onDispose { SearchFocus.remove(requester) }
     }
     Surface(

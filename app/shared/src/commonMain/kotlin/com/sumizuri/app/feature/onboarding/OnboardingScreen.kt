@@ -1,12 +1,5 @@
 package com.sumizuri.app.feature.onboarding
 
-import kotlinx.coroutines.delay
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.focus.focusProperties
-import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.foundation.focusGroup
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.SizeTransform
 import androidx.compose.animation.core.FastOutSlowInEasing
@@ -16,6 +9,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -35,11 +29,16 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusProperties
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -62,6 +61,7 @@ import com.sumizuri.app.ui.kit.art.QuietButton
 import com.sumizuri.app.ui.kit.art.StretchDot
 import com.sumizuri.app.ui.kit.art.rise
 import com.sumizuri.app.ui.theme.background.ambientBackground
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.stringResource
@@ -110,9 +110,14 @@ internal fun OnboardingScreen(onMigrate: (List<Long>) -> Unit, modifier: Modifie
         trap.requestFocus()
     }
     Box(
-        modifier.fillMaxSize().ambientBackground().pointerInput(Unit) {
-            awaitPointerEventScope { while (true) awaitPointerEvent() }
-        }.focusRequester(trap).focusProperties { onExit = { cancelFocusChange() } }.focusGroup(),
+        modifier
+            .fillMaxSize()
+            .ambientBackground()
+            .pointerInput(Unit) {
+                awaitPointerEventScope { while (true) awaitPointerEvent() }
+            }.focusRequester(trap)
+            .focusProperties { onExit = { cancelFocusChange() } }
+            .focusGroup(),
     ) {
         Column(
             Modifier

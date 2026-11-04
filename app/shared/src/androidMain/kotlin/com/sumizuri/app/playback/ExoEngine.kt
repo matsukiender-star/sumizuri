@@ -40,15 +40,16 @@ private const val AfterStallMs = 20_000
 class ExoEngine(context: Context) : PlayerEngine {
     private val appContext = context.applicationContext
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
-    val exo: ExoPlayer = ExoPlayer.Builder(appContext)
+    val exo: ExoPlayer = ExoPlayer
+        .Builder(appContext)
         .setLoadControl(
-            DefaultLoadControl.Builder()
+            DefaultLoadControl
+                .Builder()
                 .setBufferDurationsMs(AheadMs, AheadMs, DefaultLoadControl.DEFAULT_BUFFER_FOR_PLAYBACK_MS, AfterStallMs)
                 .setTargetBufferBytes(AheadBytes)
                 .setPrioritizeTimeOverSizeThresholds(false)
                 .build(),
-        )
-        .build()
+        ).build()
     private val mutable = MutableStateFlow(PlayerState())
     override val state: StateFlow<PlayerState> = mutable
 

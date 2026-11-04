@@ -58,9 +58,13 @@ internal class RemotePointer(private val activity: Activity) : View(activity) {
         val down = event.action == KeyEvent.ACTION_DOWN
         val (dx, dy) = when (event.keyCode) {
             KeyEvent.KEYCODE_DPAD_LEFT -> -1 to 0
+
             KeyEvent.KEYCODE_DPAD_RIGHT -> 1 to 0
+
             KeyEvent.KEYCODE_DPAD_UP -> 0 to -1
+
             KeyEvent.KEYCODE_DPAD_DOWN -> 0 to 1
+
             KeyEvent.KEYCODE_DPAD_CENTER, KeyEvent.KEYCODE_ENTER, KeyEvent.KEYCODE_NUMPAD_ENTER -> {
                 // The first key after the pointer hid only brings it back.
                 if (down && event.repeatCount == 0 && !show()) {
@@ -71,6 +75,7 @@ internal class RemotePointer(private val activity: Activity) : View(activity) {
                 }
                 return true
             }
+
             else -> return false
         }
         if (down && !show()) move(dx, dy, event.repeatCount)
@@ -98,8 +103,10 @@ internal class RemotePointer(private val activity: Activity) : View(activity) {
         invalidate()
         when {
             downTime != 0L -> touch(MotionEvent.ACTION_MOVE)
+
             // Pushing past an edge scrolls what is under the pointer, faster the longer the arrow is held.
             x != wantX || y != wantY -> scroll(-dx, -dy, 1f + (repeat / 4).coerceAtMost(4))
+
             else -> hover()
         }
     }
@@ -148,7 +155,13 @@ internal class RemotePointer(private val activity: Activity) : View(activity) {
             size = 1f
             axes()
         }
-        return MotionEvent.obtain(start, SystemClock.uptimeMillis(), action, 1, arrayOf(props), arrayOf(coords), 0, 0, 1f, 1f, 0, 0, source, 0)
+        return MotionEvent.obtain(
+            start, SystemClock.uptimeMillis(), action, 1,
+            arrayOf(
+                props,
+            ),
+            arrayOf(coords), 0, 0, 1f, 1f, 0, 0, source, 0,
+        )
     }
 
     override fun onDraw(canvas: Canvas) {

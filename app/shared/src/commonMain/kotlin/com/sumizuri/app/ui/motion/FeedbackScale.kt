@@ -49,8 +49,9 @@ fun Modifier.feedbackScale(source: MutableInteractionSource): Modifier {
         tween(motionMs(AppMotion.Micro), easing = AppMotion.Exit),
         label = "feedback",
     )
-    return hoverable(source).graphicsLayer {
-        scaleX = scale
-        scaleY = scale
-    }.then(ringed)
+    return hoverable(source)
+        .graphicsLayer {
+            scaleX = scale
+            scaleY = scale
+        }.then(ringed)
 }

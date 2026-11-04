@@ -21,7 +21,6 @@ import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -54,10 +53,8 @@ import com.sumizuri.app.shared.resources.title_continue_next
 import com.sumizuri.app.ui.kit.page.LoadStatus
 import com.sumizuri.app.ui.kit.page.PageGutter
 import com.sumizuri.app.ui.kit.scroll.mouseDragScroll
-import com.sumizuri.app.ui.motion.LocalPageMotion
 import com.sumizuri.app.ui.motion.Rise
 import com.sumizuri.app.ui.text.displayName
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.stringResource
 
@@ -67,10 +64,6 @@ private const val StartAt = 0.50f
 
 // Where the tabs are in the list, after the room for the cover and the banner.
 private const val TabsAt = 2
-
-// A little longer than the glide, so the chapters start after it has come to rest, and the room kept for them until then.
-private const val SettleExtraMs = 60L
-private val WaitHeight = 320.dp
 
 // A cell of the chapter grid is about this wide.
 private val CellWidth = 150.dp
@@ -87,15 +80,7 @@ internal fun PhoneTitle(
 ) {
     val list = rememberLazyListState()
     var tab by rememberSaveable { mutableStateOf(TitleTab.Chapters) }
-    // The chapters are a lot to put on the screen, so they wait until the page has glided in, and are not made in the middle of the motion.
-    var settled by rememberSaveable { mutableStateOf(false) }
-    val glideMs = LocalPageMotion.current.pageMs()
-    LaunchedEffect(Unit) {
-        if (!settled) {
-            delay(glideMs + SettleExtraMs)
-            settled = true
-        }
-    }
+    val settled = rememberSettled()
     var openSeason by rememberOpenSeason()
     val model = rememberChapterListModel(state, openSeason)
     val reach = height * Reach
@@ -153,6 +138,14 @@ internal fun PhoneTitle(
                 Column(Modifier.padding(bottom = ItemGap), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     // The name sits over the cover, so a tap on it opens the cover in full.
                     TitleHeading(state, title, wide = false, onClick = onPreview)
+                    // The story comes right under the name, and its More opens About with the creators and the rest.
+                    if (title.summary.isNotBlank()) {
+                        TitleSummary(
+                            title.summary,
+                            onMore = { tab = TitleTab.About },
+                            overCover = true,
+                        )
+                    }
                     if (state.readable) {
                         ContinueButton(
                             state.target,
@@ -163,7 +156,6 @@ internal fun PhoneTitle(
                         UnreachableActions(state, title, calls)
                     }
                     PosterActions(state, title, calls, onBackground)
-                    if (title.summary.isNotBlank()) TitleSummary(title.summary, onMore = { tab = TitleTab.About })
                     SourceNotice(state, calls)
                     LoadStatus(
                         false,
@@ -186,7 +178,7 @@ internal fun PhoneTitle(
                             it
                     })
                 } else {
-                    item(key = "chapters-wait") { Spacer(Modifier.fillMaxWidth().height(WaitHeight)) }
+                    chaptersWait()
                 }
 
                 TitleTab.About -> item(key = "about") { AboutPanel(state, title, panel = false) }
