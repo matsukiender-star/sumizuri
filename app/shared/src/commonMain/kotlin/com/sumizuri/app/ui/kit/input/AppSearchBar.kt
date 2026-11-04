@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.Search
@@ -90,6 +91,8 @@ fun AppSearchBar(
                 onValueChange = change,
                 modifier = Modifier.weight(1f).padding(horizontal = 10.dp).focusRequester(requester),
                 singleLine = true,
+                // Passing over the bar with the remote of a TV does not open the keyboard, only OK or a touch does.
+                keyboardOptions = KeyboardOptions(showKeyboardOnFocus = false),
                 textStyle = MaterialTheme.typography.bodyMedium.copy(color = MaterialTheme.colorScheme.onSurface),
                 cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
                 decorationBox = { field ->
