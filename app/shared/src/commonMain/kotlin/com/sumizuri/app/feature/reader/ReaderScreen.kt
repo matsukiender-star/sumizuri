@@ -17,6 +17,7 @@ import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.focus.FocusRequester
@@ -58,6 +59,7 @@ import com.sumizuri.app.feature.reader.view.PagedReader
 import com.sumizuri.app.feature.reader.view.ProbeAspect
 import com.sumizuri.app.feature.reader.view.ReaderView
 import com.sumizuri.app.feature.reader.view.sampleUrls
+import com.sumizuri.app.ui.kit.art.InkCircularProgressIndicator
 import com.sumizuri.app.ui.kit.dock.AsideCard
 import com.sumizuri.app.ui.kit.dock.isWideWindow
 import com.sumizuri.app.ui.kit.image.LocalPageFilter
@@ -69,7 +71,7 @@ import kotlinx.coroutines.delay
 
 // A chapter in the mode that was chosen. A tap in the middle shows the bars, the page slider, the chapter list and the options.
 @Composable
-fun ReaderScreen(state: ReaderState, actions: ReaderActions, opening: ChapterPlace? = null) {
+fun ReaderScreen(state: ReaderState, actions: ReaderActions, opening: ChapterPlace? = null, quiet: Boolean = false) {
     // Words can be shown in the language of the app in place of those of the source. Once turned on, the chapters after open translated too.
     val translator = remember { NovelTranslator() }
     DisposableEffect(translator) { onDispose { translator.close() } }
@@ -88,13 +90,21 @@ fun ReaderScreen(state: ReaderState, actions: ReaderActions, opening: ChapterPla
         delay(FirstPageWaitMs)
         drawn = true
     }
+    // A chapter opened from the reader comes in as before the opening card: a small spinner while it loads, and the card only to say why it failed.
     OpeningLayer(
-        done = ready && drawn,
+        done = (ready && drawn) || (quiet && state.message == null),
         opening = { ReaderStatus(state, actions.onRetry, actions.onSolve, actions.onBack, opening) },
     ) {
-        if (ready) CompositionLocalProvider(LocalPageShown provides { drawn = true }) {
-            val shown = if (translator.active) state.translatedWith(translator.translations) else state
-            Reader(shown, actions, translator.takeIf { state.isText })
+        if (ready) {
+            CompositionLocalProvider(LocalPageShown provides { drawn = true }) {
+                val shown = if (translator.active) state.translatedWith(translator.translations) else state
+                Reader(shown, actions, translator.takeIf { state.isText })
+            }
+        } else if (quiet) {
+            Box(
+                Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center,
+            ) { InkCircularProgressIndicator() }
         }
     }
     if (!state.loading && !state.modeKnown) ProbeAspect(sampleUrls(state.pages), state.imageHeaders, actions.onAspects)
