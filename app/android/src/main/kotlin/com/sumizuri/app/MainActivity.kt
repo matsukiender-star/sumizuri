@@ -2,11 +2,14 @@ package com.sumizuri.app
 
 import android.app.PictureInPictureParams
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.content.res.Configuration
 import android.os.Build
 import android.os.Bundle
 import android.os.SystemClock
 import android.util.Rational
+import android.view.KeyEvent
+import android.view.ViewGroup
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -24,6 +27,8 @@ import com.sumizuri.app.navigation.requestedTabOf
 import com.sumizuri.app.playback.LocalMiniPlayer
 import com.sumizuri.app.playback.MiniPlayerControl
 import com.sumizuri.app.playback.PlayingNow
+import com.sumizuri.app.ui.controls.AppFocus
+import com.sumizuri.app.ui.controls.TvMode
 import com.sumizuri.app.ui.requestMaxRefreshRate
 import kotlinx.coroutines.launch
 
@@ -33,6 +38,8 @@ class MainActivity : ComponentActivity() {
 
     // Whether the video shows small in picture in picture, which hides the controls of the player.
     private var inPicture by mutableStateOf(false)
+
+    private var pointer: RemotePointer? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         // The splash screen stays until the first page has drawn in the colors of the person, or a few seconds at most.
@@ -56,6 +63,24 @@ class MainActivity : ComponentActivity() {
         }
         requestMaxRefreshRate()
         lifecycleScope.launch { StartLook.keep(this@MainActivity) }
+        // On a TV the arrows of the remote move a pointer over the app.
+        if (packageManager.hasSystemFeature(PackageManager.FEATURE_LEANBACK)) {
+            TvMode.on = true
+            pointer = RemotePointer(this).also {
+                (window.decorView as ViewGroup).addView(
+                    it,
+                    ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT),
+                )
+            }
+        }
+    }
+
+    // A key of a TV remote that nothing took, because the page that had the focus went away, gives the focus back to the app and is tried once more.
+    override fun dispatchKeyEvent(event: KeyEvent): Boolean {
+        if (pointer?.handle(event) == true) return true
+        if (super.dispatchKeyEvent(event)) return true
+        if (event.action != KeyEvent.ACTION_DOWN || event.keyCode !in RemoteKeys) return false
+        return AppFocus.restore() && super.dispatchKeyEvent(event)
     }
 
     override fun onResume() {
@@ -111,6 +136,14 @@ private fun MainActivity.pictureParams(aspect: Float): PictureInPictureParams? {
     val shape = aspect.coerceIn(0.42f, 2.39f)
     return PictureInPictureParams.Builder().setAspectRatio(Rational((shape * 1000).toInt(), 1000)).build()
 }
+
+private val RemoteKeys = setOf(
+    KeyEvent.KEYCODE_DPAD_UP,
+    KeyEvent.KEYCODE_DPAD_DOWN,
+    KeyEvent.KEYCODE_DPAD_LEFT,
+    KeyEvent.KEYCODE_DPAD_RIGHT,
+    KeyEvent.KEYCODE_DPAD_CENTER,
+)
 
 // The longest the splash screen waits for the first page, so a slow start still opens.
 private const val SplashMostMs = 3000L
