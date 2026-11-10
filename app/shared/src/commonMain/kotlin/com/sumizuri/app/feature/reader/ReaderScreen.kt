@@ -17,6 +17,7 @@ import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshots.Snapshot
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusDirection
@@ -30,6 +31,7 @@ import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalInputModeManager
+import androidx.compose.ui.text.intl.Locale
 import coil3.compose.LocalPlatformContext
 import com.sumizuri.app.data.model.ChapterPlace
 import com.sumizuri.app.data.model.controls.ReaderAction
@@ -75,7 +77,7 @@ fun ReaderScreen(state: ReaderState, actions: ReaderActions, opening: ChapterPla
     // Words can be shown in the language of the app in place of those of the source. Once turned on, the chapters after open translated too.
     val translator = remember { NovelTranslator() }
     DisposableEffect(translator) { onDispose { translator.close() } }
-    val language = androidx.compose.ui.text.intl.Locale.current.language
+    val language = Locale.current.language
     LaunchedEffect(translator.active, state.pages, language) {
         if (translator.active && state.isText && state.pages.isNotEmpty()) translator.translate(state.pages, language)
     }
@@ -97,7 +99,8 @@ fun ReaderScreen(state: ReaderState, actions: ReaderActions, opening: ChapterPla
     ) {
         if (ready) {
             CompositionLocalProvider(LocalPageShown provides { drawn = true }) {
-                val shown = if (translator.active) state.translatedWith(translator.translations) else state
+                val translations = translator.translations.takeIf { translator.active }.orEmpty()
+                val shown = remember(state, translations) { state.translatedWith(translations) }
                 Reader(shown, actions, translator.takeIf { state.isText })
             }
         } else if (quiet) {
@@ -173,68 +176,72 @@ private fun Reader(state: ReaderState, actions: ReaderActions, translator: Novel
     } else {
         null
     }
-    val view = ReaderView(
-        startPage = page,
-        jump = jump,
-        onJumped = { jump = null },
-        onPage = { page = it },
-        onProgress = actions.onProgress,
-        onNearEnd = actions.onNearEnd,
-        startFraction = state.startFraction,
-        onCount = { counted = it },
-        onToggleControls = { controls = !controls },
-        onCommon = { action ->
-            when (action) {
-                ReaderAction.ToggleControls -> controls = !controls
+    // The viewer is told the same things for as long as they stay the same, so a page change while scrolling redraws the bars and not every page on the screen. The page it starts at is only read when it is made.
+    val view = remember(state, actions, jump, auto, openSite) {
+        ReaderView(
+            startPage = Snapshot.withoutReadObservation { page },
+            jump = jump,
+            onJumped = { jump = null },
+            onPage = { page = it },
+            onProgress = actions.onProgress,
+            onNearEnd = actions.onNearEnd,
+            startFraction = state.startFraction,
+            onCount = { counted = it },
+            onToggleControls = { controls = !controls },
+            onCommon = { action ->
+                when (action) {
+                    ReaderAction.ToggleControls -> controls = !controls
 
-                ReaderAction.NextChapter -> state.nextId?.let(actions.onOpenChapter) ?: return@ReaderView false
+                    ReaderAction.NextChapter -> state.nextId?.let(actions.onOpenChapter) ?: return@ReaderView false
 
-                ReaderAction.PreviousChapter -> state.previousId?.let(actions.onOpenChapter) ?: return@ReaderView false
+                    ReaderAction.PreviousChapter -> state.previousId?.let(actions.onOpenChapter)
+                        ?: return@ReaderView false
 
-                ReaderAction.OpenSettings -> show(DockPanel.Settings)
+                    ReaderAction.OpenSettings -> show(DockPanel.Settings)
 
-                ReaderAction.OpenChapters -> show(DockPanel.Chapters)
+                    ReaderAction.OpenChapters -> show(DockPanel.Chapters)
 
-                ReaderAction.OpenInBrowser -> openSite(state.webUrl ?: return@ReaderView false)
+                    ReaderAction.OpenInBrowser -> openSite(state.webUrl ?: return@ReaderView false)
 
-                ReaderAction.ToggleBookmark -> actions.onBookmark()
+                    ReaderAction.ToggleBookmark -> actions.onBookmark()
 
-                // Words have no picture to save, and a long press on them is for looking a word up.
-                ReaderAction.PageMenu -> if (state.isText) return@ReaderView false else show(DockPanel.Page)
+                    // Words have no picture to save, and a long press on them is for looking a word up.
+                    ReaderAction.PageMenu -> if (state.isText) return@ReaderView false else show(DockPanel.Page)
 
-                ReaderAction.ToggleAutoScroll -> {
-                    auto = !auto
-                    if (auto) controls = false
+                    ReaderAction.ToggleAutoScroll -> {
+                        auto = !auto
+                        if (auto) controls = false
+                    }
+
+                    ReaderAction.AutoScrollFaster -> actions.onSettings(
+                        settings.copy(
+                            autoSpeed = (
+                                settings.autoSpeed +
+                                    AutoStep
+                                ).coerceAtMost(AutoMax),
+                        ),
+                    )
+
+                    ReaderAction.AutoScrollSlower -> actions.onSettings(
+                        settings.copy(
+                            autoSpeed = (
+                                settings.autoSpeed -
+                                    AutoStep
+                                ).coerceAtLeast(AutoMin),
+                        ),
+                    )
+
+                    ReaderAction.Close -> actions.onBack()
+
+                    else -> return@ReaderView false
                 }
-
-                ReaderAction.AutoScrollFaster -> actions.onSettings(
-                    settings.copy(
-                        autoSpeed = (
-                            settings.autoSpeed +
-                                AutoStep
-                            ).coerceAtMost(AutoMax),
-                    ),
-                )
-
-                ReaderAction.AutoScrollSlower -> actions.onSettings(
-                    settings.copy(
-                        autoSpeed = (
-                            settings.autoSpeed -
-                                AutoStep
-                            ).coerceAtLeast(AutoMin),
-                    ),
-                )
-
-                ReaderAction.Close -> actions.onBack()
-
-                else -> return@ReaderView false
-            }
-            true
-        },
-        auto = auto && state.mode == ReaderMode.Continuous,
-        autoSpeed = settings.autoSpeed,
-        onAutoStopped = { auto = false },
-    )
+                true
+            },
+            auto = auto && state.mode == ReaderMode.Continuous,
+            autoSpeed = settings.autoSpeed,
+            onAutoStopped = { auto = false },
+        )
+    }
     // The bars count the pages of the chapter in view. In a scroll over several chapters that is the stretch the page is in, and the jumps go to a place in that stretch.
     val segment = if (state.mode == ReaderMode.Continuous) state.segments.at(page) else null
     val shownPage = if (segment == null) page else page - segment.start

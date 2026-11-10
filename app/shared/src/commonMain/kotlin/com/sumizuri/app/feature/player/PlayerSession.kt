@@ -133,27 +133,12 @@ internal class PlayerSession(
     // Adds a subtitle file from the device to the video, which starts again at the same place with it, and turns it on.
     fun loadSubtitle(path: String, name: String) {
         val current = mutable.value.current ?: return
-        val track = PlayerTrack(
-            "file${extraSubtitles.size}",
-            name,
-            null,
-            "file:///" + path.replace('\\', '/').removePrefix("/"),
-        )
+        val track = subtitleFileTrack(extraSubtitles.size, path, name)
         extraSubtitles = extraSubtitles + track
         val before = engine.state.value
         log.add("Subtitle file: $name")
         engine.open(mediaOf(current, extraSubtitles), before.positionMs, play = before.playing)
-        scope.launch {
-            // The new track has its name when the engine keeps names, and is the last one in the list when it does not.
-            val loaded = withTimeoutOrNull(5000) {
-                engine.state.first { now ->
-                    now.subtitles.size > before.subtitles.size ||
-                        now.subtitles.any { it.label == name }
-                }
-            } ?: return@launch
-            val added = loaded.subtitles.firstOrNull { it.label == name } ?: loaded.subtitles.lastOrNull()
-            added?.let { engine.selectSubtitle(it.id) }
-        }
+        scope.launch { engine.selectAddedSubtitle(before, name) }
     }
 
     // Keeps the place and lets go of what is watched. The engine is released by whoever made it.

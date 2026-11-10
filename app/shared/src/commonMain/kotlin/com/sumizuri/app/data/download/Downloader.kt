@@ -19,6 +19,9 @@ import com.sumizuri.app.data.text.nowMillis
 import com.sumizuri.app.data.work.BusyHandle
 import com.sumizuri.app.data.work.BusyKind
 import com.sumizuri.app.data.work.BusyWork
+import com.sumizuri.app.feature.player.VideoChoice
+import com.sumizuri.app.playback.hls.expandHlsMasters
+import com.sumizuri.app.playback.hls.isHls
 import com.sumizuri.app.shared.resources.Res
 import com.sumizuri.app.shared.resources.download_err_kind
 import com.sumizuri.app.shared.resources.download_err_no_pages
@@ -26,9 +29,8 @@ import com.sumizuri.app.shared.resources.download_err_no_video
 import com.sumizuri.app.shared.resources.download_err_page
 import com.sumizuri.app.shared.resources.download_err_source
 import com.sumizuri.app.shared.resources.download_save_failed
-import com.sumizuri.app.feature.player.VideoChoice
-import com.sumizuri.app.playback.hls.expandHlsMasters
-import com.sumizuri.app.playback.hls.isHls
+import com.sumizuri.app.shared.resources.download_saved_quality
+import com.sumizuri.app.shared.resources.download_saved_sound
 import com.sumizuri.app.source.Source
 import com.sumizuri.app.source.SourceManager
 import com.sumizuri.app.source.SourceResult
@@ -72,7 +74,7 @@ private const val PageTries = 3
 private const val NetworkCheckMs = 30_000L
 
 // Progress reaches the database at most this often, as each write redraws every page that shows it.
-private const val ProgressEveryMs = 500L
+internal const val ProgressEveryMs = 500L
 
 // Why a chapter could not be saved, in words for the page of downloads.
 class DownloadProblem(message: String) : Exception(message)
@@ -89,7 +91,7 @@ class Downloader(
     private val settings: SettingsRepository,
     private val files: DownloadFiles,
     private val scope: CoroutineScope,
-    private val playerPrefs: PlayerPrefsRepository,
+    playerPrefs: PlayerPrefsRepository,
 ) {
     private val wake = Channel<Unit>(Channel.CONFLATED)
     private val lock = Mutex()
@@ -98,6 +100,7 @@ class Downloader(
     val paused: Flow<Boolean> = settings.flag(SettingKey.DownloadsPaused, false)
 
     private val prefs = settings.downloadPrefs()
+    private val episodes = EpisodeSaver(db, files, playerPrefs, prefs)
 
     // True while chapters wait because only Wi-Fi may be used and the device is on another connection.
     private val mutableWaitingForWifi = MutableStateFlow(false)
@@ -193,7 +196,9 @@ class Downloader(
     // The saved video of an episode, played from the device, or null when it is not saved.
     suspend fun savedVideo(titleId: Long, chapterId: Long): SourceVideo? {
         if (db.downloads().get(chapterId)?.status != DownloadState.Done) return null
-        return withContext(Dispatchers.IO) { files.readVideo(titleId, chapterId) }
+        val quality = getString(Res.string.download_saved_quality)
+        val sound = getString(Res.string.download_saved_sound)
+        return withContext(Dispatchers.IO) { files.readVideo(titleId, chapterId, quality, sound) }
     }
 
     // While chapters are being saved the app stays awake in the background, with a notice of how many are done out of the ones in the queue. Its stop button pauses the queue.
@@ -263,7 +268,7 @@ class Downloader(
                 is SourceResult.Err -> throw DownloadProblem(opened.error.message)
                 is SourceResult.Ok -> opened.value
             }
-            if (place.kind == Kind.Anime) return saveEpisode(item, place, source)
+            if (place.kind == Kind.Anime) return episodes.save(item, place, source)
             val pages = when (val got = source.pages(SourceChapter(url = place.url, title = ""))) {
                 is SourceResult.Err -> throw DownloadProblem(got.error.message)
                 is SourceResult.Ok -> got.value
@@ -322,55 +327,6 @@ class Downloader(
             AppLog.warn(Tag, "could not save ${place.titleName} ${place.number}, $message")
             db.downloads().setState(item.chapterId, DownloadState.Failed.code, message)
         }
-    }
-
-    // Saves the video of an episode that the player would pick, with the quality and sound the person likes.
-    private suspend fun saveEpisode(item: DownloadEntity, place: ChapterPlace, source: Source) {
-        val listed = when (val got = source.videos(SourceChapter(url = place.url, title = ""))) {
-            is SourceResult.Err -> throw DownloadProblem(got.error.message)
-            is SourceResult.Ok -> got.value
-        }
-        val liked = playerPrefs.prefs.first()
-        val videos = expandHlsMasters(listed)
-        val first = VideoChoice.pick(videos, liked.preferredQuality, liked.qualityMode, liked.audioPreference)
-            ?: throw DownloadProblem(getString(Res.string.download_err_no_video))
-        // The pick of the player first, then the rest, with the HLS streams ahead: they come in small parts a few at once, while a plain file is often sent slowly or cut.
-        val tries = (listOf(first) + (videos - first)).sortedBy { !it.isHls }
-        val failedHosts = mutableSetOf<String>()
-        var last: Throwable? = null
-        val atOnce = prefs.first().pagesAtOnce
-        for (video in tries) {
-            // Another quality of a server that failed fails the same way, so the next server is tried.
-            if (hostOf(video.url) in failedHosts) continue
-            val part = withContext(Dispatchers.IO) { files.begin(place.titleId, place.id) }
-            val clock = TimeSource.Monotonic.markNow()
-            var written = Duration.ZERO
-            var parts = 1
-            var size = 0L
-            val saved = try {
-                saveVideo(video, part, atOnce) { done, total, bytes ->
-                    parts = total
-                    size = bytes
-                    val now = clock.elapsedNow()
-                    if (now - written >= ProgressEveryMs.milliseconds) {
-                        written = now
-                        db.downloads().setProgress(item.chapterId, total, done, bytes)
-                    }
-                }
-            } catch (cancelled: CancellationException) {
-                throw cancelled
-            } catch (error: Throwable) {
-                last = error
-                failedHosts += hostOf(video.url)
-                AppLog.warn(Tag, "could not save ${place.titleName} ${place.number} from ${hostOf(video.url)}, ${error.message}; trying the next server")
-                continue
-            }
-            withContext(Dispatchers.IO) { files.finish(place.titleId, place.id, part, SavedChapter(video = saved)) }
-            db.downloads().setDone(item.chapterId, parts, size, nowMillis())
-            AppLog.info(Tag, "saved ${place.titleName} ${place.number} from ${hostOf(video.url)}, ${video.quality ?: "video"}, ${size / 1024 / 1024} MB")
-            return
-        }
-        throw DownloadProblem(last?.message ?: getString(Res.string.download_err_no_video))
     }
 
     // A page, asked for again a few times, as a site may drop one now and then.

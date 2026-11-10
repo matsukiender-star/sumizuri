@@ -3,6 +3,8 @@ package com.sumizuri.app.feature.reader.translate
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import com.sumizuri.app.data.model.Kind
+import com.sumizuri.app.data.net.SiteKinds
 import com.sumizuri.app.feature.reader.ReaderPage
 import com.sumizuri.app.feature.reader.ReaderState
 import io.ktor.client.HttpClient
@@ -15,6 +17,7 @@ import io.ktor.http.parameters
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonPrimitive
@@ -25,11 +28,30 @@ private const val TranslateAddress = "https://translate.googleapis.com/translate
 // The same translator behind the address the Chrome extension uses, with limits of its own, for when the first one does not answer. It answers with the whole text and its language.
 private const val SpareAddress = "https://clients5.google.com/translate_a/t?client=dict-chrome-ex&sl=auto&tl="
 
+// The two addresses in order, each with how its answer is read: the first cuts the text in sentences, each with its translation first, and the spare gives the whole translation first.
+private val Addresses: List<Pair<String, (JsonArray) -> String>> = listOf(
+    TranslateAddress to { answer ->
+        answer.first().jsonArray.joinToString("") {
+            it.jsonArray
+                .firstOrNull()
+                ?.jsonPrimitive
+                ?.contentOrNull
+                .orEmpty()
+        }
+    },
+    SpareAddress to { answer ->
+        answer
+            .first()
+            .jsonArray
+            .first()
+            .jsonPrimitive.content
+    },
+)
+
 // How long to wait before asking again once both addresses failed.
 private const val RetryAfterMs = 1_500L
 
-// How many paragraphs are kept translated while the app runs, so a long reading does not fill the memory.
-// ponytail: dropped all at once when full; a least-recently-used map if rereading old chapters matters.
+// How many paragraphs are kept translated while the app runs, all dropped at once when full, so a long reading does not fill the memory.
 private const val KeepAtMost = 5_000
 
 // How long the service has to answer one batch, and how many letters go in one batch, below what it takes in one call.
@@ -53,7 +75,12 @@ private object Kept {
 // Puts the words of a novel into the language of the app. Paragraphs go to the service together in batches.
 class NovelTranslator : AutoCloseable {
     private val http = HttpClient { install(HttpTimeout) { requestTimeoutMillis = AnswerWithinMs } }
-    private val done = Kept.done
+
+    // The translator takes the way set for novels, as it carries their words.
+    init {
+        SiteKinds.mark(TranslateAddress, Kind.Novel)
+        SiteKinds.mark(SpareAddress, Kind.Novel)
+    }
 
     var status by mutableStateOf(if (Kept.on) TranslateStatus.Working else TranslateStatus.Off)
         private set
@@ -74,25 +101,22 @@ class NovelTranslator : AutoCloseable {
     // Translates the paragraphs of the pages that have no translation yet, to the language with the code given, such as es.
     suspend fun translate(pages: List<ReaderPage>, language: String) {
         // Translations to another language are no use once the app speaks a new one.
-        if (Kept.language != language || done.size > KeepAtMost) {
-            done.clear()
+        if (Kept.language != language || Kept.done.size > KeepAtMost) {
+            Kept.done.clear()
             Kept.language = language
         }
-        val missing = pages.mapNotNull { it.text }.filter { it.isNotBlank() && it !in done }.distinct()
-        translations = done.toMap()
-        // A batch that fails leaves its paragraphs as the source gave them and the others go on; the next pass asks for them again.
+        val missing = pages.mapNotNull { it.text }.filter { it.isNotBlank() && it !in Kept.done }.distinct()
+        translations = Kept.done.toMap()
+        // A batch that fails leaves its paragraphs as the source gave them while the others go on, and the next pass asks for them again.
         var failed = 0
         for (batch in batchesOf(missing)) {
             try {
                 val answer = ask(batch.joinToString(Gap), language)
                 val parts = answer.split(BlankLine).map { it.trim() }
-                // When the paragraphs did not come back one for one, each is sent alone.
-                if (parts.size == batch.size) {
-                    batch.zip(parts).forEach { (text, translated) -> done[text] = translated }
-                } else {
-                    batch.forEach { text -> done[text] = ask(text, language).trim() }
-                }
-                translations = done.toMap()
+                // When the paragraphs did not come back one for one, the batch stays as the source gave it, rather than asking for each paragraph alone and running into the limits of the service.
+                if (parts.size != batch.size) error("The translation came back cut differently")
+                batch.zip(parts).forEach { (text, translated) -> Kept.done[text] = translated }
+                translations = Kept.done.toMap()
             } catch (cancelled: CancellationException) {
                 throw cancelled
             } catch (_: Exception) {
@@ -122,48 +146,24 @@ class NovelTranslator : AutoCloseable {
     private suspend fun ask(text: String, language: String): String {
         repeat(2) { round ->
             if (round > 0) delay(RetryAfterMs)
-            runCatching { return askMain(text, language) }.onFailure { if (it is CancellationException) throw it }
-            runCatching { return askSpare(text, language) }.onFailure { if (it is CancellationException) throw it }
+            for ((address, read) in Addresses) {
+                runCatching {
+                    return askAt(
+                        address,
+                        read,
+                        text,
+                        language,
+                    )
+                }.onFailure { if (it is CancellationException) throw it }
+            }
         }
         error("The translate service did not answer")
     }
 
-    // The service answers with the text cut in sentences, each with its translation first.
-    private suspend fun askMain(text: String, language: String): String {
-        val response = http.submitForm(
-            TranslateAddress + language.encodeURLParameter(),
-            parameters { append("q", text) },
-        )
+    private suspend fun askAt(address: String, read: (JsonArray) -> String, text: String, language: String): String {
+        val response = http.submitForm(address + language.encodeURLParameter(), parameters { append("q", text) })
         if (response.status != HttpStatusCode.OK) error("The translate service answered ${response.status}")
-        return Json
-            .parseToJsonElement(response.bodyAsText())
-            .jsonArray
-            .first()
-            .jsonArray
-            .joinToString("") { sentence ->
-                sentence.jsonArray
-                    .firstOrNull()
-                    ?.jsonPrimitive
-                    ?.contentOrNull
-                    .orEmpty()
-            }
-    }
-
-    // The spare address answers with a list holding the translation and the language it found.
-    private suspend fun askSpare(text: String, language: String): String {
-        val response = http.submitForm(
-            SpareAddress + language.encodeURLParameter(),
-            parameters { append("q", text) },
-        )
-        if (response.status != HttpStatusCode.OK) error("The spare translate service answered ${response.status}")
-        return Json
-            .parseToJsonElement(response.bodyAsText())
-            .jsonArray
-            .first()
-            .jsonArray
-            .first()
-            .jsonPrimitive
-            .content
+        return read(Json.parseToJsonElement(response.bodyAsText()).jsonArray)
     }
 
     override fun close() = http.close()

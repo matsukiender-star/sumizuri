@@ -1,5 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<!-- Text of the Suki patch for the desktop player, kept apart so it never meets the files Weblate writes. -->
-<resources>
-    <string name="player_volume">Volume</string>
-</resources>

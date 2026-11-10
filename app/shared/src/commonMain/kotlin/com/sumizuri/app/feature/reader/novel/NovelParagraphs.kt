@@ -4,7 +4,7 @@ import com.sumizuri.app.feature.reader.ReaderPage
 
 // Text a source gives as one block is cut at blank lines. A block with hardly any blank lines but many line breaks is cut at the line breaks instead.
 fun splitParagraphs(text: String): List<String> {
-    val byBlankLine = text.split(Regex("\\n\\s*\\n")).map { it.trim() }.filter { it.isNotEmpty() }
+    val byBlankLine = text.split(BlankLine).map { it.trim() }.filter { it.isNotEmpty() }
     if (byBlankLine.size > 2 || text.count { it == '\n' } < 6) return byBlankLine
     return text.split('\n').map { it.trim() }.filter { it.isNotEmpty() }
 }
@@ -25,8 +25,8 @@ private val PictureParagraph = Regex("""^!\[[^\]]*]\((https?://[^\s)]+)\)$""")
 private fun paragraphPage(text: String): ReaderPage =
     PictureParagraph.matchEntire(text)?.let { ReaderPage(it.groupValues[1], null) } ?: ReaderPage(null, text)
 
-// A chapter of words, which may have pictures among its paragraphs, as against a chapter of pictures only.
-fun hasWords(pages: List<ReaderPage>): Boolean = pages.isEmpty() || pages.any { it.imageUrl == null }
+// A chapter of words, which may have pictures among its paragraphs, as against a chapter of pictures only. It takes words that are there, so a comic with one page that failed to give its picture is still a comic.
+fun hasWords(pages: List<ReaderPage>): Boolean = pages.isEmpty() || pages.any { !it.text.isNullOrBlank() }
 
 // How many words a text holds. Languages written without spaces count about two characters to a word.
 fun wordCount(pages: List<ReaderPage>): Int {
@@ -34,8 +34,12 @@ fun wordCount(pages: List<ReaderPage>): Int {
     var characters = 0
     for (page in pages) {
         val text = page.text.orEmpty()
-        words += text.trim().split(Regex("\\s+")).count { it.isNotEmpty() }
+        words += text.trim().split(Spaces).count { it.isNotEmpty() }
         characters += text.length
     }
     return if (words * 8 < characters) characters / 2 else words
 }
+
+// A blank line between paragraphs, and a run of spaces between words.
+private val BlankLine = Regex("\\n\\s*\\n")
+private val Spaces = Regex("\\s+")
