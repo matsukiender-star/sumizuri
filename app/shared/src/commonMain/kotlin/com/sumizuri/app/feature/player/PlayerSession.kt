@@ -1,6 +1,7 @@
 package com.sumizuri.app.feature.player
 
 import com.sumizuri.app.core.log.AppLog
+import com.sumizuri.app.data.download.Downloader
 import com.sumizuri.app.data.library.LibraryRepository
 import com.sumizuri.app.data.model.ChapterPlace
 import com.sumizuri.app.data.model.player.AudioPreference
@@ -40,18 +41,6 @@ import kotlinx.coroutines.withTimeoutOrNull
 import org.jetbrains.compose.resources.StringResource
 import kotlin.math.abs
 
-// How often the place is kept while playing, and how long a video may take to tell its length before it is called broken.
-private const val SaveEveryMs = 5000L
-private const val StartTimeoutMs = 30_000L
-
-// How near its length an end must come to count as the end of the episode, a fiftieth of the length kept between these two, and what the log and the failure say when it comes before.
-private const val EndSlackMs = 15_000L
-private const val EndSlackMinMs = 2_000L
-
-// A video shorter than this has no end the player trusts, since a broken stream reports lengths like that.
-private const val ShortestEpisodeMs = 60_000L
-private const val StoppedEarly = "The video stopped before its end, its stream could not be read"
-
 // The episode list, the videos and the one that plays, behind the screen of the player. It opens episodes in place, picks the video the person likes, plays it from where it was left, keeps the place, starts again quietly when the connection drops, and goes on to the next episode when one ends.
 internal class PlayerSession(
     private val engine: PlayerEngine,
@@ -62,6 +51,7 @@ internal class PlayerSession(
     private val solver: ChallengeSolver,
     private val prefsRepository: PlayerPrefsRepository,
     private val reading: ReaderSettingsRepository,
+    private val downloads: Downloader,
 ) {
     private val mutable = MutableStateFlow(SessionState())
     val state: StateFlow<SessionState> = mutable
@@ -74,6 +64,7 @@ internal class PlayerSession(
     private var recovering = false
     private var disposed = false
     private val retries = RetryBudget()
+    private val servers = ServerFallback()
     private var extraSubtitles = emptyList<PlayerTrack>()
     private var incognito = false
 
@@ -131,7 +122,9 @@ internal class PlayerSession(
         scope.launch { play(choice, mine, startAt = at) }
     }
 
-    fun tryAnotherVideo() {
+    // Plays the next video, and when asked, goes on to the next server by itself from now on when one does not start.
+    fun tryAnotherVideo(always: Boolean = false) {
+        if (always) updatePrefs { it.copy(autoNextServer = true) }
         val now = mutable.value
         val next = now.videos.indexOf(now.current) + 1
         now.videos.getOrNull(next)?.let(::selectVideo)
@@ -140,27 +133,12 @@ internal class PlayerSession(
     // Adds a subtitle file from the device to the video, which starts again at the same place with it, and turns it on.
     fun loadSubtitle(path: String, name: String) {
         val current = mutable.value.current ?: return
-        val track = PlayerTrack(
-            "file${extraSubtitles.size}",
-            name,
-            null,
-            "file:///" + path.replace('\\', '/').removePrefix("/"),
-        )
+        val track = subtitleFileTrack(extraSubtitles.size, path, name)
         extraSubtitles = extraSubtitles + track
         val before = engine.state.value
         log.add("Subtitle file: $name")
         engine.open(mediaOf(current, extraSubtitles), before.positionMs, play = before.playing)
-        scope.launch {
-            // The new track has its name when the engine keeps names, and is the last one in the list when it does not.
-            val loaded = withTimeoutOrNull(5000) {
-                engine.state.first { now ->
-                    now.subtitles.size > before.subtitles.size ||
-                        now.subtitles.any { it.label == name }
-                }
-            } ?: return@launch
-            val added = loaded.subtitles.firstOrNull { it.label == name } ?: loaded.subtitles.lastOrNull()
-            added?.let { engine.selectSubtitle(it.id) }
-        }
+        scope.launch { engine.selectAddedSubtitle(before, name) }
     }
 
     // Keeps the place and lets go of what is watched. The engine is released by whoever made it.
@@ -176,6 +154,7 @@ internal class PlayerSession(
         val mine = ++generation
         currentId = id
         retries.reset()
+        servers.clear()
         extraSubtitles = emptyList()
         lastSave = 0
         mutable.update { it.copy(phase = PlayerPhase.Loading, failure = null, videos = emptyList(), current = null) }
@@ -185,6 +164,12 @@ internal class PlayerSession(
         refreshEpisodes(here.titleId)
         val now = mutable.value
         log.add("Episode ${now.index + 1} of ${now.episodes.size}: ${here.name ?: here.number}\n    ${here.url}")
+        // A saved episode plays from the device, with no source and no connection.
+        downloads.savedVideo(here.titleId, id)?.let { saved ->
+            log.add("Playing the saved copy")
+            mutable.update { it.copy(videos = listOf(saved)) }
+            return play(saved, mine)
+        }
         val found = sources.find(here.sourceId) ?: return failSource(Res.string.reader_source_missing)
         if (!found.enabled) return failSource(Res.string.reader_source_off)
         log.add("Asking ${found.name} for the videos...")
@@ -237,11 +222,11 @@ internal class PlayerSession(
         if (mine != generation) return
         if (ready == null) {
             log.add("The video gave no length within ${StartTimeoutMs / 1000} s, so it did not start", problem = true)
-            return fail(PlayerFailure(FailureKind.DidNotStart))
+            return failOrNextServer(choice, mine, startAt, PlayerFailure(FailureKind.DidNotStart))
         }
         if (ready.problem != null) {
             log.add("The video did not open: ${ready.message ?: ready.problem}", problem = true)
-            return fail(failureOf(ready.problem, ready.message))
+            return failOrNextServer(choice, mine, startAt, failureOf(ready.problem, ready.message))
         }
         log.add("Video opened in ${nowMillis() - opened} ms, ${formatTime(ready.durationMs)} long")
         val kept = place?.position?.takeIf { mutable.value.prefs.resume }
@@ -255,6 +240,14 @@ internal class PlayerSession(
         log.add("Playing")
         setPhase(PlayerPhase.Ready)
         if (startAt == null) applyStartPreferences(mine)
+    }
+
+    // A video that did not start. When the person chose so, the next server opens in its place, and the failure shows only when none is left.
+    private suspend fun failOrNextServer(failed: SourceVideo, mine: Int, startAt: Long?, failure: PlayerFailure) {
+        val next = servers.next(failed, mutable.value.videos)?.takeIf { mutable.value.prefs.autoNextServer }
+        if (next == null || failure.kind == FailureKind.EngineMissing) return fail(failure)
+        log.add("Trying ${next.quality ?: "the next video"} instead", problem = true)
+        play(next, mine, startAt)
     }
 
     // Applies the speed and the subtitle the person likes to a video that just started. A choice that cannot be applied never stops the episode.
