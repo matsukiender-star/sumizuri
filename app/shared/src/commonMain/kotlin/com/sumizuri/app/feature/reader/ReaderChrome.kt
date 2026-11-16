@@ -281,6 +281,7 @@ internal fun BoxWithConstraintsScope.ReaderChrome(
             .tellsAsideCard(dockWidth, maxWidth)
             .onSizeChanged { dockRoom = with(density) { it.height.toDp() } },
     )
+    if (settings.menuButton && !controls && !bar.auto) ReaderMenuButton(calls.onShowControls)
 }
 
 // Taps on the controls stay on them, so a tap between two buttons does not turn the page or hide the controls.

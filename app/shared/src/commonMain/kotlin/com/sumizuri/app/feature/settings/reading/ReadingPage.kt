@@ -32,12 +32,12 @@ import com.sumizuri.app.data.model.reader.ReaderQuality
 import com.sumizuri.app.data.model.reader.ReaderScale
 import com.sumizuri.app.data.model.reader.ReaderSettings
 import com.sumizuri.app.data.model.reader.ReaderTextAlign
-import com.sumizuri.app.data.model.reader.ReaderWidth
 import com.sumizuri.app.data.model.reader.ReaderZoomStart
 import com.sumizuri.app.feature.reader.controls.PageTurnSetting
 import com.sumizuri.app.feature.reader.controls.ReaderLight
 import com.sumizuri.app.feature.reader.controls.fill
 import com.sumizuri.app.feature.reader.controls.ink
+import com.sumizuri.app.feature.reader.controls.stripWidth
 import com.sumizuri.app.feature.reader.novel.novelStyle
 import com.sumizuri.app.feature.settings.GlobalReaderViewModel
 import com.sumizuri.app.feature.settings.SettingsPageFrame
@@ -62,11 +62,13 @@ import com.sumizuri.app.shared.resources.reader_grayscale
 import com.sumizuri.app.shared.resources.reader_hide_bars
 import com.sumizuri.app.shared.resources.reader_inline_next
 import com.sumizuri.app.shared.resources.reader_invert_colors
+import com.sumizuri.app.shared.resources.reader_pdf_dark
 import com.sumizuri.app.shared.resources.reader_invert_taps
 import com.sumizuri.app.shared.resources.reader_keep_on
 import com.sumizuri.app.shared.resources.reader_line_height
 import com.sumizuri.app.shared.resources.reader_lookup
 import com.sumizuri.app.shared.resources.reader_orientation
+import com.sumizuri.app.shared.resources.reader_menu_button
 import com.sumizuri.app.shared.resources.reader_page_number
 import com.sumizuri.app.shared.resources.reader_page_strip
 import com.sumizuri.app.shared.resources.reader_panel_zoom
@@ -83,7 +85,6 @@ import com.sumizuri.app.shared.resources.reader_scale
 import com.sumizuri.app.shared.resources.reader_text_align
 import com.sumizuri.app.shared.resources.reader_text_size
 import com.sumizuri.app.shared.resources.reader_warmth
-import com.sumizuri.app.shared.resources.reader_width
 import com.sumizuri.app.shared.resources.reader_wpm
 import com.sumizuri.app.shared.resources.reader_zoom_start
 import com.sumizuri.app.shared.resources.reading_group_screen
@@ -206,6 +207,13 @@ private fun GeneralPart(settings: ReaderSettings, model: GlobalReaderViewModel) 
         }
         padded {
             SwitchSetting(
+                Res.string.reader_menu_button,
+                settings.menuButton,
+                { on -> model.update { it.copy(menuButton = on) } },
+            )
+        }
+        padded {
+            SwitchSetting(
                 Res.string.reader_page_strip,
                 settings.pageStrip,
                 { on -> model.update { it.copy(pageStrip = on) } },
@@ -265,11 +273,7 @@ private fun MangaPart(settings: ReaderSettings, model: GlobalReaderViewModel) {
                 stringResource(it.label)
             }) { value -> model.update { it.copy(gap = value) } }
         }
-        padded {
-            ChoiceSetting(Res.string.reader_width, ReaderWidth.entries, settings.width, {
-                stringResource(it.label)
-            }) { value -> model.update { it.copy(width = value) } }
-        }
+        stripWidth(settings) { changed -> model.update { changed } }
     }
     SettingsSection(Res.string.manga_group_appearance) {
         padded {
@@ -307,6 +311,9 @@ private fun MangaPart(settings: ReaderSettings, model: GlobalReaderViewModel) {
                     it.copy(invertColors = on)
                 }
             })
+        }
+        padded {
+            SwitchSetting(Res.string.reader_pdf_dark, settings.pdfDark, { on -> model.update { it.copy(pdfDark = on) } })
         }
         padded { PageColorFilters(settings, model) }
     }

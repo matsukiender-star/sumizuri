@@ -82,6 +82,7 @@ class ReaderSettingsRepository(private val db: AppDatabase) {
         put(scope + "background", settings.background.name)
         put(scope + "gap", settings.gap.name)
         put(scope + "width", settings.width.name)
+        put(scope + "customWidth", settings.customWidth.toString())
         put(scope + "dual", settings.dual.name)
         put(scope + "invert", settings.invertTaps.toString())
         put(scope + "font", settings.font.name)
@@ -102,6 +103,7 @@ class ReaderSettingsRepository(private val db: AppDatabase) {
         put("${Prefix}quality", settings.quality.name)
         put("${Prefix}progressBar", settings.progressBar.name)
         put("${Prefix}pageNumber", settings.pageNumber.toString())
+        put("${Prefix}menuButton", settings.menuButton.toString())
         put("${Prefix}controlShade", settings.controlShade.toString())
         put("${Prefix}pageStrip", settings.pageStrip.toString())
         put("${Prefix}lookup", settings.lookup.name)
@@ -115,6 +117,7 @@ class ReaderSettingsRepository(private val db: AppDatabase) {
         put("${Prefix}cropBorders", settings.cropBorders.toString())
         put("${Prefix}grayscale", settings.grayscale.toString())
         put("${Prefix}invertColors", settings.invertColors.toString())
+        put("${Prefix}pdfDark", settings.pdfDark.toString())
         put("${Prefix}sepia", settings.sepia.toString())
         put("${Prefix}contrast", settings.contrast.toString())
         put("${Prefix}bedtime", settings.bedtime.toString())
@@ -136,6 +139,9 @@ class ReaderSettingsRepository(private val db: AppDatabase) {
             background = enumNamed<ReaderBackground>(read("background")) ?: usual.background,
             gap = enumNamed<ReaderGap>(read("gap")) ?: usual.gap,
             width = enumNamed<ReaderWidth>(read("width")) ?: usual.width,
+            customWidth =
+            read("customWidth")?.toIntOrNull()?.coerceIn(ReaderWidth.CustomLeast, ReaderWidth.CustomMost)
+                ?: usual.customWidth,
             dual = enumNamed<ReaderDual>(read("dual")) ?: usual.dual,
             invertTaps = read("invert") == "true",
             font = enumNamed<ReaderFont>(read("font")) ?: usual.font,
@@ -151,6 +157,7 @@ class ReaderSettingsRepository(private val db: AppDatabase) {
             quality = enumNamed<ReaderQuality>(rows["${Prefix}quality"]) ?: usual.quality,
             progressBar = enumNamed<ReaderProgressBar>(rows["${Prefix}progressBar"]) ?: usual.progressBar,
             pageNumber = rows["${Prefix}pageNumber"] != "false",
+            menuButton = rows["${Prefix}menuButton"] != "false",
             controlShade = rows["${Prefix}controlShade"]?.toFloatOrNull()?.coerceIn(0f, 1f) ?: usual.controlShade,
             pageStrip = rows["${Prefix}pageStrip"] == "true",
             lookup = enumNamed<ReaderLookup>(rows["${Prefix}lookup"]) ?: usual.lookup,
@@ -166,6 +173,7 @@ class ReaderSettingsRepository(private val db: AppDatabase) {
             cropBorders = rows["${Prefix}cropBorders"] == "true",
             grayscale = rows["${Prefix}grayscale"] == "true",
             invertColors = rows["${Prefix}invertColors"] == "true",
+            pdfDark = rows["${Prefix}pdfDark"] == "true",
             sepia = rows["${Prefix}sepia"]?.toFloatOrNull()?.coerceIn(0f, 1f) ?: usual.sepia,
             contrast = rows["${Prefix}contrast"]?.toFloatOrNull()?.coerceIn(0.5f, 2f) ?: usual.contrast,
             bedtime = rows["${Prefix}bedtime"] == "true",

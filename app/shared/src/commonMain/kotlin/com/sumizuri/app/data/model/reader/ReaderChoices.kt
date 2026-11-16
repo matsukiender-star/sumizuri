@@ -12,6 +12,8 @@ import com.sumizuri.app.shared.resources.reader_dual_cover
 import com.sumizuri.app.shared.resources.reader_dual_off
 import com.sumizuri.app.shared.resources.reader_dual_on
 import com.sumizuri.app.shared.resources.reader_font_dyslexic
+import com.sumizuri.app.shared.resources.reader_font_sans
+import com.sumizuri.app.shared.resources.reader_font_serif
 import com.sumizuri.app.shared.resources.reader_font_system
 import com.sumizuri.app.shared.resources.reader_orientation_free
 import com.sumizuri.app.shared.resources.reader_orientation_landscape
@@ -20,6 +22,7 @@ import com.sumizuri.app.shared.resources.reader_scale_height
 import com.sumizuri.app.shared.resources.reader_scale_original
 import com.sumizuri.app.shared.resources.reader_scale_screen
 import com.sumizuri.app.shared.resources.reader_scale_width
+import com.sumizuri.app.shared.resources.reader_size_custom
 import com.sumizuri.app.shared.resources.reader_size_full
 import com.sumizuri.app.shared.resources.reader_size_large
 import com.sumizuri.app.shared.resources.reader_size_medium
@@ -61,12 +64,22 @@ enum class ReaderGap(val label: StringResource, val dp: Int) {
     Large(Res.string.reader_size_large, 16),
 }
 
-// The widest the long scroll grows, in dp, or null for the whole window.
+// The widest the long scroll grows, in dp, or null for the whole window. Custom takes the width the person set.
 enum class ReaderWidth(val label: StringResource, val dp: Int?) {
     Small(Res.string.reader_size_small, 600),
     Medium(Res.string.reader_size_medium, 720),
     Large(Res.string.reader_size_large, 1000),
     Full(Res.string.reader_size_full, null),
+    Custom(Res.string.reader_size_custom, null),
+    ;
+
+    // The widest the long scroll grows with this choice, the own width for Custom.
+    fun widest(custom: Int): Int? = if (this == Custom) custom.coerceIn(CustomLeast, CustomMost) else dp
+
+    companion object {
+        const val CustomLeast = 400
+        const val CustomMost = 1600
+    }
 }
 
 // Whether two pages share one screen, and whether the first page stands alone as a cover.
@@ -80,6 +93,10 @@ enum class ReaderDual(val label: StringResource) {
 enum class ReaderFont(val label: StringResource) {
     System(Res.string.reader_font_system),
     OpenDyslexic(Res.string.reader_font_dyslexic),
+
+    // Suki: the book and the plain faces every system has.
+    Serif(Res.string.reader_font_serif),
+    Sans(Res.string.reader_font_sans),
 }
 
 // How the phone is held while the reader is open. Free follows the phone, and the others keep the screen upright or on its side.

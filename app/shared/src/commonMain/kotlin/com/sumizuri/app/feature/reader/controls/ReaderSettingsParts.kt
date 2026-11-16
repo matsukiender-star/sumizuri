@@ -17,9 +17,11 @@ import com.sumizuri.app.shared.resources.reader_hide_bars
 import com.sumizuri.app.shared.resources.reader_incognito_switch
 import com.sumizuri.app.shared.resources.reader_inline_next
 import com.sumizuri.app.shared.resources.reader_invert_colors
+import com.sumizuri.app.shared.resources.reader_pdf_dark
 import com.sumizuri.app.shared.resources.reader_invert_taps
 import com.sumizuri.app.shared.resources.reader_keep_on
 import com.sumizuri.app.shared.resources.reader_orientation
+import com.sumizuri.app.shared.resources.reader_menu_button
 import com.sumizuri.app.shared.resources.reader_page_number
 import com.sumizuri.app.shared.resources.reader_page_strip
 import com.sumizuri.app.shared.resources.reader_progress_bar
@@ -65,6 +67,13 @@ internal fun LookPart(settings: ReaderSettings, textual: Boolean, onSettings: (R
                 )
             }
             padded {
+                SwitchSetting(
+                    Res.string.reader_pdf_dark,
+                    settings.pdfDark,
+                    { onSettings(settings.copy(pdfDark = it)) },
+                )
+            }
+            padded {
                 SliderSetting(Res.string.reader_sepia, settings.sepia, 0f..1f, {
                     percent(it)
                 }) { onSettings(settings.copy(sepia = it)) }
@@ -94,6 +103,13 @@ internal fun ControlsPart(settings: ReaderSettings, onSettings: (ReaderSettings)
                 Res.string.reader_page_number,
                 settings.pageNumber,
                 { onSettings(settings.copy(pageNumber = it)) },
+            )
+        }
+        padded {
+            SwitchSetting(
+                Res.string.reader_menu_button,
+                settings.menuButton,
+                { onSettings(settings.copy(menuButton = it)) },
             )
         }
         padded {

@@ -8,6 +8,8 @@ data class ReaderSettings(
     val background: ReaderBackground = ReaderBackground.Theme,
     val gap: ReaderGap = ReaderGap.None,
     val width: ReaderWidth = ReaderWidth.Medium,
+    // The width of the long scroll in dp when its width is Custom.
+    val customWidth: Int = 800,
     val dual: ReaderDual = ReaderDual.Off,
     val invertTaps: Boolean = false,
     val font: ReaderFont = ReaderFont.System,
@@ -49,6 +51,8 @@ data class ReaderSettings(
     val cropBorders: Boolean = false,
     val grayscale: Boolean = false,
     val invertColors: Boolean = false,
+    // Suki: the pages of a PDF are darkened by their light only, so white paper turns dark and black letters light while the pictures keep their colors.
+    val pdfDark: Boolean = false,
     // How much of an old paper brown the pages take, from 0 to 1, and how strong their contrast is, from half to twice.
     val sepia: Float = 0f,
     val contrast: Float = 1f,
@@ -58,4 +62,6 @@ data class ReaderSettings(
     val bedtimeTo: Int = 7,
     val bedtimeWarmth: Float = 0.6f,
     val bedtimeDim: Float = 0.25f,
+    // Suki: a round button in a corner that brings out the controls, for people who do not find where to tap.
+    val menuButton: Boolean = true,
 )

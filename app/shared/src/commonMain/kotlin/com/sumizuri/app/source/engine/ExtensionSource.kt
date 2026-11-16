@@ -42,6 +42,9 @@ import kotlin.time.TimeSource
 // How many lazy pages of one chapter are asked for at once.
 private const val PagesAtOnce = 4
 
+// How many embed players of one episode are opened at once.
+private const val EmbedsAtOnce = 4
+
 // A source backed by an extension in the source format: a Source class whose methods are called as the format calls them, with its answers read in the shapes the format defines.
 class ExtensionSource private constructor(
     private val runtime: ExtensionRuntime,
@@ -151,7 +154,7 @@ class ExtensionSource private constructor(
         }
 
     // The pages of a chapter. A source that hands its pages out one at a time gives stand ins, and each real page comes from getPageData, a few at once.
-    override suspend fun pages(chapter: SourceChapter): SourceResult<List<SourcePage>> {
+    override suspend fun pages(chapter: SourceChapter, books: Boolean): SourceResult<List<SourcePage>> {
         val (titleId, chapterId) = splitChapterUrl(chapter.url)
         val details = call("getChapterDetails", JsonPrimitive(titleId), JsonPrimitive(chapterId)) {
             it as? JsonObject
@@ -160,6 +163,7 @@ class ExtensionSource private constructor(
         val reply = (details as? SourceResult.Ok)?.value ?: return details.map { emptyList() }
         // A chapter that is a whole book, as a PDF or an EPUB the source points at, is read into words here.
         ResultParser.book(reply)?.let { book ->
+            if (!books) return SourceResult.Ok(emptyList())
             return runCatching { SourceResult.Ok(bookPages(book.url, book.headers, host.http)) }.getOrElse { problem ->
                 if (problem is CancellationException) throw problem
                 SourceResult.Err(SourceError.Parse(problem.message ?: "The book could not be read"))
@@ -175,7 +179,36 @@ class ExtensionSource private constructor(
     override suspend fun videos(chapter: SourceChapter): SourceResult<List<SourceVideo>> {
         if ("getVideos" !in methods) return SourceResult.Err(SourceError.NotImplemented("getVideos"))
         val (titleId, chapterId) = splitChapterUrl(chapter.url)
-        return call("getVideos", JsonPrimitive(titleId), JsonPrimitive(chapterId)) { ResultParser.videos(it) }
+        return resolveEmbeds(
+            call("getVideos", JsonPrimitive(titleId), JsonPrimitive(chapterId)) { ResultParser.videos(it) },
+        )
+    }
+
+    // Embed entries are player pages, a fallback for an episode with no stream of its own: a source that gave streams is left as it is. Otherwise the pages are opened in the hidden browser, a few at a time, and the ones that play become videos.
+    private suspend fun resolveEmbeds(result: SourceResult<List<SourceVideo>>): SourceResult<List<SourceVideo>> {
+        val videos = (result as? SourceResult.Ok)?.value ?: return result
+        val (pages, streams) = videos.partition { it.type == "embed" }
+        if (pages.isEmpty() || streams.isNotEmpty()) return if (pages.isEmpty()) result else SourceResult.Ok(streams)
+        val browser =
+            host.browser
+                ?: return SourceResult.Err(
+                    SourceError.Script("This episode needs the hidden browser, which is not available on this device."),
+                )
+        val resolved = coroutineScope {
+            pages
+                .take(
+                    EmbedsAtOnce,
+                ).map { page -> async { EmbedResolver.resolve(browser, page) } }
+                .awaitAll()
+                .filterNotNull()
+        }
+        AppLog.debug(info.name, "embeds: ${resolved.size} of ${pages.size} players gave a video")
+        if (resolved.isEmpty()) {
+            return SourceResult.Err(
+                SourceError.Parse("None of the ${pages.size} players gave a video."),
+            )
+        }
+        return SourceResult.Ok(resolved)
     }
 
     // Comments are not in the format yet, so the source never says it has them and the comment screens stay hidden.

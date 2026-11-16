@@ -20,9 +20,9 @@ import com.sumizuri.app.ui.controls.TvMode
 import com.sumizuri.app.ui.theme.LocalReduceMotion
 import com.sumizuri.app.ui.theme.LocalThemeSpec
 
-// Makes a piece shrink a little while it is pressed and grow a little while the pointer rests on it, by the amounts the theme sets. The piece must use the same interaction source for its clicks. A piece the remote of a TV moves to grows and gets a ring, so it is clear where the focus is.
+// Makes a piece shrink a little while it is pressed and grow a little while the pointer rests on it, by the amounts the theme sets. A wide piece, such as a row, leaves the growing out. The piece must use the same interaction source for its clicks. A piece the remote of a TV moves to grows and gets a ring, so it is clear where the focus is.
 @Composable
-fun Modifier.feedbackScale(source: MutableInteractionSource): Modifier {
+fun Modifier.feedbackScale(source: MutableInteractionSource, hover: Boolean = true): Modifier {
     val focused by source.collectIsFocusedAsState()
     val ring = MaterialTheme.colorScheme.primary
     val ringed = Modifier.drawWithContent {
@@ -41,7 +41,7 @@ fun Modifier.feedbackScale(source: MutableInteractionSource): Modifier {
             motion.pressScale
         } else if (focused && TvMode.on) {
             maxOf(motion.hoverScale, 1.06f)
-        } else if (hovered) {
+        } else if (hover && hovered) {
             motion.hoverScale
         } else {
             1f

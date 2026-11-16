@@ -21,6 +21,9 @@ object SettingKey {
     // Whether the app opens on the page it was left on. Off, it opens on the library every time.
     const val ReopenPlace = "layout.reopenPlace"
 
+    // Whether the search fields keep the searches typed in them.
+    const val SearchHistory = "search.history"
+
     // Whether a wide window shows the title page with the cover standing on the left, or with the banner across the top.
     const val TitleSplit = "layout.titleSplit"
 
@@ -92,6 +95,9 @@ object SettingKey {
     const val PageMemoryMb = "cache.pageMemoryMb"
     const val PageKeepMinutes = "cache.pageKeepMinutes"
 
+    // How many books a source pointed at are kept, so opening one again does not fetch it again.
+    const val BooksKept = "cache.booksKept"
+
     // Whether the seasons of an anime get their covers from AniList, found by the names of the seasons.
     const val AniListSeasonCovers = "cache.aniListSeasonCovers"
 
@@ -116,4 +122,5 @@ object SettingKey {
     const val DefaultImageMemoryPercent = 15
     const val DefaultPageMemoryMb = 64
     const val DefaultPageKeepMinutes = 5
+    const val DefaultBooksKept = 5
 }

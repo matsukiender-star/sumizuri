@@ -24,6 +24,7 @@ import androidx.compose.ui.window.application
 import androidx.compose.ui.window.rememberWindowState
 import com.sumizuri.app.core.AppBuild
 import com.sumizuri.app.core.log.AppLog
+import com.sumizuri.app.core.log.CrashReport
 import com.sumizuri.app.core.log.FileLogSink
 import com.sumizuri.app.data.AppContainer
 import com.sumizuri.app.data.db.databaseBuilder
@@ -101,6 +102,7 @@ fun main(args: Array<String>) {
     AppLinks.open(link)
     val sink = FileLogSink(File(folder, "logs/sumizuri.log"))
     AppLog.sink = sink
+    CrashReport.install(folder.absolutePath.toPath())
     AppLog.info("app", "desktop start, log file ${sink.file.absolutePath}")
     // A Mac does not pass a link in the arguments. It hands the link to the running app, which comes forward for it.
     if (isMac && Desktop.isDesktopSupported() && Desktop.getDesktop().isSupported(Desktop.Action.APP_OPEN_URI)) {
@@ -138,13 +140,13 @@ fun main(args: Array<String>) {
         val icon = appIcon()
         if (isMac) DockIcon(icon)
         val state = rememberWindowState(width = 1000.dp, height = 720.dp)
-        // Windows uses the app-drawn bar. macOS and Linux use the native frame.
+        // Every system uses its native frame, so Windows keeps Snap Layouts, Win+Z and the snap to the edges of the screen.
         Window(
             onCloseRequest = ::exitApplication,
             title = appName(),
             icon = icon,
             state = state,
-            undecorated = !isMac && !isLinux,
+            undecorated = AppDrawnBar,
             resizable = true,
         ) {
             val usualMinimum = remember { Dimension(MinWidth, MinHeight) }
@@ -178,7 +180,7 @@ fun main(args: Array<String>) {
                 }
             }
             // The player asks for the whole screen, and the bar of the window and its handles stay away while it has it.
-            val control = rememberScreenCover(window, state, native = isMac || isLinux)
+            val control = rememberScreenCover(window, state, native = !AppDrawnBar)
             val fullscreen = control.active
             CompositionLocalProvider(
                 LocalDensity provides appDensity,
@@ -187,7 +189,7 @@ fun main(args: Array<String>) {
             ) {
                 Box(Modifier.fillMaxSize()) {
                     App(profiles) {
-                        if (!fullscreen && !mini.active && !isMac && !isLinux) {
+                        if (!fullscreen && !mini.active && AppDrawnBar) {
                             WindowBar(
                                 maximized = maximized,
                                 onMinimize = { state.isMinimized = true },
@@ -207,7 +209,7 @@ fun main(args: Array<String>) {
                             )
                         }
                     }
-                    if (!maximized && !fullscreen && !isMac && !isLinux) ResizeHandles(window)
+                    if (!maximized && !fullscreen && AppDrawnBar) ResizeHandles(window)
                     // The small player has no bar, so a strip along its top moves the window.
                     if (mini.active) {
                         WindowDraggableArea(
@@ -220,6 +222,9 @@ fun main(args: Array<String>) {
     }
     quit(runtime)
 }
+
+// Suki: the bar drawn by the app moved the window by hand, which Windows does not take as a drag, so it never offered to snap it. Set to true to bring that bar back.
+private const val AppDrawnBar = false
 
 // How long a closed app may take to end before it is stopped.
 private const val QuitWaitMs = 20_000L

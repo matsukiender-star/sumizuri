@@ -32,6 +32,9 @@ import androidx.compose.ui.input.key.type
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalInputModeManager
 import androidx.compose.ui.text.intl.Locale
+import androidx.navigationevent.NavigationEventInfo
+import androidx.navigationevent.compose.NavigationBackHandler
+import androidx.navigationevent.compose.rememberNavigationEventState
 import coil3.compose.LocalPlatformContext
 import com.sumizuri.app.data.model.ChapterPlace
 import com.sumizuri.app.data.model.controls.ReaderAction
@@ -153,6 +156,14 @@ private fun Reader(state: ReaderState, actions: ReaderActions, translator: Novel
             pageFocus.requestFocus()
         }
     }
+    // Back folds an open panel first, and only then leaves the reader.
+    NavigationBackHandler(
+        rememberNavigationEventState(NavigationEventInfo.None),
+        isBackEnabled =
+        panel != DockPanel.None,
+    ) {
+        panel = DockPanel.None
+    }
     var auto by remember { mutableStateOf(false) }
     // The light follows the sliders at once and is saved when they are let go.
     var dim by remember(settings.dim) { mutableFloatStateOf(settings.dim) }
@@ -264,9 +275,10 @@ private fun Reader(state: ReaderState, actions: ReaderActions, translator: Novel
     LaunchedEffect(page) { actions.onActive(page) }
 
     ReaderSystemUi(settings.hideSystemBars, settings.keepScreenOn, settings.orientation)
+    val pdfDark = settings.pdfDark && restingOn?.startsWith("sumizuri-local://pdf/") == true
     val pageFilter =
-        remember(settings.grayscale, settings.invertColors, settings.sepia, settings.contrast) {
-            pageFilterOf(settings.grayscale, settings.invertColors, settings.sepia, settings.contrast)
+        remember(settings.grayscale, settings.invertColors, settings.sepia, settings.contrast, pdfDark) {
+            pageFilterOf(settings.grayscale, settings.invertColors, settings.sepia, settings.contrast, pdfDark)
         }
     CompositionLocalProvider(LocalWordLookup provides lookup, LocalPageFilter provides pageFilter) {
         // What each panel of the dock shows. Closing one, or picking a chapter in it, folds the dock back.
