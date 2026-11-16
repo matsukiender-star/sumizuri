@@ -116,6 +116,7 @@ class ReaderSettingsRepository(private val db: AppDatabase) {
         put("${Prefix}cropBorders", settings.cropBorders.toString())
         put("${Prefix}grayscale", settings.grayscale.toString())
         put("${Prefix}invertColors", settings.invertColors.toString())
+        put("${Prefix}pdfDark", settings.pdfDark.toString())
         put("${Prefix}sepia", settings.sepia.toString())
         put("${Prefix}contrast", settings.contrast.toString())
         put("${Prefix}bedtime", settings.bedtime.toString())
@@ -170,6 +171,7 @@ class ReaderSettingsRepository(private val db: AppDatabase) {
             cropBorders = rows["${Prefix}cropBorders"] == "true",
             grayscale = rows["${Prefix}grayscale"] == "true",
             invertColors = rows["${Prefix}invertColors"] == "true",
+            pdfDark = rows["${Prefix}pdfDark"] == "true",
             sepia = rows["${Prefix}sepia"]?.toFloatOrNull()?.coerceIn(0f, 1f) ?: usual.sepia,
             contrast = rows["${Prefix}contrast"]?.toFloatOrNull()?.coerceIn(0.5f, 2f) ?: usual.contrast,
             bedtime = rows["${Prefix}bedtime"] == "true",
