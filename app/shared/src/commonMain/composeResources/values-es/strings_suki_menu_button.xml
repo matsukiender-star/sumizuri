@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Text of the Suki patch for the floating menu button of the reader, kept apart so it never meets the files Weblate writes. -->
+<resources>
+    <string name="reader_menu_button">Botón de menú</string>
+</resources>
