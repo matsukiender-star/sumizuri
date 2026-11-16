@@ -67,6 +67,7 @@ import com.sumizuri.app.shared.resources.reader_keep_on
 import com.sumizuri.app.shared.resources.reader_line_height
 import com.sumizuri.app.shared.resources.reader_lookup
 import com.sumizuri.app.shared.resources.reader_orientation
+import com.sumizuri.app.shared.resources.reader_menu_button
 import com.sumizuri.app.shared.resources.reader_page_number
 import com.sumizuri.app.shared.resources.reader_page_strip
 import com.sumizuri.app.shared.resources.reader_panel_zoom
@@ -201,6 +202,13 @@ private fun GeneralPart(settings: ReaderSettings, model: GlobalReaderViewModel) 
                 Res.string.reader_page_number,
                 settings.pageNumber,
                 { on -> model.update { it.copy(pageNumber = on) } },
+            )
+        }
+        padded {
+            SwitchSetting(
+                Res.string.reader_menu_button,
+                settings.menuButton,
+                { on -> model.update { it.copy(menuButton = on) } },
             )
         }
         padded {
