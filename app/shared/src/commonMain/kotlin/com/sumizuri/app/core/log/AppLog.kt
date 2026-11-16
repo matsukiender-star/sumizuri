@@ -1,5 +1,6 @@
 package com.sumizuri.app.core.log
 
+import com.sumizuri.app.core.Lock
 import com.sumizuri.app.data.text.nowMillis
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -9,20 +10,23 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.sync.Mutex
 import kotlin.concurrent.Volatile
 
 private const val MaxLines = 2000
 
+// Debug lines have a ring of their own, so the many a check of the library writes never push out the lines worth reading.
+private const val MaxDebugLines = 1000
+
 // The pages that show the log get its lines at most this often, however fast lines are written.
 private const val PublishEveryMs = 250L
 
-// The one log of the app. It keeps the latest lines for the Logs page and hands each line to the sinks. The lines are kept in a ring that drops the oldest, and the pages that show them get a copy now and then, so writing a line costs the same whether the log is long or short.
+// The one log of the app. It keeps the latest lines for the Logs page and hands each line to the sinks. The lines are kept in rings that drop the oldest, one for debug lines and one for the rest, and the pages that show them get a copy now and then, so writing a line costs the same whether the log is long or short.
 object AppLog {
     val startedAt: Long = nowMillis()
 
     private val ring = ArrayDeque<LogEntry>(MaxLines)
-    private val lock = Mutex()
+    private val debugRing = ArrayDeque<LogEntry>(MaxDebugLines)
+    private val lock = Lock()
 
     private val mutableEntries = MutableStateFlow<List<LogEntry>>(emptyList())
     val entries: StateFlow<List<LogEntry>> = mutableEntries
@@ -72,18 +76,25 @@ object AppLog {
     }
 
     fun clear() {
-        withRing { ring.clear() }
+        withRing {
+            ring.clear()
+            debugRing.clear()
+        }
         publishNow()
         (listOf(sink) + extraSinks.value).forEach { runCatching { it.clear() } }
     }
 
-    fun text(): String = withRing { ring.toList() }.joinToString("\n") { it.line(startedAt) }
+    // The lines as text, only the last ones when a number is given.
+    fun text(last: Int = MaxLines + MaxDebugLines): String =
+        withRing { merged().takeLast(last) }.joinToString("\n") { it.line(startedAt) }
 
     private fun add(level: LogLevel, tag: String, message: String) {
-        val entry = LogEntry(nowMillis(), level, tag, message)
+        val entry = LogEntry(nowMillis(), level, tag, message.redacted())
         withRing {
-            if (ring.size >= MaxLines) ring.removeFirst()
-            ring.addLast(entry)
+            val debug = level == LogLevel.Debug
+            val into = if (debug) debugRing else ring
+            if (into.size >= if (debug) MaxDebugLines else MaxLines) into.removeFirst()
+            into.addLast(entry)
         }
         schedulePublish()
         val line = entry.line(startedAt)
@@ -92,18 +103,23 @@ object AppLog {
         for (extra in extraSinks.value) runCatching { extra.write(entry, line) }
     }
 
-    // The ring is only touched under the lock. Lines come from many threads, and a short spin on the lock is cheaper than a copy of the whole log.
-    private inline fun <T> withRing(block: () -> T): T {
-        while (!lock.tryLock()) { /* spin */ }
-        try {
-            return block()
-        } finally {
-            lock.unlock()
-        }
-    }
+    // The ring is only touched under the lock, since lines come from many threads. A thread that waits sleeps instead of spinning, and the thread that holds the lock may take it again, as a crash report does.
+    private fun <T> withRing(block: () -> T): T = lock.withLock(block)
 
     private fun publishNow() {
-        mutableEntries.value = withRing { ring.toList() }
+        mutableEntries.value = withRing { merged() }
+    }
+
+    // Both rings as one list in the order the lines were written. Each ring is in order already, so they are woven together in one pass.
+    private fun merged(): List<LogEntry> {
+        val out = ArrayList<LogEntry>(ring.size + debugRing.size)
+        var a = 0
+        var b = 0
+        while (a < ring.size || b < debugRing.size) {
+            val fromRing = b >= debugRing.size || (a < ring.size && ring[a].time <= debugRing[b].time)
+            out += if (fromRing) ring[a++] else debugRing[b++]
+        }
+        return out
     }
 
     // Gives the pages a copy soon, once for all the lines written meanwhile.

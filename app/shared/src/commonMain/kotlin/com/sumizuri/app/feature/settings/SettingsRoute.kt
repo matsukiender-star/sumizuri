@@ -14,6 +14,9 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigationevent.NavigationEventInfo
+import androidx.navigationevent.compose.NavigationBackHandler
+import androidx.navigationevent.compose.rememberNavigationEventState
 import com.sumizuri.app.data.LocalAppContainer
 import com.sumizuri.app.data.model.library.LibraryPrefs
 import com.sumizuri.app.feature.backup.BackupRoute
@@ -24,6 +27,7 @@ import com.sumizuri.app.feature.migration.MigrationRoute
 import com.sumizuri.app.feature.migration.single.MigrateRoute
 import com.sumizuri.app.feature.settings.controls.ControlsPage
 import com.sumizuri.app.feature.settings.controls.ControlsRoute
+import com.sumizuri.app.feature.share.ImportRoute
 import com.sumizuri.app.feature.theme.ThemeViewModel
 import com.sumizuri.app.shared.resources.Res
 import com.sumizuri.app.shared.resources.settings_language_system
@@ -94,6 +98,11 @@ fun SettingsRoute(
             paneModel.entries = pane + entry
         }
         val back = { paneModel.entries = pane.dropLast(1) }
+        // Back closes the pages beside the list one at a time, and the settings only when one is left.
+        NavigationBackHandler(
+            rememberNavigationEventState(NavigationEventInfo.None),
+            isBackEnabled = pane.size > 1,
+        ) { back() }
         val top = pane.lastOrNull() ?: PaneEntry.Target(SettingsTarget.Appearance)
         val selected = when (val first = pane.firstOrNull() ?: top) {
             is PaneEntry.Target -> first.target
@@ -133,6 +142,11 @@ fun SettingsRoute(
                             ) { ids -> push(PaneEntry.Migration(ids)) }
 
                             SettingsTarget.Logs -> LogsRoute(onBack = back)
+
+                            SettingsTarget.Import -> {
+                                val backup = { push(PaneEntry.Target(SettingsTarget.Backup)) }
+                                ImportRoute(back, backup, backup)
+                            }
 
                             SettingsTarget.Migration -> MigrationRoute(
                                 emptyList(),

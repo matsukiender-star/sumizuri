@@ -65,7 +65,6 @@ import com.sumizuri.app.feature.settings.SettingsViewModel
 import com.sumizuri.app.feature.settings.controls.ControlsViewModel
 import com.sumizuri.app.feature.settings.system.perfDetails
 import com.sumizuri.app.feature.sync.HandoffNotice
-import com.sumizuri.app.feature.theme.ThemeLinkDialog
 import com.sumizuri.app.feature.theme.ThemeViewModel
 import com.sumizuri.app.navigation.AppLinks
 import com.sumizuri.app.navigation.Destination
@@ -78,6 +77,7 @@ import com.sumizuri.app.navigation.PageStack
 import com.sumizuri.app.navigation.ShortcutActions
 import com.sumizuri.app.navigation.ShortcutsDialog
 import com.sumizuri.app.navigation.bar.NavAvatar
+import com.sumizuri.app.navigation.rememberBackInput
 import com.sumizuri.app.navigation.runShortcut
 import com.sumizuri.app.ui.UiRefreshRate
 import com.sumizuri.app.ui.controls.LocalAppGestures
@@ -86,6 +86,7 @@ import com.sumizuri.app.ui.controls.appShortcuts
 import com.sumizuri.app.ui.kit.cover.CoverFlight
 import com.sumizuri.app.ui.kit.cover.CoverFlightLayer
 import com.sumizuri.app.ui.kit.cover.LocalCoverFlight
+import com.sumizuri.app.data.local.FetchedBooks
 import com.sumizuri.app.ui.kit.image.PageCache
 import com.sumizuri.app.ui.kit.image.PageImages
 import com.sumizuri.app.ui.kit.image.coverImageLoader
@@ -139,6 +140,7 @@ private fun AppContent(container: AppContainer, windowBar: (@Composable () -> Un
     val imageMemoryPercent by settings.imageMemoryPercent.collectAsStateWithLifecycle()
     val pageMemoryMb by settings.pageMemoryMb.collectAsStateWithLifecycle()
     val pageKeepMinutes by settings.pageKeepMinutes.collectAsStateWithLifecycle()
+    val booksKept by settings.booksKept.collectAsStateWithLifecycle()
     // The loader is made again when a size of the cache changes, and the one it replaces is shut down so it lets go of its files and memory.
     val loader = remember(container, imageDiskMb, imageMemoryPercent) { coverImageLoader(context, container.manager.images, imageDiskMb, imageMemoryPercent).also { SingletonImageLoader.setUnsafe(it) } }
     DisposableEffect(loader) { onDispose { loader.shutdown() } }
@@ -150,6 +152,7 @@ private fun AppContent(container: AppContainer, windowBar: (@Composable () -> Un
         }
     }
     LaunchedEffect(pageMemoryMb, pageKeepMinutes) { PageCache.configure(pageMemoryMb * 1024L * 1024L, pageKeepMinutes * 60_000L) }
+    LaunchedEffect(booksKept) { FetchedBooks.kept = booksKept }
 
     AppBackgroundWork(container, loader)
     val perfOverlay by remember(container) { container.settings.flag(SettingKey.PerfOverlay, false) }.collectAsStateWithLifecycle(false)
@@ -243,8 +246,6 @@ private fun AppContent(container: AppContainer, windowBar: (@Composable () -> Un
                 }
             }
 
-            // A link with a theme in it asks whether to add that theme.
-            val sharedTheme by AppLinks.sharedTheme.collectAsStateWithLifecycle()
 
             // Back closes the top page, and on a tab other than the library it goes to the library first. A back gesture of the system moves the top page with the finger, and one given up lets the page slide back.
             val backState = rememberNavigationEventState(NavigationEventInfo.None)
@@ -261,10 +262,12 @@ private fun AppContent(container: AppContainer, windowBar: (@Composable () -> Un
                 if (place.restored && place.tab !in tabs) navigation.select(Destination.Library)
             }
             var shortcutsOpen by remember { mutableStateOf(false) }
+            val backInput = rememberBackInput()
             val actions = ShortcutActions(
                 refreshLibrary = { scope.launch { container.sync.refreshLibrary() } },
                 scrollToTop = { scope.launch { ScrollTops.toTop() } },
                 showShortcuts = { shortcutsOpen = true },
+                goBack = backInput::back,
             )
             val onShortcut: (AppShortcut) -> Boolean = { shortcut -> runShortcut(shortcut, place, navigation, tabs, actions) }
             // A second tap on the tab that is open does what the person chose for it.
@@ -355,7 +358,6 @@ private fun AppContent(container: AppContainer, windowBar: (@Composable () -> Un
                     }
                     }
                     if (locked == false && shortcutsOpen) ShortcutsDialog(gestures) { shortcutsOpen = false }
-                    if (locked == false) sharedTheme?.let { ThemeLinkDialog(it, AppLinks::themeTaken) }
                 }
             }
         }
