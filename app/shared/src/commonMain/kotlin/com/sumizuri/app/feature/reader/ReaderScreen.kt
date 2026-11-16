@@ -20,6 +20,17 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshots.Snapshot
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusDirection
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.input.InputMode
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalInputModeManager
 import androidx.compose.ui.text.intl.Locale
 import androidx.navigationevent.NavigationEventInfo
 import androidx.navigationevent.compose.NavigationBackHandler
@@ -113,6 +124,9 @@ private const val AutoStep = 20
 private const val AutoMin = 20
 private const val AutoMax = 600
 
+// How long the controls take to be laid out before the focus can step into them.
+private const val ControlsFocusDelayMs = 150L
+
 @Composable
 private fun Reader(state: ReaderState, actions: ReaderActions, translator: NovelTranslator?) {
     val settings = state.settings
@@ -129,6 +143,19 @@ private fun Reader(state: ReaderState, actions: ReaderActions, translator: Novel
         panel = which
     }
     LaunchedEffect(controls) { if (!controls) panel = DockPanel.None }
+    // With the remote of a TV the focus steps into the controls when they show and back to the page when they go, so the arrows move between the buttons or turn the pages.
+    val pageFocus = remember { FocusRequester() }
+    val focusManager = LocalFocusManager.current
+    val inputMode = LocalInputModeManager.current
+    LaunchedEffect(controls) {
+        if (inputMode.inputMode != InputMode.Keyboard) return@LaunchedEffect
+        if (controls) {
+            delay(ControlsFocusDelayMs)
+            focusManager.moveFocus(FocusDirection.Next)
+        } else {
+            pageFocus.requestFocus()
+        }
+    }
     // Back folds an open panel first, and only then leaves the reader.
     NavigationBackHandler(
         rememberNavigationEventState(NavigationEventInfo.None),
@@ -302,7 +329,12 @@ private fun Reader(state: ReaderState, actions: ReaderActions, translator: Novel
         val aside = isWideWindow() && controls && panel.goesAside()
         AsideCard(
             aside,
-            Modifier.fillMaxSize().background(settings.background.fill()),
+            Modifier.fillMaxSize().background(settings.background.fill()).onPreviewKeyEvent { event ->
+                // The back key of a remote hides the controls before it leaves the chapter.
+                if (event.key != Key.Back || !controls) return@onPreviewKeyEvent false
+                if (event.type == KeyEventType.KeyUp) controls = false
+                true
+            },
             panel = {
                 ReaderAside(panel, bar, settings.mode, actions.onDefaultMode, actions.onMode, { newDim, newWarmth ->
                     dim = newDim
@@ -313,7 +345,7 @@ private fun Reader(state: ReaderState, actions: ReaderActions, translator: Novel
             BoxWithConstraints(Modifier.fillMaxSize()) {
                 // A new chapter, mode, or page pairing starts the viewer at the right place and takes the zoom off.
                 key(rootChapterId, state.mode, settings.dual) {
-                    Box(Modifier.fillMaxSize().pinchZoom()) {
+                    Box(Modifier.fillMaxSize().focusRequester(pageFocus).pinchZoom()) {
                         when {
                             state.mode == ReaderMode.Continuous -> ContinuousReader(
                                 state,

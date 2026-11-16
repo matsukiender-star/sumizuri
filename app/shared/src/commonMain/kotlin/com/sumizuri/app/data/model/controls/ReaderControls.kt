@@ -104,7 +104,7 @@ data class ReaderControls(
             PageLeft to listOf(KeyChord("Left")),
             ScrollDown to listOf(KeyChord("Down")),
             ScrollUp to listOf(KeyChord("Up")),
-            ToggleControls to listOf(KeyChord("Escape")),
+            ToggleControls to listOf(KeyChord("Escape"), KeyChord("Center")),
             NextChapter to emptyList(),
             PreviousChapter to emptyList(),
             OpenSettings to emptyList(),

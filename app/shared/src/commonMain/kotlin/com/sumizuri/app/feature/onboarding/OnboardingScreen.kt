@@ -9,6 +9,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -28,11 +29,16 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusProperties
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -55,12 +61,16 @@ import com.sumizuri.app.ui.kit.art.QuietButton
 import com.sumizuri.app.ui.kit.art.StretchDot
 import com.sumizuri.app.ui.kit.art.rise
 import com.sumizuri.app.ui.theme.background.ambientBackground
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.stringResource
 
 // The steps are never wider than this, so they read well on a wide window too.
 private val ContentWidth = 640.dp
+
+// How long a step takes to come in before the focus can go to its buttons.
+private const val StepFocusDelayMs = 400L
 
 // The first steps after installing, over the whole app: a welcome, the look, the profile, a backup to bring, how to read, new chapters, and the end. It stays until the person finishes or skips it, and the library it leaves them on is behind it all along.
 @Composable
@@ -92,10 +102,22 @@ internal fun OnboardingScreen(onMigrate: (List<Long>) -> Unit, modifier: Modifie
         model.next()
     }
     // Stands in the way of every touch, so nothing reaches the app under it while it shows. It only listens and takes none of them, since taking them would also cancel a press on a button of its own whenever the pointer or the page moved during it.
+    // The focus of a TV remote is kept inside the steps too, so the arrows never wander to the library behind.
+    val trap = remember { FocusRequester() }
+    // Each step brings new buttons and the old one with the focus goes, so the focus is taken back once the step has come in.
+    LaunchedEffect(state.step) {
+        delay(StepFocusDelayMs)
+        trap.requestFocus()
+    }
     Box(
-        modifier.fillMaxSize().ambientBackground().pointerInput(Unit) {
-            awaitPointerEventScope { while (true) awaitPointerEvent() }
-        },
+        modifier
+            .fillMaxSize()
+            .ambientBackground()
+            .pointerInput(Unit) {
+                awaitPointerEventScope { while (true) awaitPointerEvent() }
+            }.focusRequester(trap)
+            .focusProperties { onExit = { cancelFocusChange() } }
+            .focusGroup(),
     ) {
         Column(
             Modifier

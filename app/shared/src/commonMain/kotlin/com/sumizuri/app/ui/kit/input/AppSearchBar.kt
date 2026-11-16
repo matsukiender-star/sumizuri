@@ -114,13 +114,11 @@ fun AppSearchBar(
                     textStyle = MaterialTheme.typography.bodyMedium.copy(color = MaterialTheme.colorScheme.onSurface),
                     cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
                     // A field that keeps its searches keeps one at once when the search key is pressed.
-                    keyboardOptions = if (history ==
-                        null
-                    ) {
-                        KeyboardOptions.Default
-                    } else {
-                        KeyboardOptions(imeAction = ImeAction.Search)
-                    },
+                    // Passing over the bar with the remote of a TV does not open the keyboard, only OK or a touch does.
+                    keyboardOptions = KeyboardOptions(
+                        imeAction = if (history == null) ImeAction.Default else ImeAction.Search,
+                        showKeyboardOnFocus = false,
+                    ),
                     keyboardActions = KeyboardActions(onSearch = { history?.keep(text) }),
                     decorationBox = { field ->
                         Box(contentAlignment = Alignment.CenterStart) {
