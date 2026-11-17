@@ -60,4 +60,6 @@ data class ReaderSettings(
     val bedtimeTo: Int = 7,
     val bedtimeWarmth: Float = 0.6f,
     val bedtimeDim: Float = 0.25f,
+    // Suki: a round button in a corner that brings out the controls, for people who do not find where to tap.
+    val menuButton: Boolean = true,
 )
