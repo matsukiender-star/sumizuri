@@ -14,6 +14,10 @@ defaults:
   run:
     shell: bash
 
+# The key of TMDB, from the secrets of the repo, for the wide pictures of films and series on the TV home. A build without it leaves TMDB out.
+env:
+  TMDB_KEY: ${{ secrets.TMDB_KEY }}
+
 jobs:
   start:
     name: Start Suki release
