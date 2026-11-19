@@ -30,6 +30,10 @@ fun ReaderFont.family(): FontFamily? = when (this) {
         Font(Res.font.opendyslexic_italic, FontWeight.Normal, FontStyle.Italic),
         Font(Res.font.opendyslexic_bold_italic, FontWeight.Bold, FontStyle.Italic),
     )
+
+    ReaderFont.Serif -> FontFamily.Serif
+
+    ReaderFont.Sans -> FontFamily.SansSerif
 }
 
 // How the words of a chapter are set, from the choices of the reader.
