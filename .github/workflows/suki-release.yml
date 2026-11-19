@@ -15,8 +15,12 @@ defaults:
     shell: bash
 
 # The key of TMDB, from the secrets of the repo, for the wide pictures of films and series on the TV home. A build without it leaves TMDB out.
+# The client ids of the Sumizuri Suki apps on AniList, MyAnimeList and MangaBaka; without them that sign-in is off.
 env:
   TMDB_KEY: ${{ secrets.TMDB_KEY }}
+  ANILIST_CLIENT_ID: ${{ secrets.ANILIST_CLIENT_ID }}
+  MAL_CLIENT_ID: ${{ secrets.MAL_CLIENT_ID }}
+  MANGABAKA_CLIENT_ID: ${{ secrets.MANGABAKA_CLIENT_ID }}
 
 jobs:
   start:
