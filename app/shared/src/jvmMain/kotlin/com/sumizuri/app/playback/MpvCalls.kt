@@ -8,6 +8,8 @@ import java.util.Locale
 // How mpv plays inside the app: drawn by the app, with no window, keys or scripts of its own, kept open at the end so the last frame stays, and a little louder at most than usual. It keeps about five minutes of a stream ahead and a minute behind, where its own default holds 200 MB.
 internal val MpvPlayOptions: List<Pair<String, String>> = listOf(
     "vo" to "libmpv",
+    // The name the sound mixer of the system shows for the player, which is mpv otherwise.
+    "audio-client-name" to "Sumizuri",
     "hwdec" to "auto-copy-safe",
     "terminal" to "no",
     "config" to "no",
