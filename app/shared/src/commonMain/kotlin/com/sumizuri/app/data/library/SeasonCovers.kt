@@ -131,7 +131,7 @@ class SeasonCovers(private val folder: Path) {
         val queries = names.associateWith(::seasonQueries)
         val asked = queries.values.flatten().distinct()
         val fields = asked.indices.joinToString(" ") {
-            "a$it: Page(perPage: 3) { media(search: \$s$it, type: ANIME) { title { romaji english native } synonyms coverImage { extraLarge large } } }"
+            "a$it: Page(perPage: 3) { media(search: \$s$it, type: ANIME, isAdult: false) { title { romaji english native } synonyms coverImage { extraLarge large } } }"
         }
         val params = asked.indices.joinToString(", ") { "\$s$it: String" }
         val body = buildJsonObject {
