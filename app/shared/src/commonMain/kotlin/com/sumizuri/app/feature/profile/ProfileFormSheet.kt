@@ -41,6 +41,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.sumizuri.app.data.profile.Profile
+import com.sumizuri.app.data.profile.TrashDays
 import com.sumizuri.app.data.text.monthYearText
 import com.sumizuri.app.shared.resources.Res
 import com.sumizuri.app.shared.resources.profile_change_photo
@@ -48,7 +49,6 @@ import com.sumizuri.app.shared.resources.profile_create
 import com.sumizuri.app.shared.resources.profile_create_failed
 import com.sumizuri.app.shared.resources.profile_created_on
 import com.sumizuri.app.shared.resources.profile_delete
-import com.sumizuri.app.shared.resources.profile_delete_message
 import com.sumizuri.app.shared.resources.profile_delete_switch_first
 import com.sumizuri.app.shared.resources.profile_delete_title
 import com.sumizuri.app.shared.resources.profile_deleting
@@ -60,6 +60,7 @@ import com.sumizuri.app.shared.resources.profile_new_hint
 import com.sumizuri.app.shared.resources.profile_photo_failed
 import com.sumizuri.app.shared.resources.profile_remove_photo
 import com.sumizuri.app.shared.resources.profile_save
+import com.sumizuri.app.shared.resources.suki_trash_delete_message
 import com.sumizuri.app.ui.kit.art.InkButton
 import com.sumizuri.app.ui.kit.art.InkCircularProgressIndicator
 import com.sumizuri.app.ui.kit.card.AppListRow
@@ -270,7 +271,7 @@ internal fun ProfileFormSheet(profile: Profile?, isActive: Boolean, calls: Profi
         AppDialog(
             onDismissRequest = { confirming = false },
             title = { Text(stringResource(Res.string.profile_delete_title, profile.name)) },
-            text = { Text(stringResource(Res.string.profile_delete_message)) },
+            text = { Text(stringResource(Res.string.suki_trash_delete_message, TrashDays)) },
             confirmButton = {
                 InkButton({
                     confirming = false
