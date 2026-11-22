@@ -5,6 +5,7 @@ import com.sumizuri.app.data.model.Status
 import com.sumizuri.app.data.model.library.LibraryPrefs
 import com.sumizuri.app.data.model.library.LibrarySection
 import com.sumizuri.app.data.model.library.SortRule
+import com.sumizuri.app.feature.library.top.LibraryTab
 
 // Everything the library page can ask for, so the page is given one thing and not twenty.
 internal class LibraryCalls(
@@ -42,9 +43,21 @@ internal class LibraryCalls(
     val onSearchSources: (String) -> Unit,
     // Opens the chapter a title goes on from, as its continue button would.
     val onContinue: (Long) -> Unit,
+    val onSelectShelf: (Long?) -> Unit,
+    val onOpenLive: () -> Unit,
 ) {
     // Opens one shelf, or all the titles for null.
-    fun onShelf(id: Long?) = onPrefs { it.copy(category = id) }
+    fun onShelf(id: Long?) = onSelectShelf(id)
+
+    fun onTab(tab: LibraryTab) {
+        when (tab) {
+            LibraryTab.All -> onSelectShelf(null)
+            is LibraryTab.ByKind -> onKind(tab.kind)
+            LibraryTab.Uncategorized -> onSelectShelf(UncategorizedShelf)
+            is LibraryTab.Shelf -> onSelectShelf(tab.id)
+            LibraryTab.Live -> onOpenLive()
+        }
+    }
 }
 
 // What can be done to the picked titles of the library.

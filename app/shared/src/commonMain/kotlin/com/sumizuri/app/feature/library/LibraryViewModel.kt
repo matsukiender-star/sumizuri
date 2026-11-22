@@ -219,8 +219,8 @@ class LibraryViewModel(
     }
 
     private fun build(now: Shown, besides: Around, typed: Look): LibraryState {
-        // Only the shelves made for the open kind show, with the ones for every kind.
-        val categories = now.categories.forKind(typed.kind)
+        // Keep all shelves visible in the unified bar so switching from a kind tab to any shelf works directly.
+        val categories = now.categories
         val prefs = now.prefs.settled(categories)
         val entries = now.entries
         val rule = effectiveRule(prefs, typed.kind, categories.firstOrNull { it.id == prefs.category })
@@ -282,9 +282,16 @@ class LibraryViewModel(
         look.update { it.copy(kind = value) }
         viewModelScope.launch {
             session.setLibraryKind(value?.code)
-            // A shelf of another kind that was open falls back to one this kind has.
-            val visible = shelves.categories.first().forKind(value)
-            prefsRepository.update { it.settled(visible) }
+            prefsRepository.update { it.copy(category = null) }
+        }
+    }
+
+    // Selecting a shelf clears the kind filter so the shelf shows all titles matching its rules.
+    fun onSelectShelf(id: Long?) {
+        look.update { it.copy(kind = null) }
+        viewModelScope.launch {
+            session.setLibraryKind(null)
+            prefsRepository.update { it.copy(category = id) }
         }
     }
 

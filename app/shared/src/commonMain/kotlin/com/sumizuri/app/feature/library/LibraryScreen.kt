@@ -69,7 +69,8 @@ import com.sumizuri.app.feature.library.top.SearchSourcesRow
 import com.sumizuri.app.feature.library.top.ShelfTabs
 import com.sumizuri.app.feature.library.top.ShelvesDialog
 import com.sumizuri.app.feature.library.top.UpdateFailuresSheet
-import com.sumizuri.app.feature.library.top.shelfOrder
+import com.sumizuri.app.feature.library.top.activeTab
+import com.sumizuri.app.feature.library.top.swipeOrder
 import com.sumizuri.app.feature.library.top.swipeShelves
 import com.sumizuri.app.navigation.LocalTabShown
 import com.sumizuri.app.shared.resources.Res
@@ -111,7 +112,7 @@ private enum class Window { None, Sort, Display, Failures, Shelves, Remove }
 // The library. A bar on top, which becomes the bar of the picked titles. Under it the notes about titles that cannot be reached, the search, the shelves as tabs, a row of chips for the order, the kinds and the filters, the titles read last, and the covers. Pulling the page down checks the library for new chapters, and a swipe sideways changes the shelf.
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-internal fun LibraryScreen(state: LibraryState, calls: LibraryCalls) {
+internal fun LibraryScreen(state: LibraryState, calls: LibraryCalls, showLive: Boolean) {
     val gestures = LocalAppGestures.current
     var window by remember { mutableStateOf(Window.None) }
     val prefs = state.prefs
@@ -213,17 +214,19 @@ internal fun LibraryScreen(state: LibraryState, calls: LibraryCalls) {
         PullRefresh(state.progress != null, { if (!state.selecting) calls.onUpdate() }, Modifier.weight(1f)) {
             Box(
                 Modifier.fillMaxSize().swipeShelves(
-                    state.shelfOrder(),
-                    prefs.category,
+                    state.swipeOrder(),
+                    state.activeTab(),
                     !state.selecting,
-                    calls::onShelf,
+                    calls::onTab,
                 ),
             ) {
                 PreloadCovers(gridState, state.titles)
                 PageGrid(maxCell = prefs.cellWidth.dp, state = gridState, gap = prefs.gridGap.dp) {
                     val rows = !prefs.style.isGrid
                     fullSpan {
-                        LibraryHeader(state, calls, showSearch, onSort = { window = Window.Sort }, onFailures = {
+                        LibraryHeader(state, calls, showSearch, showLive, onSort = {
+                            window = Window.Sort
+                        }, onFailures = {
                             window =
                                 Window.Failures
                         })

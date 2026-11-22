@@ -46,6 +46,8 @@ internal fun AppTab(tab: Destination, tabs: List<Destination>, navigation: Navig
             onOpenMissing = { navigation.push(Page.SettingsPage(SettingsTarget.MissingSources)) },
             onOpenDownloads = { navigation.push(Page.SettingsPage(SettingsTarget.Downloads)) },
             onSearchSources = { navigation.push(Page.GlobalSearch(it)) },
+            showLive = Destination.Live in tabs,
+            onOpenLive = { navigation.select(Destination.Live) },
         )
 
         Destination.Updates -> UpdatesRoute({
