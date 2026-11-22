@@ -47,6 +47,7 @@ import com.sumizuri.app.core.perf.PerfWatch
 import com.sumizuri.app.core.perf.reportActivity
 import com.sumizuri.app.data.AppContainer
 import com.sumizuri.app.data.LocalAppContainer
+import com.sumizuri.app.data.live.ShowLiveTabKey
 import com.sumizuri.app.data.model.Kind
 import com.sumizuri.app.data.model.controls.AppShortcut
 import com.sumizuri.app.data.model.controls.NavDoubleTapAction
@@ -60,6 +61,7 @@ import com.sumizuri.app.data.text.nowMillis
 import com.sumizuri.app.feature.appupdate.AppUpdateNotices
 import com.sumizuri.app.feature.library.continueChapterOf
 import com.sumizuri.app.feature.onboarding.OnboardingScreen
+import com.sumizuri.app.feature.profile.StartupProfileGate
 import com.sumizuri.app.feature.settings.SettingsTarget
 import com.sumizuri.app.feature.settings.SettingsViewModel
 import com.sumizuri.app.feature.settings.controls.ControlsViewModel
@@ -121,13 +123,15 @@ private const val DoubleTapMs = 400L
 @Composable
 fun App(profiles: ProfileHost, requestedTab: Destination? = null, onTabOpened: () -> Unit = {}, windowBar: (@Composable () -> Unit)? = null) {
     val container by profiles.container.collectAsStateWithLifecycle()
-    // Each profile has its own screens, so a switch starts them again from nothing, with a place of their own to keep their view models in.
-    val owner = remember(container) { ProfileStoreOwner() }
-    DisposableEffect(owner) { onDispose { owner.viewModelStore.clear() } }
-    key(container) {
-        CompositionLocalProvider(LocalViewModelStoreOwner provides owner, LocalProfiles provides profiles) {
-            UiRefreshRate()
-            AppContent(container, windowBar, requestedTab, onTabOpened)
+    StartupProfileGate(profiles, container, windowBar) {
+        // Each profile has its own screens, so a switch starts them again from nothing, with a place of their own to keep their view models in.
+        val owner = remember(container) { ProfileStoreOwner() }
+        DisposableEffect(owner) { onDispose { owner.viewModelStore.clear() } }
+        key(container) {
+            CompositionLocalProvider(LocalViewModelStoreOwner provides owner, LocalProfiles provides profiles) {
+                UiRefreshRate()
+                AppContent(container, windowBar, requestedTab, onTabOpened)
+            }
         }
     }
 }
@@ -270,8 +274,9 @@ private fun AppContent(container: AppContainer, windowBar: (@Composable () -> Un
 
             val scope = rememberCoroutineScope()
             val libraryPrefs by container.libraryPrefs.prefs.collectAsStateWithLifecycle(LibraryPrefs())
-            // The updates and the history are tabs unless the person folded them into the library.
-            val tabs = Destination.entries.filter { (it != Destination.Updates || libraryPrefs.showUpdatesTab) && (it != Destination.History || libraryPrefs.showHistoryTab) }
+            val showLiveTab by remember(container) { container.settings.flag(ShowLiveTabKey, true) }.collectAsStateWithLifecycle(true)
+            // The updates, history and live tabs can be hidden in settings.
+            val tabs = Destination.entries.filter { (it != Destination.Updates || libraryPrefs.showUpdatesTab) && (it != Destination.History || libraryPrefs.showHistoryTab) && (it != Destination.Live || showLiveTab) }
             LaunchedEffect(tabs, place.tab, place.restored) {
                 if (place.restored && place.tab !in tabs) navigation.select(Destination.Library)
             }

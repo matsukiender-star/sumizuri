@@ -8,6 +8,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -33,8 +34,10 @@ fun ProfileAvatar(name: String, avatar: String?, size: Dp, modifier: Modifier = 
             fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.onPrimaryContainer,
         )
+        val preset = remember(avatar) { presetAvatarOf(avatar) }
         when {
             chosen != null -> Image(chosen, null, Modifier.size(size), contentScale = ContentScale.Crop)
+            preset != null -> PresetAvatarBadge(preset, size)
             avatar != null -> AsyncImage(avatar.toPath(), null, Modifier.size(size), contentScale = ContentScale.Crop)
         }
     }

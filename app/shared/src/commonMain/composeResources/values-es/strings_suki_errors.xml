@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="suki_err_challenge_title">Verificación requerida</string>
+    <string name="suki_err_challenge_hint">El sitio pidió comprobar que no eres un bot. Ábrelo para resolver el reto y vuelve a intentar.</string>
+    <string name="suki_err_network_title">Sin conexión</string>
+    <string name="suki_err_network_hint">No se pudo conectar con el sitio. Revisa tu internet e intenta de nuevo.</string>
+    <string name="suki_err_timeout_title">Tardó demasiado</string>
+    <string name="suki_err_timeout_hint">El sitio tardó demasiado en responder. Intenta de nuevo en un momento.</string>
+    <string name="suki_err_http_title">Error del sitio</string>
+    <string name="suki_err_http_hint">El servidor no pudo completar la petición en este momento.</string>
+    <string name="suki_err_generic_title">No se pudo cargar</string>
+    <string name="suki_err_generic_hint">La fuente devolvió un error inesperado. Puedes reintentar o copiar el detalle técnico.</string>
+    <string name="suki_err_show_details">Ver detalle técnico</string>
+    <string name="suki_err_hide_details">Ocultar detalle técnico</string>
+    <string name="suki_err_copy_details">Copiar detalle</string>
+    <string name="suki_err_copied">Copiado</string>
+</resources>

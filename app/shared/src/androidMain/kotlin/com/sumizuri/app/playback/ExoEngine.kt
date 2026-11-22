@@ -58,6 +58,12 @@ class ExoEngine(context: Context) : PlayerEngine {
     // Where each track id the screen sees is in the tracks of the player: the group and the place in it.
     private var places = emptyMap<String, Pair<Tracks.Group, Int>>()
 
+    // Last opened media and retry guard for HLS streams served without an .m3u8 extension or explicit type.
+    private var currentMedia: PlayerMedia? = null
+    private var currentStartMs: Long = 0L
+    private var currentPlay: Boolean = true
+    private var retriedAsHls: Boolean = false
+
     init {
         exo.addListener(
             object : Player.Listener {
@@ -71,13 +77,28 @@ class ExoEngine(context: Context) : PlayerEngine {
 
                 override fun onTracksChanged(tracks: Tracks) = readTracks(tracks)
 
-                override fun onPlayerError(error: PlaybackException) = mutable.update {
-                    it.copy(
-                        problem = PlayerProblem.Failed,
-                        message = listOfNotNull(error.errorCodeName, error.message).joinToString(": "),
-                        buffering = false,
-                        playing = false,
-                    )
+                override fun onPlayerError(error: PlaybackException) {
+                    val media = currentMedia
+                    if (
+                        error.errorCode == PlaybackException.ERROR_CODE_PARSING_CONTAINER_UNSUPPORTED &&
+                        !retriedAsHls &&
+                        media != null &&
+                        media.type != "hls"
+                    ) {
+                        retriedAsHls = true
+                        val resumeAt = exo.currentPosition.takeIf { it > 0L } ?: currentStartMs
+                        val shouldPlay = exo.playWhenReady || currentPlay
+                        prepareMedia(media, resumeAt, shouldPlay, forceHls = true)
+                        return
+                    }
+                    mutable.update {
+                        it.copy(
+                            problem = PlayerProblem.Failed,
+                            message = listOfNotNull(error.errorCodeName, error.message).joinToString(": "),
+                            buffering = false,
+                            playing = false,
+                        )
+                    }
                 }
             },
         )
@@ -90,6 +111,14 @@ class ExoEngine(context: Context) : PlayerEngine {
     }
 
     override fun open(media: PlayerMedia, startMs: Long, play: Boolean) {
+        currentMedia = media
+        currentStartMs = startMs
+        currentPlay = play
+        retriedAsHls = false
+        prepareMedia(media, startMs, play, forceHls = media.type == "hls")
+    }
+
+    private fun prepareMedia(media: PlayerMedia, startMs: Long, play: Boolean, forceHls: Boolean) {
         // Sites go through OkHttp with their headers, and a saved episode is read from its files.
         val factory = DefaultDataSource.Factory(
             appContext,
@@ -105,12 +134,12 @@ class ExoEngine(context: Context) : PlayerEngine {
                 .setId(track.id)
                 .build()
         }
-        // A playlist at an address that does not end in m3u8 is not found out by the address, so the source's word is used.
+        // A playlist at an address that does not end in m3u8 is not found out by the address, so force HLS when told or retrying.
         val item = MediaItem
             .Builder()
             .setUri(media.url)
             .setSubtitleConfigurations(subtitles)
-            .apply { if (media.type == "hls") setMimeType(MimeTypes.APPLICATION_M3U8) }
+            .apply { if (forceHls) setMimeType(MimeTypes.APPLICATION_M3U8) }
             .build()
         mutable.update { PlayerState(speed = it.speed, volume = it.volume) }
         val sources = DefaultMediaSourceFactory(factory)

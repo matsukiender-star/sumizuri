@@ -54,7 +54,7 @@ data class PlayerPrefs(
     companion object {
         val DoubleTapSteps = listOf(5, 10, 15, 20, 30, 60)
         val SkipSteps = listOf(30, 60, 75, 85, 90, 120)
-        val HideSteps = listOf(0, 2, 3, 5, 8, 15)
+        val HideSteps = listOf(0, 1, 2, 3, 5, 8, 15)
         val Speeds = listOf(0.5f, 0.75f, 1f, 1.25f, 1.5f, 1.75f, 2f, 2.5f, 3f)
         val HoldSpeeds = listOf(1f, 1.5f, 2f, 3f)
         val WatchedAt = listOf(70, 80, 90, 95, 100)

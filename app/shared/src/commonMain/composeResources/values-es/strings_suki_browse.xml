@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="suki_preview_loading">Cargando detalles…</string>
+    <string name="suki_preview_no_summary">Sin resumen disponible.</string>
+    <string name="suki_preview_add">Agregar a la biblioteca</string>
+    <string name="suki_preview_saved">En la biblioteca</string>
+    <string name="suki_preview_open">Abrir</string>
+</resources>

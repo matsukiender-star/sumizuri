@@ -53,17 +53,17 @@ class ProfileViewModel(
 
     fun onSwitch(id: Long) = host.switchTo(id)
 
-    suspend fun onCreate(name: String, picture: ByteArray?): Boolean =
-        host.create(name.trim(), picture?.let { keep(it) }) != null
+    suspend fun onCreate(name: String, picture: ByteArray?, preset: String?): Boolean =
+        host.create(name.trim(), picture?.let { keep(it) } ?: preset) != null
 
-    fun onSave(id: Long, name: String, picture: ByteArray?, removePicture: Boolean) {
+    fun onSave(id: Long, name: String, picture: ByteArray?, preset: String?, removePicture: Boolean) {
         val trimmed = name.trim()
         if (trimmed.isNotEmpty()) host.rename(id, trimmed)
         viewModelScope.launch {
-            if (picture != null) {
-                host.setAvatar(id, keep(picture))
-            } else if (removePicture) {
-                host.setAvatar(id, null)
+            when {
+                picture != null -> host.setAvatar(id, keep(picture))
+                preset != null -> host.setAvatar(id, preset)
+                removePicture -> host.setAvatar(id, null)
             }
         }
     }

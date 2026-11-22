@@ -13,6 +13,18 @@ data class RemovePrompt(val id: String, val name: String, val titles: Int)
 // The sources of one repo under the same heading, a language.
 class RepoGroup(val language: String, val sources: List<RepoSource>)
 
+// Progress and outcome of installing all currently visible missing sources sequentially.
+data class BatchInstallProgress(
+    val done: Int,
+    val total: Int,
+    val currentName: String,
+    val failed: Int,
+    val cancelled: Boolean = false,
+    val finished: Boolean = false,
+) {
+    val succeeded: Int get() = (done - failed).coerceAtLeast(0)
+}
+
 data class RepoState(
     val repo: Repo,
     val available: List<RepoSource> = emptyList(),
@@ -22,6 +34,7 @@ data class RepoState(
     val error: String? = null,
     // The sources that are being installed or removed right now.
     val busy: Set<String> = emptySet(),
+    val batchInstall: BatchInstallProgress? = null,
     val removing: RemovePrompt? = null,
     val query: String = "",
     val chosenKind: Kind? = null,
@@ -72,6 +85,9 @@ data class RepoState(
             true
     }
 
+    // Visible sources under the active filters (kind, language, adult, search) that are not installed yet.
+    val missingVisible: List<RepoSource> get() = visible.filter { it.id !in installed }
+
     // Installed from here but no longer listed, so they will get no updates. Nothing is said while the list is not read.
     val obsolete: List<InstalledRef>
         get() = if (loading ||
@@ -93,6 +109,9 @@ class RepoActions(
     val onLanguage: (String?) -> Unit,
     val onShowNsfw: (Boolean) -> Unit,
     val onUpdateAll: () -> Unit,
+    val onInstallAllVisible: () -> Unit,
+    val onCancelBatchInstall: () -> Unit,
+    val onDismissBatchResult: () -> Unit,
     val onCopyAddress: () -> Unit,
     val onBack: () -> Unit,
 )

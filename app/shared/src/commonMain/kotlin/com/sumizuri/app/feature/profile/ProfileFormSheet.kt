@@ -84,6 +84,7 @@ private const val PictureSize = 512
 internal fun ProfileFormSheet(profile: Profile?, isActive: Boolean, calls: ProfileCalls, onDismiss: () -> Unit) {
     var name by remember { mutableStateOf(profile?.name.orEmpty()) }
     var picked by remember { mutableStateOf<ByteArray?>(null) }
+    var preset by remember { mutableStateOf<String?>(null) }
     var removed by remember { mutableStateOf(false) }
     var busy by remember { mutableStateOf(false) }
     var deleting by remember { mutableStateOf(false) }
@@ -99,11 +100,16 @@ internal fun ProfileFormSheet(profile: Profile?, isActive: Boolean, calls: Profi
             } else {
                 problem = null
                 picked = square
+                preset = null
                 removed = false
             }
         }
     }
-    val shownAvatar = if (removed) null else profile?.avatar
+    val shownAvatar = when {
+        removed -> null
+        preset != null -> preset
+        else -> profile?.avatar
+    }
 
     ModalBottomSheet(
         modifier = Modifier.windowInsetsPadding(
@@ -187,8 +193,18 @@ internal fun ProfileFormSheet(profile: Profile?, isActive: Boolean, calls: Profi
             }
             PhotoButtons(busy, pick, hasPicture = chosen != null || shownAvatar != null) {
                 picked = null
+                preset = null
                 removed = true
             }
+            PresetAvatarPicker(
+                selectedKey = if (chosen == null) shownAvatar else null,
+                enabled = !busy,
+                onSelect = { key ->
+                    picked = null
+                    preset = key
+                    removed = false
+                },
+            )
             problem?.let {
                 Text(
                     stringResource(it),
@@ -218,7 +234,7 @@ internal fun ProfileFormSheet(profile: Profile?, isActive: Boolean, calls: Profi
                     busy = true
                     if (profile == null) {
                         scope.launch {
-                            if (calls.onCreate(name, picked)) {
+                            if (calls.onCreate(name, picked, preset)) {
                                 onDismiss()
                             } else {
                                 busy = false
@@ -226,7 +242,7 @@ internal fun ProfileFormSheet(profile: Profile?, isActive: Boolean, calls: Profi
                             }
                         }
                     } else {
-                        calls.onSave(profile.id, name, picked, removed)
+                        calls.onSave(profile.id, name, picked, preset, removed)
                         onDismiss()
                     }
                 },

@@ -35,8 +35,8 @@ class ProfileCalls(
     val onOpenTitle: (Long) -> Unit,
     val onSwitch: (Long) -> Unit,
     // Makes a profile and opens it, and gives false when it could not be made.
-    val onCreate: suspend (name: String, picture: ByteArray?) -> Boolean,
-    val onSave: (id: Long, name: String, picture: ByteArray?, removePicture: Boolean) -> Unit,
+    val onCreate: suspend (name: String, picture: ByteArray?, preset: String?) -> Boolean,
+    val onSave: (id: Long, name: String, picture: ByteArray?, preset: String?, removePicture: Boolean) -> Unit,
     // Deletes a profile that is not open, and gives false when it could not be.
     val onDelete: suspend (Long) -> Boolean,
     // Puts a preset in place of the blocks, and opens the page where the blocks are edited.

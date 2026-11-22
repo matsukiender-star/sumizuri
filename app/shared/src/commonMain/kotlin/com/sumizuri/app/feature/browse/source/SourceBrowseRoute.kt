@@ -70,6 +70,7 @@ fun SourceBrowseRoute(
             onClosePreferences = viewModel::onClosePreferences,
             onEditCode = onEditCode,
             onQuickAdd = { entry -> guard(entry.title, source.kind, -1L) { viewModel.onQuickAdd(entry) } },
+            onFetchDetails = viewModel::fetchDetails,
             onImport = viewModel::onImport,
             onStyle = { scope.launch { container.settings.setText(SettingKey.BrowseStyle, it.name) } },
             onRemove = viewModel::onRemove,

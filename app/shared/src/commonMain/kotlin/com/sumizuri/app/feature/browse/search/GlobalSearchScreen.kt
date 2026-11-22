@@ -43,6 +43,7 @@ import com.sumizuri.app.ui.kit.cover.SourceMark
 import com.sumizuri.app.ui.kit.cover.shownName
 import com.sumizuri.app.ui.kit.input.AppSearchBar
 import com.sumizuri.app.ui.kit.input.SearchFocus
+import com.sumizuri.app.ui.kit.page.CompactErrorRow
 import com.sumizuri.app.ui.kit.page.PageGutter
 import com.sumizuri.app.ui.kit.page.PageTopBar
 import com.sumizuri.app.ui.kit.page.ReadableColumn
@@ -60,6 +61,8 @@ internal fun GlobalSearchScreen(
     onBack: () -> Unit,
     onQuery: (String) -> Unit,
     onKind: (Kind?) -> Unit,
+    onRetrySource: (String) -> Unit,
+    onSolveSource: (String, String) -> Unit,
     onOpen: (InstalledSource, SourceEntry) -> Unit,
 ) {
     LaunchedEffect(Unit) {
@@ -126,8 +129,10 @@ internal fun GlobalSearchScreen(
                         result,
                         showKind =
                         state.kind == null && state.kinds.size > 1,
-                        onOpen,
-                        Modifier.animateItem(),
+                        onRetry = { onRetrySource(result.source.id) },
+                        onSolve = result.challengeUrl?.let { url -> { onSolveSource(result.source.id, url) } },
+                        onOpen = onOpen,
+                        modifier = Modifier.animateItem(),
                     )
                 }
             }
@@ -140,6 +145,8 @@ internal fun GlobalSearchScreen(
 private fun SourceSection(
     result: SourceResults,
     showKind: Boolean,
+    onRetry: () -> Unit,
+    onSolve: (() -> Unit)?,
     onOpen: (InstalledSource, SourceEntry) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -178,21 +185,20 @@ private fun SourceSection(
                     color = colors.outline,
                 )
 
+                result.error != null -> Unit
+
                 else -> Text(
-                    result.error ?: stringResource(Res.string.global_search_none),
+                    stringResource(Res.string.global_search_none),
                     Modifier.weight(1f, fill = false),
                     style = MaterialTheme.typography.bodySmall,
-                    color = if (result.error !=
-                        null
-                    ) {
-                        colors.error
-                    } else {
-                        colors.outline
-                    },
+                    color = colors.outline,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
             }
+        }
+        if (result.error != null && !result.loading) {
+            CompactErrorRow(error = result.error, onRetry = onRetry, onSolve = onSolve)
         }
         if (result.entries.isNotEmpty()) {
             val row = rememberLazyListState()

@@ -56,10 +56,13 @@ class BrowserBroker(
     private val factory: RenderPageFactory,
     private val scope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Default),
     maxPages: Int = 3,
+    private val maxSessions: Int = Int.MAX_VALUE,
     private val sessionIdle: Duration = 90.seconds,
 ) {
     private class Session(val page: RenderPage) {
         var idle: Job? = null
+        var inUse: Boolean = true
+        var lastUsed: TimeSource.Monotonic.ValueTimeMark = TimeSource.Monotonic.markNow()
     }
 
     // Work for one site runs in order, and different sites run side by side a few at a time.
@@ -122,7 +125,7 @@ class BrowserBroker(
                 )
                 if (challenge == null) {
                     refuseInternalRedirect(result.url)
-                    keep(site, session)
+                    releaseAndKeep(site, session)
                     return@inLane result
                 }
                 // The clearance ran out or the kept page lost it, so a new page is warmed once.
@@ -147,14 +150,20 @@ class BrowserBroker(
     }
 
     private suspend fun session(site: String, request: BrowserFetchRequest): Session {
-        stateLock.withLock { sessions[site] }?.let { kept ->
-            kept.idle?.cancel()
-            return kept
-        }
+        stateLock
+            .withLock {
+                sessions[site]?.also { kept ->
+                    kept.inUse = true
+                    kept.lastUsed = TimeSource.Monotonic.markNow()
+                    kept.idle?.cancel()
+                }
+            }?.let { return it }
         // A site that could not be reached a moment ago fails at once, since opening a page is heavy and would only fail the same way.
         stateLock.withLock { unreachable[site] }?.let { (since, message) ->
             if (since.elapsedNow() < UnreachableQuiet) throw PageLoadException(message)
         }
+        // Evict idle sessions before opening a new page when capped for low-RAM devices.
+        evictIdleSessions(maxToKeep = (maxSessions - 1).coerceAtLeast(0))
         // Never a made up user agent, because the clearance belongs to the one that earned it.
         AppLog.info(TAG, "opening a hidden page for $site")
         val started = TimeSource.Monotonic.markNow()
@@ -199,19 +208,48 @@ class BrowserBroker(
         }
     }
 
+    private suspend fun releaseAndKeep(site: String, session: Session) {
+        stateLock.withLock {
+            session.inUse = false
+            session.lastUsed = TimeSource.Monotonic.markNow()
+        }
+        keep(site, session)
+    }
+
+    // Closes oldest idle sessions until at most maxToKeep remain; never closes a session currently in use.
+    private suspend fun evictIdleSessions(maxToKeep: Int) {
+        if (maxSessions == Int.MAX_VALUE) return
+        val evicted = stateLock.withLock {
+            val excess = sessions.size - maxToKeep
+            if (excess <= 0) return@withLock emptyList<Session>()
+            val candidates = sessions.entries
+                .filter { !it.value.inUse }
+                .sortedByDescending { it.value.lastUsed.elapsedNow() }
+                .take(excess)
+            candidates.mapNotNull { (key, _) -> sessions.remove(key) }
+        }
+        for (session in evicted) {
+            session.idle?.cancel()
+            closeQuietly(session.page)
+        }
+    }
+
     private fun keep(site: String, session: Session) {
         session.idle?.cancel()
         session.idle = scope.launch {
             delay(sessionIdle)
             inLane(site) {
-                val current = stateLock.withLock { sessions[site] }
-                if (current === session) closeSession(site)
+                val shouldClose = stateLock.withLock {
+                    val current = sessions[site]
+                    current === session && !current.inUse
+                }
+                if (shouldClose) closeSession(site)
             }
         }
     }
 
-    private suspend fun closeSession(site: String) {
-        val session = stateLock.withLock { sessions.remove(site) } ?: return
+    private suspend fun closeSession(site: String) = withContext(NonCancellable) {
+        val session = stateLock.withLock { sessions.remove(site) } ?: return@withContext
         // The idle job must not cancel itself half way through.
         if (kotlin.coroutines.coroutineContext[Job] != session.idle) session.idle?.cancel()
         closeQuietly(session.page)
@@ -228,6 +266,7 @@ class BrowserBroker(
 
     // Opens a page, runs the body on it under a timeout, and always closes it.
     private suspend fun <T> open(userAgent: String?, timeout: Duration, body: suspend (RenderPage) -> T): T {
+        evictIdleSessions(maxToKeep = (maxSessions - 1).coerceAtLeast(0))
         val page = factory.open(userAgent)
         try {
             return withTimeout(timeout + ChallengeSettleBudget + 15.seconds) { body(page) }

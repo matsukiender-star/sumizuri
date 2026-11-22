@@ -65,7 +65,6 @@ import com.sumizuri.app.feature.library.top.SearchSourcesRow
 import com.sumizuri.app.feature.library.top.ShelfTabs
 import com.sumizuri.app.feature.library.top.ShelvesDialog
 import com.sumizuri.app.feature.library.top.UpdateFailuresSheet
-import com.sumizuri.app.feature.library.top.shelfOrder
 import com.sumizuri.app.feature.library.top.swipeShelves
 import com.sumizuri.app.shared.resources.Res
 import com.sumizuri.app.shared.resources.library_empty
@@ -104,6 +103,7 @@ internal fun LibraryHeader(
     state: LibraryState,
     calls: LibraryCalls,
     showSearch: Boolean,
+    showLive: Boolean,
     onSort: () -> Unit,
     onFailures: () -> Unit,
 ) {
@@ -174,7 +174,7 @@ internal fun LibraryHeader(
         ) {
             SearchSourcesRow(state.query) { calls.onSearchSources(state.query.trim()) }
         }
-        ShelfTabs(state, calls::onShelf, calls.onOpenShelves)
+        ShelfTabs(state, showLive, calls::onTab, calls.onOpenShelves)
         LibraryControls(state, calls, onSort)
     }
 }

@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="suki_live_tab">Live</string>
+    <string name="suki_live_title">Live TV</string>
+    <string name="suki_live_show_tab">Live tab</string>
+    <string name="suki_live_show_tab_hint">Show the Live IPTV tab in the navigation bar</string>
+    <string name="suki_live_add_list">Add playlist</string>
+    <string name="suki_live_manage_lists">Playlists</string>
+    <string name="suki_live_empty_title">No playlists yet</string>
+    <string name="suki_live_empty_hint">Add an M3U playlist from a link or a local file to watch live channels.</string>
+    <string name="suki_live_search_hint">Search channels…</string>
+    <string name="suki_live_all">All</string>
+    <string name="suki_live_favorites">Favorites</string>
+    <string name="suki_live_recents">Recent</string>
+    <string name="suki_live_all_groups">All groups</string>
+    <string name="suki_live_no_channels">No channels match your filter</string>
+    <string name="suki_live_list_name">Playlist name</string>
+    <string name="suki_live_list_name_hint">My channels</string>
+    <string name="suki_live_source_url">Link (URL)</string>
+    <string name="suki_live_source_file">Local file</string>
+    <string name="suki_live_url_label">M3U address</string>
+    <string name="suki_live_url_hint">https://example.com/playlist.m3u</string>
+    <string name="suki_live_pick_file">Choose M3U file</string>
+    <string name="suki_live_file_selected">Selected: %1$s</string>
+    <string name="suki_live_channels_count">%1$d channels</string>
+    <string name="suki_live_refresh">Refresh</string>
+    <string name="suki_live_rename">Rename</string>
+    <string name="suki_live_remove">Remove</string>
+    <string name="suki_live_remove_confirm">Remove "%1$s" and its channels?</string>
+    <string name="suki_live_loading">Loading playlist…</string>
+    <string name="suki_live_error_url">Enter a valid http or https address.</string>
+    <string name="suki_live_error_too_large">The playlist exceeds the 20 MB limit.</string>
+    <string name="suki_live_error_empty">No valid http or https channels were found in this playlist.</string>
+    <string name="suki_live_error_read">Could not load the playlist. Check the link or file and try again.</string>
+    <string name="suki_live_badge">LIVE</string>
+    <string name="suki_live_player_error_title">Channel unavailable</string>
+    <string name="suki_live_player_error_hint">This stream could not be played right now.</string>
+    <string name="suki_live_retry">Retry</string>
+    <string name="suki_live_next_channel">Next</string>
+    <string name="suki_live_prev_channel">Previous</string>
+    <string name="suki_live_favorite">Favorite</string>
+    <string name="suki_live_ungrouped">General</string>
+    <string name="suki_live_truncated">Loaded the first 50,000 channels.</string>
+</resources>

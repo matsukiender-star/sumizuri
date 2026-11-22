@@ -127,6 +127,9 @@ internal object PlaceJson {
                                     put("title", page.entry.title)
                                     page.entry.coverUrl?.let { put("cover", it) }
                                 }
+
+                                // Live playback is never restored on restart.
+                                is Page.LivePlayer -> put("type", "live_player")
                             }
                         },
                     )

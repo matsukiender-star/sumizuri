@@ -3,6 +3,7 @@ package com.sumizuri.app.source
 import com.sumizuri.app.core.log.AppLog
 import com.sumizuri.app.data.local.LocalSources
 import com.sumizuri.app.source.browser.BrowserBroker
+import com.sumizuri.app.source.browser.isLowRamDevice
 import com.sumizuri.app.source.browser.page.RenderPageFactory
 import com.sumizuri.app.source.engine.EngineScripts
 import com.sumizuri.app.source.engine.ExtensionSource
@@ -37,7 +38,11 @@ class SourceManager(
 ) {
     private class Running(val version: Int, val source: ExtensionSource)
 
-    private val broker = BrowserBroker(pages)
+    private val broker = if (isLowRamDevice()) {
+        BrowserBroker(pages, maxPages = 1, maxSessions = 1)
+    } else {
+        BrowserBroker(pages)
+    }
     private val lock = Mutex()
     private val running = mutableMapOf<String, Running>()
 
