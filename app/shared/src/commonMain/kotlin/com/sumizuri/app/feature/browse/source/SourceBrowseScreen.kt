@@ -36,7 +36,12 @@ import org.jetbrains.compose.resources.stringResource
 
 // One source with its tabs, a search, filters and its settings, and the entries as covers, rows or cards.
 @Composable
-fun SourceBrowseScreen(state: SourceBrowseState, style: BrowseStyle, actions: SourceBrowseActions) {
+fun SourceBrowseScreen(
+    state: SourceBrowseState,
+    style: BrowseStyle,
+    actions: SourceBrowseActions,
+    picks: SourcePicks? = null,
+) {
     val source = state.source
     val grid = rememberLazyGridState()
     var filtersOpen by remember { mutableStateOf(false) }
@@ -113,6 +118,7 @@ fun SourceBrowseScreen(state: SourceBrowseState, style: BrowseStyle, actions: So
                     // The header keeps a readable width at the left, while the covers under it fill the whole row.
                     Box(Modifier.fillMaxWidth()) { SourceBrowseHeader(state, actions, onEditTab = { editing = it }) }
                 }
+                picks?.let { fullSpan { SourcePicksRow(it, state, actions) } }
                 items(state.entries, key = { it.url }) { entry ->
                     val title = entry.asTitle(source.kind, source.id)
                     val saved = entry.url in state.inLibrary || entry.url in state.adding

@@ -68,6 +68,8 @@ class SourceBrowseActions(
     val onOpenEntry: (SourceEntry) -> Unit,
     val onOpenFilters: () -> Unit,
     val onFilters: (Map<String, Any?>) -> Unit,
+    // Lists everything of the genre a recommendation came from, without the words of an older search.
+    val onOpenGenre: (Map<String, Any?>) -> Unit,
     val onSaveTab: (String) -> Unit,
     val onRenameTab: (String, String) -> Unit,
     val onDeleteTab: (String) -> Unit,

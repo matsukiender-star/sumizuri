@@ -155,6 +155,11 @@ class SourceBrowseViewModel(
         reload()
     }
 
+    fun onOpenGenre(filters: Map<String, Any?>) {
+        mutableState.update { it.copy(query = "", activeQuery = null) }
+        onFilters(filters)
+    }
+
     // Keeps the search and the filters that are showing as a tab of their own.
     fun onSaveTab(name: String) {
         val now = mutableState.value

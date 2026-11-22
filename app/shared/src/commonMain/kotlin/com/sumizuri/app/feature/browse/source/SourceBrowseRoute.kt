@@ -1,6 +1,7 @@
 package com.sumizuri.app.feature.browse.source
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -12,6 +13,7 @@ import com.sumizuri.app.data.text.enumNamed
 import com.sumizuri.app.feature.title.rememberDuplicateGuard
 import com.sumizuri.app.source.model.SourceEntry
 import com.sumizuri.app.source.repo.InstalledSource
+import com.sumizuri.app.source.valueOrNull
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 
@@ -36,6 +38,15 @@ fun SourceBrowseRoute(
         )
     }
     val state by viewModel.state.collectAsStateWithLifecycle()
+    val picksModel = viewModel(key = "picks_${source.id}") {
+        SourcePicksViewModel(source.id, container.database.titles(), container.settings, container.reading) {
+            // The source as the page has it now, since opening an older copy would replace the updated one.
+            container.manager.open(viewModel.state.value.source).valueOrNull()
+        }
+    }
+    val picks by picksModel.picks.collectAsStateWithLifecycle()
+    val popularShown = state.tab == TabPopular && state.entries.isNotEmpty()
+    LaunchedEffect(picksModel, popularShown) { if (popularShown) picksModel.onPopularShown() }
     val style by remember {
         container.settings.text(SettingKey.BrowseStyle).map {
             enumNamed<BrowseStyle>(it)
@@ -62,6 +73,7 @@ fun SourceBrowseRoute(
             },
             onOpenFilters = viewModel::onOpenFilters,
             onFilters = viewModel::onFilters,
+            onOpenGenre = viewModel::onOpenGenre,
             onSaveTab = viewModel::onSaveTab,
             onRenameTab = viewModel::onRenameTab,
             onDeleteTab = viewModel::onDeleteTab,
@@ -78,5 +90,5 @@ fun SourceBrowseRoute(
             onCancelRemove = viewModel::onCancelRemove,
         )
     }
-    SourceBrowseScreen(state, style, actions)
+    SourceBrowseScreen(state, style, actions, picks.takeIf { popularShown })
 }

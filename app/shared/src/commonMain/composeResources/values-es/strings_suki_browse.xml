@@ -5,4 +5,8 @@
     <string name="suki_preview_add">Agregar a la biblioteca</string>
     <string name="suki_preview_saved">En la biblioteca</string>
     <string name="suki_preview_open">Abrir</string>
+    <string name="suki_browse_picks">Recomendaciones en Populares</string>
+    <string name="suki_browse_picks_hint">Más del género de lo último que viste o leíste en esa extensión. No salen en incógnito.</string>
+    <string name="suki_browse_picks_watched">Porque viste %1$s · %2$s</string>
+    <string name="suki_browse_picks_read">Porque leíste %1$s · %2$s</string>
 </resources>

@@ -11,6 +11,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.sumizuri.app.data.LocalAppContainer
 import com.sumizuri.app.data.live.ShowLiveTabKey
 import com.sumizuri.app.data.settings.SettingKey
+import com.sumizuri.app.feature.browse.source.PicksKey
 import com.sumizuri.app.feature.settings.SettingsPageFrame
 import com.sumizuri.app.feature.settings.SettingsViewModel
 import com.sumizuri.app.navigation.bar.NavLabels
@@ -40,6 +41,8 @@ import com.sumizuri.app.shared.resources.settings_reopen_place
 import com.sumizuri.app.shared.resources.settings_reopen_place_hint
 import com.sumizuri.app.shared.resources.settings_title_split
 import com.sumizuri.app.shared.resources.settings_title_split_hint
+import com.sumizuri.app.shared.resources.suki_browse_picks
+import com.sumizuri.app.shared.resources.suki_browse_picks_hint
 import com.sumizuri.app.shared.resources.suki_live_show_tab
 import com.sumizuri.app.shared.resources.suki_live_show_tab_hint
 import com.sumizuri.app.shared.resources.web_in_app
@@ -80,6 +83,9 @@ fun LayoutRoute(onBack: () -> Unit, onOpenLibraryDisplay: () -> Unit) {
     val showLiveTab by remember(container) {
         container.settings.flag(ShowLiveTabKey, true)
     }.collectAsStateWithLifecycle(true)
+    val showPicks by remember(container) {
+        container.settings.flag(PicksKey, true)
+    }.collectAsStateWithLifecycle(true)
     val scope = rememberCoroutineScope()
     SettingsPageFrame(Res.string.settings_layout, onBack, subtitle = Res.string.settings_layout_hint, onReset = {
         container.settings.resetInterface()
@@ -105,6 +111,11 @@ fun LayoutRoute(onBack: () -> Unit, onOpenLibraryDisplay: () -> Unit) {
                 SwitchSetting(Res.string.settings_title_split, split, { on ->
                     scope.launch { container.settings.setFlag(SettingKey.TitleSplit, on) }
                 }, Res.string.settings_title_split_hint)
+            }
+            padded {
+                SwitchSetting(Res.string.suki_browse_picks, showPicks, { on ->
+                    scope.launch { container.settings.setFlag(PicksKey, on) }
+                }, Res.string.suki_browse_picks_hint)
             }
         }
         SettingsSection(Res.string.layout_group_navigation) {
