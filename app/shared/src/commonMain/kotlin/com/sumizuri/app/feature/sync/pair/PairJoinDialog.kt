@@ -36,7 +36,7 @@ internal fun PairJoinDialog(model: PairModel) {
     val link = remember(shown) { PairLink.parse(shown) }
     val busy = ui.joining
     val problem = ui.joinProblem
-    val canJoin = link != null && account == null
+    val canJoin = link != null && link.fits(account)
     AppDialog(
         onDismissRequest = { if (!busy) model.dismissJoin() },
         title = { Text(stringResource(Res.string.pair_join_title)) },
@@ -45,7 +45,7 @@ internal fun PairJoinDialog(model: PairModel) {
                 Text(
                     when {
                         link == null -> stringResource(Res.string.pair_bad_link)
-                        account != null && problem == null && !busy -> stringResource(Res.string.pair_joined_already)
+                        !canJoin && problem == null && !busy -> stringResource(Res.string.pair_joined_already)
                         else -> stringResource(Res.string.pair_join_text, link.addresses.first().substringBefore(':'))
                     },
                 )
