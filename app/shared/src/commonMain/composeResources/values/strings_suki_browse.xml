@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="suki_preview_loading">Loading details…</string>
+    <string name="suki_preview_no_summary">No summary available.</string>
+    <string name="suki_preview_add">Add to library</string>
+    <string name="suki_preview_saved">In library</string>
+    <string name="suki_preview_open">Open</string>
+</resources>

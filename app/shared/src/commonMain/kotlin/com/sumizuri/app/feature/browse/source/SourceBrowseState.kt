@@ -78,6 +78,8 @@ class SourceBrowseActions(
     val onEditCode: () -> Unit,
     // Adds an entry to the library from a long press, without opening it.
     val onQuickAdd: (SourceEntry) -> Unit,
+    // Fetches summary and genres for a single hovered or long-pressed entry on demand.
+    val onFetchDetails: suspend (SourceEntry) -> SourceEntry?,
     // Copies picked files into the folder of a source of files on the device.
     val onImport: (List<PickedFile>) -> Unit,
     // Lays the entries out another way, for every source.

@@ -222,6 +222,9 @@ class SourceBrowseViewModel(
 
     fun onRetry() = reload()
 
+    // Fetches details for a single hovered or long-pressed entry on demand.
+    suspend fun fetchDetails(entry: SourceEntry): SourceEntry? = opened()?.details(entry)?.valueOrNull()
+
     // Adds an entry to the library from its cover, with its details and chapters when the source gives them, without opening it. One that is saved or being added already is left alone.
     fun onQuickAdd(entry: SourceEntry) {
         val now = mutableState.value

@@ -13,9 +13,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.sumizuri.app.feature.browse.asTitle
@@ -23,11 +25,13 @@ import com.sumizuri.app.feature.browse.repo.RemoveSourceDialog
 import com.sumizuri.app.shared.resources.Res
 import com.sumizuri.app.shared.resources.browse_nothing
 import com.sumizuri.app.shared.resources.browse_repeated
+import com.sumizuri.app.source.model.SourceEntry
 import com.sumizuri.app.ui.kit.cover.CoverTile
 import com.sumizuri.app.ui.kit.cover.shownName
 import com.sumizuri.app.ui.kit.page.LoadStatus
 import com.sumizuri.app.ui.kit.page.PageGrid
 import com.sumizuri.app.ui.kit.page.fullSpan
+import kotlinx.coroutines.delay
 import org.jetbrains.compose.resources.stringResource
 
 // One source with its tabs, a search, filters and its settings, and the entries as covers, rows or cards.
@@ -39,80 +43,154 @@ fun SourceBrowseScreen(state: SourceBrowseState, style: BrowseStyle, actions: So
     var preferencesOpen by remember { mutableStateOf(false) }
     var saving by remember { mutableStateOf(false) }
     var editing by remember { mutableStateOf<String?>(null) }
+    var hovered by remember { mutableStateOf<SourceEntry?>(null) }
+    var shownHover by remember { mutableStateOf<SourceEntry?>(null) }
+    var inspected by remember { mutableStateOf<SourceEntry?>(null) }
+    var loadingPreviewUrl by remember { mutableStateOf<String?>(null) }
+    val previewCache = remember(source.id) { mutableStateMapOf<String, SourceEntry>() }
+    val previewEnabled = style != BrowseStyle.Cards
     LoadMoreWhenNear(grid, state.entries.size to state.loading, actions.onLoadMore)
 
-    Column(Modifier.fillMaxSize()) {
-        SourceBrowseTopBar(
-            state,
-            style,
-            actions.onStyle,
-            onBack = actions.onBack,
-            onSaveTab = { saving = true },
-            onFilters = {
-                actions.onOpenFilters()
-                filtersOpen = true
-            },
-            onPreferences = {
-                actions.onOpenPreferences()
-                preferencesOpen = true
-            },
-            onEditCode = actions.onEditCode,
-            onImport = actions.onImport,
-            onRemove = actions.onRemove,
-        )
-        PageGrid(maxCell = style.cell, state = grid, gap = if (style == BrowseStyle.Grid) 12.dp else 8.dp) {
-            fullSpan {
-                // The header keeps a readable width at the left, while the covers under it fill the whole row.
-                Box(Modifier.fillMaxWidth()) { SourceBrowseHeader(state, actions, onEditTab = { editing = it }) }
-            }
-            items(state.entries, key = { it.url }) { entry ->
-                val title = entry.asTitle(source.kind, source.id)
-                val saved = entry.url in state.inLibrary || entry.url in state.adding
-                val open = { actions.onOpenEntry(entry) }
-                // A long press adds a title that is not saved yet.
-                val add = if (saved) null else ({ actions.onQuickAdd(entry) })
-                when (style) {
-                    BrowseStyle.Grid -> CoverTile(
-                        title,
-                        onClick = open,
-                        modifier = Modifier.animateItem(),
-                        saved = saved,
-                        onLongClick = add,
-                    )
+    // Shows the hover panel after a brief pause and fetches missing details only for that single entry.
+    LaunchedEffect(hovered?.url, previewEnabled, inspected) {
+        val target = hovered
+        if (!previewEnabled || target == null || inspected != null) {
+            shownHover = null
+            return@LaunchedEffect
+        }
+        delay(HoverPreviewDelayMs)
+        val cached = previewCache[target.url]
+        shownHover = cached ?: target
+        if (cached == null && !target.hasPreviewInfo()) {
+            loadingPreviewUrl = target.url
+            val fetched = actions.onFetchDetails(target)
+            val merged = target.mergeDetails(fetched)
+            previewCache[target.url] = merged
+            if (hovered?.url == target.url) shownHover = merged
+            if (loadingPreviewUrl == target.url) loadingPreviewUrl = null
+        }
+    }
 
-                    BrowseStyle.List -> BrowseLine(title, saved, open, Modifier.animateItem(), onLongClick = add)
+    // Loads missing details for a long-pressed entry and caches them while this screen stays open.
+    LaunchedEffect(inspected?.url) {
+        val target = inspected ?: return@LaunchedEffect
+        if (previewCache.containsKey(target.url) || target.hasPreviewInfo()) return@LaunchedEffect
+        loadingPreviewUrl = target.url
+        val fetched = actions.onFetchDetails(target)
+        val merged = target.mergeDetails(fetched)
+        previewCache[target.url] = merged
+        if (loadingPreviewUrl == target.url) loadingPreviewUrl = null
+    }
 
-                    BrowseStyle.Cards -> BrowseCard(title, saved, open, Modifier.animateItem(), onLongClick = add)
+    Box(Modifier.fillMaxSize()) {
+        Column(Modifier.fillMaxSize()) {
+            SourceBrowseTopBar(
+                state,
+                style,
+                actions.onStyle,
+                onBack = actions.onBack,
+                onSaveTab = { saving = true },
+                onFilters = {
+                    actions.onOpenFilters()
+                    filtersOpen = true
+                },
+                onPreferences = {
+                    actions.onOpenPreferences()
+                    preferencesOpen = true
+                },
+                onEditCode = actions.onEditCode,
+                onImport = actions.onImport,
+                onRemove = actions.onRemove,
+            )
+            PageGrid(maxCell = style.cell, state = grid, gap = if (style == BrowseStyle.Grid) 12.dp else 8.dp) {
+                fullSpan {
+                    // The header keeps a readable width at the left, while the covers under it fill the whole row.
+                    Box(Modifier.fillMaxWidth()) { SourceBrowseHeader(state, actions, onEditTab = { editing = it }) }
                 }
-            }
-            fullSpan {
-                Column {
-                    LoadStatus(
-                        state.loading,
-                        state.error,
-                        actions.onRetry,
-                        onSolve = actions.onSolve.takeIf {
-                            state.challengeUrl !=
-                                null
-                        },
-                    )
-                    if (!state.loading && state.error == null && state.entries.isEmpty()) {
-                        Text(
-                            stringResource(Res.string.browse_nothing),
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.outline,
-                        )
+                items(state.entries, key = { it.url }) { entry ->
+                    val title = entry.asTitle(source.kind, source.id)
+                    val saved = entry.url in state.inLibrary || entry.url in state.adding
+                    val open = { actions.onOpenEntry(entry) }
+                    // Cards keep direct quick-add; grid and list open the preview panel which also offers quick-add.
+                    val add = if (saved) null else ({ actions.onQuickAdd(entry) })
+                    val inspect = {
+                        hovered = null
+                        inspected = entry
                     }
-                    if (state.repeated) {
-                        Text(
-                            stringResource(Res.string.browse_repeated),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.outline,
+                    val hoverMod = Modifier
+                        .animateItem()
+                        .mouseHoverPreview(
+                            enabled = previewEnabled,
+                            key = entry.url,
+                            onEnter = { hovered = entry },
+                            onExit = { if (hovered?.url == entry.url) hovered = null },
                         )
+                    when (style) {
+                        BrowseStyle.Grid -> CoverTile(
+                            title,
+                            onClick = open,
+                            modifier = hoverMod,
+                            saved = saved,
+                            onLongClick = inspect,
+                        )
+
+                        BrowseStyle.List -> BrowseLine(title, saved, open, hoverMod, onLongClick = inspect)
+
+                        BrowseStyle.Cards -> BrowseCard(title, saved, open, Modifier.animateItem(), onLongClick = add)
+                    }
+                }
+                fullSpan {
+                    Column {
+                        LoadStatus(
+                            state.loading,
+                            state.error,
+                            actions.onRetry,
+                            onSolve = actions.onSolve.takeIf {
+                                state.challengeUrl !=
+                                    null
+                            },
+                        )
+                        if (!state.loading && state.error == null && state.entries.isEmpty()) {
+                            Text(
+                                stringResource(Res.string.browse_nothing),
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.outline,
+                            )
+                        }
+                        if (state.repeated) {
+                            Text(
+                                stringResource(Res.string.browse_repeated),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.outline,
+                            )
+                        }
                     }
                 }
             }
         }
+        val activeHover = shownHover?.let { previewCache[it.url] ?: it }
+        HoverPreviewBanner(
+            entry = activeHover,
+            kind = source.kind,
+            sourceId = source.id,
+            loading = activeHover != null && loadingPreviewUrl == activeHover.url,
+            modifier = Modifier.align(Alignment.BottomCenter),
+        )
+    }
+
+    inspected?.let { target ->
+        val resolved = previewCache[target.url] ?: target
+        val saved = target.url in state.inLibrary || target.url in state.adding
+        EntryPreviewDialog(
+            entry = resolved,
+            kind = source.kind,
+            sourceId = source.id,
+            saved = saved,
+            loading = loadingPreviewUrl == target.url,
+            onQuickAdd = { actions.onQuickAdd(resolved) },
+            onOpen = { actions.onOpenEntry(resolved) },
+            onDismiss = { inspected = null },
+        )
     }
 
     if (filtersOpen && state.filterGroups.isNotEmpty()) {
