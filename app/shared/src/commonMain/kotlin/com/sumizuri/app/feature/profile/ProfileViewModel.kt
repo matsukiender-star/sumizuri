@@ -48,6 +48,7 @@ class ProfileViewModel(
                 }.take(RecentCount),
             unreachable.sumOf { it.count },
             shown,
+            registry.trash,
         )
     }.flowOn(Dispatchers.Default).stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), ProfileState())
 
@@ -69,6 +70,10 @@ class ProfileViewModel(
     }
 
     suspend fun onDelete(id: Long): Boolean = host.delete(id)
+
+    fun onRestore(id: Long) = host.restore(id)
+
+    fun onDeleteNow(id: Long) = host.deleteNow(id)
 
     // Replaces the blocks with a preset. Classic forgets the saved blocks, so the page is the one it came with.
     fun onPreset(preset: ProfilePreset) = viewModelScope.launch {

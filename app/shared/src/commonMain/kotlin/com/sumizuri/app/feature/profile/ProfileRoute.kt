@@ -32,6 +32,8 @@ fun ProfileRoute(
             onCreate = viewModel::onCreate,
             onSave = viewModel::onSave,
             onDelete = viewModel::onDelete,
+            onRestore = viewModel::onRestore,
+            onDeleteNow = viewModel::onDeleteNow,
             onPreset = { viewModel.onPreset(it) },
             onArrange = onArrange,
         )
