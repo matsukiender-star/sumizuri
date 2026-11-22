@@ -23,6 +23,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -33,18 +34,26 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.sumizuri.app.StartBackdrop
 import com.sumizuri.app.StartShown
 import com.sumizuri.app.data.AppContainer
 import com.sumizuri.app.data.profile.Profile
 import com.sumizuri.app.data.profile.ProfileHost
+import com.sumizuri.app.data.settings.SettingKey
 import com.sumizuri.app.shared.resources.Res
 import com.sumizuri.app.shared.resources.suki_profile_picker_subtitle
 import com.sumizuri.app.shared.resources.suki_profile_picker_title
 import com.sumizuri.app.ui.kit.art.InkCircularProgressIndicator
+import com.sumizuri.app.ui.language.AppLanguage
+import com.sumizuri.app.ui.language.applyAppLanguage
 import com.sumizuri.app.ui.theme.SumizuriTheme
 import com.sumizuri.app.ui.theme.ThemeMode
 import com.sumizuri.app.ui.theme.spec.ThemePresets
+import kotlinx.coroutines.flow.map
 import org.jetbrains.compose.resources.stringResource
+
+// Process-scoped set of ProfileHost instances that already resolved the startup picker, surviving Activity recreations.
+private val resolvedStartupHosts = HashSet<ProfileHost>()
 
 // Holds the startup profile gate outside key(container) so switching profiles never reopens it.
 @Composable
@@ -54,8 +63,17 @@ internal fun StartupProfileGate(
     windowBar: (@Composable () -> Unit)?,
     content: @Composable () -> Unit,
 ) {
-    // Freeze the startup count so creating a second profile during the session does not trigger the picker.
-    var open by remember { mutableStateOf(profiles.state.value.profiles.size >= 2) }
+    // Freeze the startup count per ProfileHost lifetime so theme/locale recreations and new profiles never reopen it.
+    val initialOpen = remember(profiles) {
+        if (profiles in resolvedStartupHosts) {
+            false
+        } else {
+            val shouldOpen = profiles.state.value.profiles.size >= 2
+            if (!shouldOpen) resolvedStartupHosts.add(profiles)
+            shouldOpen
+        }
+    }
+    var open by remember(profiles) { mutableStateOf(initialOpen) }
     var switchingTo by remember { mutableStateOf<Long?>(null) }
     var previousContainer by remember { mutableStateOf<AppContainer?>(null) }
     val state by profiles.state.collectAsStateWithLifecycle()
@@ -66,6 +84,7 @@ internal fun StartupProfileGate(
         if (container !== previousContainer && state.activeId == target) {
             switchingTo = null
             previousContainer = null
+            resolvedStartupHosts.add(profiles)
             open = false
         }
     }
@@ -75,23 +94,40 @@ internal fun StartupProfileGate(
         return
     }
 
-    SumizuriTheme(ThemeMode.System, ThemePresets.first(), oled = false, oledGlow = false) {
-        StartShown(true)
-        ProfilePickerScreen(
-            profiles = state.profiles,
-            switchingTo = switchingTo,
-            windowBar = windowBar,
-            onPick = { chosen ->
-                if (switchingTo != null) return@ProfilePickerScreen
-                if (chosen.id == state.activeId) {
-                    open = false
-                } else {
-                    previousContainer = container
-                    switchingTo = chosen.id
-                    profiles.switchTo(chosen.id)
-                }
-            },
-        )
+    // Apply the active profile's saved language before drawing the picker so it never falls back to system locale.
+    val language by remember(container) {
+        container.settings.text(SettingKey.Language).map { saved -> AppLanguage.fromSaved(saved) }
+    }.collectAsStateWithLifecycle(initialValue = null)
+    val resolvedLanguage = language
+    if (resolvedLanguage == null) {
+        StartBackdrop()
+        return
+    }
+    remember(resolvedLanguage) {
+        applyAppLanguage(resolvedLanguage.code)
+        resolvedLanguage
+    }
+
+    key(resolvedLanguage.code) {
+        SumizuriTheme(ThemeMode.System, ThemePresets.first(), oled = false, oledGlow = false) {
+            StartShown(true)
+            ProfilePickerScreen(
+                profiles = state.profiles,
+                switchingTo = switchingTo,
+                windowBar = windowBar,
+                onPick = { chosen ->
+                    if (switchingTo != null) return@ProfilePickerScreen
+                    if (chosen.id == state.activeId) {
+                        resolvedStartupHosts.add(profiles)
+                        open = false
+                    } else {
+                        previousContainer = container
+                        switchingTo = chosen.id
+                        profiles.switchTo(chosen.id)
+                    }
+                },
+            )
+        }
     }
 }
 
