@@ -109,7 +109,7 @@ fun LivePlayerRoute(playlistId: String, initialChannelId: String, onBack: () -> 
     LaunchedEffect(channel?.id, reloadNonce) {
         val target = channel ?: return@LaunchedEffect
         repo.recordRecent(target.id)
-        engine.open(PlayerMedia(url = target.url, headers = target.headers()), startMs = 0L, play = true)
+        engine.open(PlayerMedia(url = target.url, headers = target.headers(), live = true), startMs = 0L, play = true)
     }
 
     LaunchedEffect(controlsShown, playerState.playing, playerState.problem) {

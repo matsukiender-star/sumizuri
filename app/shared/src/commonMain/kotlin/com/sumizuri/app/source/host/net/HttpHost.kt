@@ -1,5 +1,6 @@
 package com.sumizuri.app.source.host.net
 
+import com.sumizuri.app.data.net.RefusePlainHttp
 import io.ktor.client.plugins.HttpTimeoutConfig
 import io.ktor.client.plugins.timeout
 import io.ktor.client.request.prepareGet
@@ -99,6 +100,7 @@ class HttpHost(
             followRedirects = false
             expectSuccess = false
             install(HttpCookies) { storage = cookies }
+            install(RefusePlainHttp)
             install(HttpTimeout) {
                 requestTimeoutMillis = timeoutMs
                 connectTimeoutMillis = timeoutMs

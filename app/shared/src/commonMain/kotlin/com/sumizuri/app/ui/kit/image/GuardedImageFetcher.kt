@@ -1,5 +1,6 @@
 package com.sumizuri.app.ui.kit.image
 
+import coil3.Extras
 import coil3.ImageLoader
 import coil3.Uri
 import coil3.decode.DataSource
@@ -7,8 +8,11 @@ import coil3.decode.ImageSource
 import coil3.fetch.FetchResult
 import coil3.fetch.Fetcher
 import coil3.fetch.SourceFetchResult
+import coil3.getExtra
 import coil3.network.HttpException
 import coil3.request.Options
+import com.sumizuri.app.data.net.PlainHttpRefused
+import com.sumizuri.app.data.net.refusesPlainHttp
 import com.sumizuri.app.data.text.nowMillis
 import com.sumizuri.app.source.host.net.ImageException
 import com.sumizuri.app.source.host.net.ImageHost
@@ -18,6 +22,13 @@ import kotlinx.coroutines.sync.withLock
 import okio.Buffer
 
 private val BotCheckCodes = setOf(403, 503)
+
+// Marks a picture of Live, which may come over plain http.
+val AllowPlainHttp = Extras.Key(default = false)
+
+private class Refused(private val url: String) : Fetcher {
+    override suspend fun fetch(): FetchResult = throw PlainHttpRefused(url)
+}
 
 // A picture that failed is not asked for again this long, so a broken cover is not fetched again each time it is drawn.
 private const val FailedForMs = 60 * 1000L
@@ -121,6 +132,8 @@ class GuardedImageFetcher(
     class Factory(private val images: ImageHost, private val plain: Fetcher.Factory<Uri>) : Fetcher.Factory<Uri> {
         override fun create(data: Uri, options: Options, imageLoader: ImageLoader): Fetcher? {
             if (data.scheme != "http" && data.scheme != "https") return null
+            // Only the logos of Live may come over plain http.
+            if (!options.getExtra(AllowPlainHttp) && refusesPlainHttp(data.toString())) return Refused(data.toString())
             return GuardedImageFetcher(
                 data.toString(),
                 options,

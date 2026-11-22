@@ -44,6 +44,8 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil3.compose.AsyncImage
+import coil3.compose.LocalPlatformContext
+import coil3.request.ImageRequest
 import com.sumizuri.app.data.LocalAppContainer
 import com.sumizuri.app.data.live.LiveChannel
 import com.sumizuri.app.shared.resources.Res
@@ -61,6 +63,7 @@ import com.sumizuri.app.shared.resources.suki_live_search_hint
 import com.sumizuri.app.shared.resources.suki_live_title
 import com.sumizuri.app.shared.resources.suki_live_ungrouped
 import com.sumizuri.app.ui.kit.art.InkButton
+import com.sumizuri.app.ui.kit.image.AllowPlainHttp
 import com.sumizuri.app.ui.kit.input.AppSearchBar
 import com.sumizuri.app.ui.kit.page.PageGutter
 import com.sumizuri.app.ui.kit.page.PageTopBar
@@ -279,7 +282,11 @@ private fun LiveChannelRow(channel: LiveChannel, favorite: Boolean, onPlay: () -
                 Icon(Icons.Outlined.LiveTv, null, Modifier.size(22.dp), tint = colors.onSurfaceVariant)
                 if (!channel.logo.isNullOrBlank()) {
                     AsyncImage(
-                        model = channel.logo,
+                        model = ImageRequest
+                            .Builder(LocalPlatformContext.current)
+                            .data(channel.logo)
+                            .apply { extras[AllowPlainHttp] = true }
+                            .build(),
                         contentDescription = null,
                         modifier = Modifier.fillMaxSize(),
                         contentScale = ContentScale.Fit,

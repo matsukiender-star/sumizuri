@@ -4,11 +4,14 @@ import android.annotation.SuppressLint
 import android.graphics.Bitmap
 import android.webkit.CookieManager
 import android.webkit.WebChromeClient
+import android.webkit.WebResourceRequest
+import android.webkit.WebResourceResponse
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.viewinterop.AndroidView
+import com.sumizuri.app.data.net.refusedPlainPage
 
 // The system WebView. Its cookies are the ones the hidden pages of the sources use, since Android keeps one cookie store for every WebView of the app.
 @SuppressLint("SetJavaScriptEnabled")
@@ -25,6 +28,10 @@ actual fun WebBrowserView(state: WebBrowserState, modifier: Modifier) {
                     setAcceptThirdPartyCookies(web, true)
                 }
                 webViewClient = object : WebViewClient() {
+                    override fun shouldInterceptRequest(
+                        view: WebView,
+                        request: WebResourceRequest,
+                    ): WebResourceResponse? = refusedPlainPage(request)
                     override fun onPageStarted(view: WebView, url: String, favicon: Bitmap?) {
                         state.loading = true
                         state.url = url

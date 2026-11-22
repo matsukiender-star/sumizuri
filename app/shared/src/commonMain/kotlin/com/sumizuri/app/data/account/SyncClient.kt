@@ -1,5 +1,6 @@
 package com.sumizuri.app.data.account
 
+import com.sumizuri.app.data.net.RefusePlainHttp
 import com.sumizuri.app.data.net.pinnedHttpClient
 import com.sumizuri.sync.core.AccountAnswer
 import com.sumizuri.sync.core.AccountDelete
@@ -95,6 +96,7 @@ class SyncClient {
     }
     private val setUp: HttpClientConfig<*>.() -> Unit = {
         expectSuccess = false
+        install(RefusePlainHttp)
         install(HttpTimeout) {
             connectTimeoutMillis = 10_000
             requestTimeoutMillis = 30_000

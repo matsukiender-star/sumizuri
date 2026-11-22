@@ -16,6 +16,8 @@ import androidx.media3.datasource.okhttp.OkHttpDataSource
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.exoplayer.source.MergingMediaSource
+import com.sumizuri.app.data.net.PlainHttpRefused
+import com.sumizuri.app.data.net.refusesPlainHttp
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -119,7 +121,17 @@ class ExoEngine(context: Context) : PlayerEngine {
         // Sites go through OkHttp with their headers, and a saved episode is read from its files.
         val factory = DefaultDataSource.Factory(
             appContext,
-            OkHttpDataSource.Factory(OkHttpClient()).setDefaultRequestProperties(media.headers),
+            OkHttpDataSource
+                .Factory(
+                    // Each try is checked, redirects too, so only Live plays plain http.
+                    OkHttpClient
+                        .Builder()
+                        .addNetworkInterceptor { chain ->
+                            val url = chain.request().url.toString()
+                            if (!media.live && refusesPlainHttp(url)) throw PlainHttpRefused(url)
+                            chain.proceed(chain.request())
+                        }.build(),
+                ).setDefaultRequestProperties(media.headers),
         )
         val subtitles = media.subtitles.mapNotNull { track ->
             val address = track.url ?: return@mapNotNull null
