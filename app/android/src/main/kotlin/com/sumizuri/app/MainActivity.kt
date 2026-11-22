@@ -7,6 +7,7 @@ import android.os.Build
 import android.os.Bundle
 import android.os.SystemClock
 import android.util.Rational
+import android.view.animation.AccelerateDecelerateInterpolator
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -37,9 +38,21 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         // The splash screen stays until the first page has drawn in the colors of the person, or a few seconds at most.
         val opened = SystemClock.uptimeMillis()
-        installSplashScreen().setKeepOnScreenCondition {
+        val splash = installSplashScreen()
+        splash.setKeepOnScreenCondition {
             !AppStart.drawn.value &&
                 SystemClock.uptimeMillis() - opened < SplashMostMs
+        }
+        // Short fade-out once the first frame is ready so startup is never delayed.
+        splash.setOnExitAnimationListener { provider ->
+            provider.view.animate()
+                .alpha(0f)
+                .scaleX(1.04f)
+                .scaleY(1.04f)
+                .setDuration(SplashExitMs)
+                .setInterpolator(AccelerateDecelerateInterpolator())
+                .withEndAction { provider.remove() }
+                .start()
         }
         StartLook.load(this)
         enableEdgeToEdge()
@@ -116,3 +129,4 @@ private fun MainActivity.pictureParams(aspect: Float): PictureInPictureParams? {
 
 // The longest the splash screen waits for the first page, so a slow start still opens.
 private const val SplashMostMs = 3000L
+private const val SplashExitMs = 200L

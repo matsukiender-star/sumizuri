@@ -1,4 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <color name="start_background">@color/start_dark</color>
+    <drawable name="start_mark">@drawable/splash_mark_dark</drawable>
+    <drawable name="start_branding">@drawable/splash_branding_dark</drawable>
 </resources>
