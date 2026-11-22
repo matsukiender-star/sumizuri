@@ -110,6 +110,7 @@ internal fun PlayerScreen(session: PlayerSession, engine: PlayerEngine, onClose:
     var logShown by remember(prefs.showLog) { mutableStateOf(prefs.showLog) }
     var aspect by remember(prefs.aspect) { mutableStateOf(prefs.aspect) }
     val focus = remember { FocusRequester() }
+    val controlZones = remember { PlayerControlZones() }
     val failed = state.phase == PlayerPhase.Failed
     val pickSubtitle =
         rememberFilePicker(FileKind.Subtitles) { path -> session.loadSubtitle(path.toString(), path.name) }
@@ -307,6 +308,8 @@ internal fun PlayerScreen(session: PlayerSession, engine: PlayerEngine, onClose:
             }.playerMouseControls(
                 enabled = !touchPlayer,
                 canHide = player.playing && !scrubbing && picker == null,
+                controlsVisible = visible && !small && !failed && !locked,
+                controlZones = controlZones,
                 allowVolume = picker == null,
                 onVolumeBy = ::volumeBy,
                 onShow = ::show,
@@ -364,6 +367,7 @@ internal fun PlayerScreen(session: PlayerSession, engine: PlayerEngine, onClose:
                                 picker = picker,
                                 pickerContent = { PlayerPicker(it, state, player, aspect, logShown, pickerCalls) },
                                 pickerInDock = !aside,
+                                controlZones = controlZones,
                             )
                         }
                     }

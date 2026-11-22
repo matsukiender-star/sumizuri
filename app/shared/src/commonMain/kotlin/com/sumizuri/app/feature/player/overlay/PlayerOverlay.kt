@@ -41,14 +41,18 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.boundsInRoot
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.sumizuri.app.data.model.Kind
+import com.sumizuri.app.feature.player.PlayerControlZones
 import com.sumizuri.app.feature.player.PlayerPhase
 import com.sumizuri.app.feature.player.SessionState
 import com.sumizuri.app.feature.player.VideoChoice
@@ -110,7 +114,11 @@ internal fun PlayerOverlay(
     pickerContent: @Composable (Picker) -> Unit = {},
     // False when the open choice shows docked at the side of a wide window instead of in the dock.
     pickerInDock: Boolean = true,
+    controlZones: PlayerControlZones? = null,
 ) {
+    DisposableEffect(controlZones) {
+        onDispose { controlZones?.clear() }
+    }
     val reduce = LocalReduceMotion.current
     val widest = if (isWideWindow()) WideDockWidth else DockWidth
     val inDock = picker.takeIf { pickerInDock }
@@ -132,7 +140,10 @@ internal fun PlayerOverlay(
             contentAlignment = Alignment.TopCenter,
         ) {
             DockSurface(
-                Modifier.widthIn(max = widest).fillMaxWidth(),
+                Modifier
+                    .widthIn(max = widest)
+                    .fillMaxWidth()
+                    .onGloballyPositioned { controlZones?.topBar = it.boundsInRoot() },
             ) { TopRow(session, engine.volume, fullscreen, calls) }
         }
         // While the episode is still being found or opened, the loading card in the middle takes the place of the buttons.
@@ -152,7 +163,13 @@ internal fun PlayerOverlay(
             contentAlignment = Alignment.BottomCenter,
         ) {
             // Solid while a choice is open, so its words never sit over the video.
-            DockSurface(Modifier.widthIn(max = widest).fillMaxWidth(), solid = inDock != null) {
+            DockSurface(
+                Modifier
+                    .widthIn(max = widest)
+                    .fillMaxWidth()
+                    .onGloballyPositioned { controlZones?.bottomBar = it.boundsInRoot() },
+                solid = inDock != null,
+            ) {
                 Column(Modifier.padding(horizontal = 8.dp, vertical = 6.dp)) {
                     AnimatedContent(
                         inDock,
