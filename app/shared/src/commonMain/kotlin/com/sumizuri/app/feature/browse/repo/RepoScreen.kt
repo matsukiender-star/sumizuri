@@ -40,6 +40,8 @@ import com.sumizuri.app.shared.resources.repo_show_nsfw
 import com.sumizuri.app.shared.resources.section_count
 import com.sumizuri.app.shared.resources.sources_update_all
 import com.sumizuri.app.shared.resources.sources_updates_notice
+import com.sumizuri.app.shared.resources.suki_repo_all_kinds
+import com.sumizuri.app.shared.resources.suki_repo_all_languages
 import com.sumizuri.app.shared.resources.suki_repo_dismiss
 import com.sumizuri.app.shared.resources.suki_repo_install_all
 import com.sumizuri.app.shared.resources.suki_repo_install_all_message
@@ -97,7 +99,8 @@ fun RepoScreen(state: RepoState, actions: RepoActions) {
                         Column(Modifier.padding(bottom = 8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                             AppSearchBar(state.query, actions.onQuery, stringResource(Res.string.repo_search_hint))
                             ChipRow {
-                                if (state.kinds.size > 1 && kind != null) {
+                                if (state.kinds.size > 1) {
+                                    ChoiceChip(stringResource(Res.string.all), kind == null) { actions.onKind(null) }
                                     for (each in state.kinds) {
                                         ChoiceChip(
                                             stringResource(each.label),
@@ -232,7 +235,16 @@ fun RepoScreen(state: RepoState, actions: RepoActions) {
         AppDialog(
             onDismissRequest = { confirmInstallAll = false },
             title = { Text(stringResource(Res.string.suki_repo_install_all_title, count)) },
-            text = { Text(stringResource(Res.string.suki_repo_install_all_message, count)) },
+            text = {
+                // Says what the filters picked, since the count alone hides a kind or a language left on.
+                val kindName = stringResource(kind?.label ?: Res.string.suki_repo_all_kinds)
+                val languageText =
+                    state.language?.let { languageName(it) } ?: stringResource(Res.string.suki_repo_all_languages)
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("$kindName · $languageText", style = MaterialTheme.typography.titleSmall)
+                    Text(stringResource(Res.string.suki_repo_install_all_message, count))
+                }
+            },
             confirmButton = {
                 InkButton(onClick = {
                     confirmInstallAll = false

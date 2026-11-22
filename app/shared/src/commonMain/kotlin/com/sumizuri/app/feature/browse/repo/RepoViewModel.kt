@@ -6,6 +6,8 @@ import com.sumizuri.app.data.library.LibraryRepository
 import com.sumizuri.app.data.model.Kind
 import com.sumizuri.app.data.model.Repo
 import com.sumizuri.app.data.sources.SourceRepository
+import com.sumizuri.app.data.work.BusyKind
+import com.sumizuri.app.data.work.BusyWork
 import com.sumizuri.app.source.SourceManager
 import com.sumizuri.app.source.SourceResult
 import com.sumizuri.app.source.repo.InstalledSource
@@ -93,30 +95,33 @@ class RepoViewModel(
                 )
             }
             try {
-                for (source in targets) {
-                    if (!isActive) break
-                    mutableState.update {
-                        it.copy(
-                            batchInstall = BatchInstallProgress(
-                                done = done,
-                                total = targets.size,
-                                currentName = source.name,
-                                failed = failed,
-                            ),
-                        )
-                    }
-                    val ok = install(source, reportGlobalError = false)
-                    done++
-                    if (!ok) failed++
-                    mutableState.update {
-                        it.copy(
-                            batchInstall = BatchInstallProgress(
-                                done = done,
-                                total = targets.size,
-                                currentName = source.name,
-                                failed = failed,
-                            ),
-                        )
+                // Counts as running work, so a phone does not pause it out of sight.
+                BusyWork.keep(BusyKind.SourcesInstall, { done to targets.size }, ::onCancelBatchInstall) {
+                    for (source in targets) {
+                        if (!isActive) break
+                        mutableState.update {
+                            it.copy(
+                                batchInstall = BatchInstallProgress(
+                                    done = done,
+                                    total = targets.size,
+                                    currentName = source.name,
+                                    failed = failed,
+                                ),
+                            )
+                        }
+                        val ok = install(source, reportGlobalError = false)
+                        done++
+                        if (!ok) failed++
+                        mutableState.update {
+                            it.copy(
+                                batchInstall = BatchInstallProgress(
+                                    done = done,
+                                    total = targets.size,
+                                    currentName = source.name,
+                                    failed = failed,
+                                ),
+                            )
+                        }
                     }
                 }
                 mutableState.update {
@@ -163,7 +168,7 @@ class RepoViewModel(
 
     fun onQuery(value: String) = mutableState.update { it.copy(query = value) }
 
-    fun onKind(value: Kind) = mutableState.update { it.copy(chosenKind = value) }
+    fun onKind(value: Kind?) = mutableState.update { it.copy(chosenKind = value, allKinds = value == null) }
 
     fun onLanguage(value: String?) = mutableState.update { it.copy(chosenLanguage = value) }
 

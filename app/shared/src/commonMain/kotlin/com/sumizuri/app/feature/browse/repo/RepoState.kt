@@ -38,13 +38,15 @@ data class RepoState(
     val removing: RemovePrompt? = null,
     val query: String = "",
     val chosenKind: Kind? = null,
+    // True when every kind is on show at once, which is how a whole repo or a whole language is installed.
+    val allKinds: Boolean = false,
     val showNsfw: Boolean = false,
     // The one language on show, or null for all of them.
     val chosenLanguage: String? = null,
 ) {
-    // The kinds the repo has a source of, and the one on show. A kind the repo lacks falls back to the first it has.
+    // The kinds the repo has a source of, and the one on show, or null for all of them. A kind the repo lacks falls back to the first it has.
     val kinds: List<Kind> get() = Kind.entries.filter { kind -> available.any { it.kind == kind } }
-    val kind: Kind? get() = chosenKind?.takeIf { it in kinds } ?: kinds.firstOrNull()
+    val kind: Kind? get() = if (allKinds) null else chosenKind?.takeIf { it in kinds } ?: kinds.firstOrNull()
     val hasNsfw: Boolean get() = available.any { it.nsfw }
 
     // The languages of the sources the kind and the adult choice leave, the biggest first, and the one on show. A language no longer there falls back to all.
@@ -105,7 +107,7 @@ class RepoActions(
     val onInstall: (RepoSource) -> Unit,
     val onRemove: (String, String) -> Unit,
     val onQuery: (String) -> Unit,
-    val onKind: (Kind) -> Unit,
+    val onKind: (Kind?) -> Unit,
     val onLanguage: (String?) -> Unit,
     val onShowNsfw: (Boolean) -> Unit,
     val onUpdateAll: () -> Unit,

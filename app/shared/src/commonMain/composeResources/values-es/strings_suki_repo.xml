@@ -9,4 +9,7 @@
     <string name="suki_repo_install_done_failed">Se instalaron %1$d de %2$d (%3$d fallaron).</string>
     <string name="suki_repo_install_cancelled">Cancelado tras %1$d de %2$d (%3$d fallaron).</string>
     <string name="suki_repo_dismiss">Listo</string>
+    <string name="suki_repo_all_kinds">Todos los tipos</string>
+    <string name="suki_repo_all_languages">Todos los idiomas</string>
+    <string name="suki_busy_sources_install">Instalando fuentes</string>
 </resources>
