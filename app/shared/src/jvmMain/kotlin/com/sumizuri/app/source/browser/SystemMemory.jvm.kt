@@ -1,13 +1,13 @@
 package com.sumizuri.app.source.browser
 
+import com.sun.management.OperatingSystemMXBean
 import java.io.File
 import java.lang.management.ManagementFactory
 
 internal actual fun totalSystemRamBytes(): Long? {
     val fromMxBean = runCatching {
         val bean = ManagementFactory.getOperatingSystemMXBean()
-        val method = bean.javaClass.getMethod("getTotalMemorySize")
-        (method.invoke(bean) as? Long)?.takeIf { it > 0L }
+        (bean as? OperatingSystemMXBean)?.totalMemorySize?.takeIf { it > 0L }
     }.getOrNull()
     if (fromMxBean != null) return fromMxBean
     return readProcMemInfoBytes()

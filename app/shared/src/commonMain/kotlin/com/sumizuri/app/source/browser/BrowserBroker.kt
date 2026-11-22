@@ -100,38 +100,55 @@ class BrowserBroker(
             var attempt = 0
             while (true) {
                 val session = session(site, request)
-                val result = try {
-                    withTimeout(request.timeout + 5.seconds) { PageFetcher.fetch(session.page, request) }
-                } catch (error: Throwable) {
-                    AppLog.warn(TAG, "request in the page of $site failed: ${error.briefTrace()}")
-                    closeSession(site)
-                    if (error is TimeoutCancellationException) {
-                        throw BridgeException(
-                            "The page did not answer the request",
-                        )
+                var keepSession = false
+                var closed = false
+                try {
+                    val result = try {
+                        withTimeout(request.timeout + 5.seconds) { PageFetcher.fetch(session.page, request) }
+                    } catch (error: Throwable) {
+                        AppLog.warn(TAG, "request in the page of $site failed: ${error.briefTrace()}")
+                        closeSession(site)
+                        closed = true
+                        if (error is TimeoutCancellationException) {
+                            throw BridgeException(
+                                "The page did not answer the request",
+                            )
+                        }
+                        throw error
                     }
-                    throw error
+                    val headers = JsonObject(result.headers.mapValues { JsonPrimitive(it.value) })
+                    // Bytes as base64 text hold nothing to read, so only the headers say whether it was a bot check.
+                    val challenge = ChallengeCheck.reason(
+                        result.statusCode,
+                        headers,
+                        if (request.binary) "" else result.body,
+                    )
+                    AppLog.debug(
+                        TAG,
+                        "request in the page of $site answered ${result.statusCode}, bot check: ${challenge ?: "none"}",
+                    )
+                    if (challenge == null) {
+                        refuseInternalRedirect(result.url)
+                        keepSession = true
+                        return@inLane result
+                    }
+                    // The clearance ran out or the kept page lost it, so a new page is warmed once.
+                    closeSession(site)
+                    closed = true
+                    AppLog.warn(TAG, "the page of $site still shows a bot check, attempt ${attempt + 1} of 2")
+                    if (attempt++ >= 1) throw ChallengeStillShowing(request.url)
+                } finally {
+                    // Always release or close the session even on redirect errors or coroutine cancellation.
+                    if (!closed) {
+                        withContext(NonCancellable) {
+                            if (keepSession) {
+                                releaseAndKeep(site, session)
+                            } else {
+                                closeSession(site)
+                            }
+                        }
+                    }
                 }
-                val headers = JsonObject(result.headers.mapValues { JsonPrimitive(it.value) })
-                // Bytes as base64 text hold nothing to read, so only the headers say whether it was a bot check.
-                val challenge = ChallengeCheck.reason(
-                    result.statusCode,
-                    headers,
-                    if (request.binary) "" else result.body,
-                )
-                AppLog.debug(
-                    TAG,
-                    "request in the page of $site answered ${result.statusCode}, bot check: ${challenge ?: "none"}",
-                )
-                if (challenge == null) {
-                    refuseInternalRedirect(result.url)
-                    releaseAndKeep(site, session)
-                    return@inLane result
-                }
-                // The clearance ran out or the kept page lost it, so a new page is warmed once.
-                closeSession(site)
-                AppLog.warn(TAG, "the page of $site still shows a bot check, attempt ${attempt + 1} of 2")
-                if (attempt++ >= 1) throw ChallengeStillShowing(request.url)
             }
             @Suppress("UNREACHABLE_CODE")
             error("unreachable")
