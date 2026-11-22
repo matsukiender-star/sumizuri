@@ -4,8 +4,11 @@ import com.sumizuri.app.core.log.AppLog
 import com.sumizuri.app.data.AppContainer
 import com.sumizuri.app.data.account.SyncAccountStore
 import com.sumizuri.app.data.net.Network
+import com.sumizuri.app.data.text.nowMillis
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.IO
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -13,14 +16,21 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withContext
 import okio.Path
 
 // How long the screens of the profile that was left get to let go of its database before it is closed.
 private const val LetGoMs = 600L
 
+// How often the trash is looked through while the app stays open, as it can in the tray.
+private const val TrashLookEveryMs = 6 * 60 * 60 * 1000L
+
 // Holds the container of the open profile and opens another one when the person switches. The app draws whatever container is current, so a switch is a new container and a fresh set of screens.
 class ProfileHost(val registry: ProfileRegistry, private val open: (Path) -> AppContainer) {
     private val lock = Mutex()
+
+    // Deleting for good can take a while, so it has a lock of its own and never holds up a switch.
+    private val purgeLock = Mutex()
 
     // The switch is not tied to the screen that asked for it, since that screen ends with the switch.
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
@@ -35,6 +45,15 @@ class ProfileHost(val registry: ProfileRegistry, private val open: (Path) -> App
     private val mutable = MutableStateFlow(opened(registry.fileOf(registry.state.value.active)))
     val container: StateFlow<AppContainer> = mutable
     val state: StateFlow<RegistryState> = registry.state
+
+    init {
+        scope.launch {
+            while (true) {
+                registry.expired(nowMillis()).forEach { purge(it.id) }
+                delay(TrashLookEveryMs)
+            }
+        }
+    }
 
     // A container gets the sync account of the app, since one account serves every profile.
     private fun opened(file: Path): AppContainer = open(file).also { it.librarySync.accounts = syncAccounts }
@@ -74,14 +93,37 @@ class ProfileHost(val registry: ProfileRegistry, private val open: (Path) -> App
         registry.add(name, avatar, file)
     }
 
-    // Removes a profile that is not open, with its file and its picture. Gives false for the one that is open or the only one.
+    // Moves a profile that is not open to the trash. Gives false for the one that is open or the only one.
     suspend fun delete(id: Long): Boolean = lock.withLock {
-        if (registry.state.value.activeId == id) return@withLock false
-        val doomed = registry.remove(id) ?: return@withLock false
-        registry.deleteFiles(doomed)
-        registry.deleteAvatar(doomed.avatar)
-        AppLog.info("profile", "deleted ${doomed.name}")
+        val trashed = registry.trash(id, nowMillis()) ?: return@withLock false
+        AppLog.info("profile", "moved ${trashed.name} to the trash")
         true
+    }
+
+    fun restore(id: Long) {
+        scope.launch { lock.withLock { registry.restore(id, nowMillis()) } }
+    }
+
+    // Not tied to the screen that asked, which may close before the files are gone.
+    fun deleteNow(id: Long) {
+        scope.launch { purge(id) }
+    }
+
+    private suspend fun purge(id: Long) {
+        try {
+            purgeLock.withLock {
+                if (!lock.withLock { registry.doom(id) }) return
+                val gone = withContext(Dispatchers.IO) { registry.purge(id) }
+                AppLog.info(
+                    "profile",
+                    "deleted profile $id from the trash, ${if (gone) "all gone" else "to be tried again"}",
+                )
+            }
+        } catch (cancel: CancellationException) {
+            throw cancel
+        } catch (error: Exception) {
+            AppLog.error("profile", "could not delete profile $id from the trash", error)
+        }
     }
 
     fun rename(id: Long, name: String) = registry.rename(id, name)
