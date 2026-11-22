@@ -60,6 +60,7 @@ import com.sumizuri.app.data.text.nowMillis
 import com.sumizuri.app.feature.appupdate.AppUpdateNotices
 import com.sumizuri.app.feature.library.continueChapterOf
 import com.sumizuri.app.feature.onboarding.OnboardingScreen
+import com.sumizuri.app.feature.profile.StartupProfileGate
 import com.sumizuri.app.feature.settings.SettingsTarget
 import com.sumizuri.app.feature.settings.SettingsViewModel
 import com.sumizuri.app.feature.settings.controls.ControlsViewModel
@@ -121,13 +122,15 @@ private const val DoubleTapMs = 400L
 @Composable
 fun App(profiles: ProfileHost, requestedTab: Destination? = null, onTabOpened: () -> Unit = {}, windowBar: (@Composable () -> Unit)? = null) {
     val container by profiles.container.collectAsStateWithLifecycle()
-    // Each profile has its own screens, so a switch starts them again from nothing, with a place of their own to keep their view models in.
-    val owner = remember(container) { ProfileStoreOwner() }
-    DisposableEffect(owner) { onDispose { owner.viewModelStore.clear() } }
-    key(container) {
-        CompositionLocalProvider(LocalViewModelStoreOwner provides owner, LocalProfiles provides profiles) {
-            UiRefreshRate()
-            AppContent(container, windowBar, requestedTab, onTabOpened)
+    StartupProfileGate(profiles, container, windowBar) {
+        // Each profile has its own screens, so a switch starts them again from nothing, with a place of their own to keep their view models in.
+        val owner = remember(container) { ProfileStoreOwner() }
+        DisposableEffect(owner) { onDispose { owner.viewModelStore.clear() } }
+        key(container) {
+            CompositionLocalProvider(LocalViewModelStoreOwner provides owner, LocalProfiles provides profiles) {
+                UiRefreshRate()
+                AppContent(container, windowBar, requestedTab, onTabOpened)
+            }
         }
     }
 }
