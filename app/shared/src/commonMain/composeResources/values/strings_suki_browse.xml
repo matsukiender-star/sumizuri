@@ -2,9 +2,6 @@
 <resources>
     <string name="suki_preview_loading">Loading details…</string>
     <string name="suki_preview_no_summary">No summary available.</string>
-    <string name="suki_preview_add">Add to library</string>
-    <string name="suki_preview_saved">In library</string>
-    <string name="suki_preview_open">Open</string>
     <string name="suki_browse_picks">Recommendations in Popular</string>
     <string name="suki_browse_picks_hint">More of the genre of the last thing you watched or read in that extension. Hidden in incognito.</string>
     <string name="suki_browse_picks_watched">Because you watched %1$s · %2$s</string>

@@ -50,16 +50,15 @@ fun SourceBrowseScreen(
     var editing by remember { mutableStateOf<String?>(null) }
     var hovered by remember { mutableStateOf<SourceEntry?>(null) }
     var shownHover by remember { mutableStateOf<SourceEntry?>(null) }
-    var inspected by remember { mutableStateOf<SourceEntry?>(null) }
     var loadingPreviewUrl by remember { mutableStateOf<String?>(null) }
     val previewCache = remember(source.id) { mutableStateMapOf<String, SourceEntry>() }
     val previewEnabled = style != BrowseStyle.Cards
     LoadMoreWhenNear(grid, state.entries.size to state.loading, actions.onLoadMore)
 
     // Shows the hover panel after a brief pause and fetches missing details only for that single entry.
-    LaunchedEffect(hovered?.url, previewEnabled, inspected) {
+    LaunchedEffect(hovered?.url, previewEnabled) {
         val target = hovered
-        if (!previewEnabled || target == null || inspected != null) {
+        if (!previewEnabled || target == null) {
             shownHover = null
             return@LaunchedEffect
         }
@@ -76,20 +75,6 @@ fun SourceBrowseScreen(
             } finally {
                 if (loadingPreviewUrl == target.url) loadingPreviewUrl = null
             }
-        }
-    }
-
-    // Loads missing details for a long-pressed entry and caches them while this screen stays open.
-    LaunchedEffect(inspected?.url) {
-        val target = inspected ?: return@LaunchedEffect
-        if (previewCache.containsKey(target.url) || target.hasPreviewInfo()) return@LaunchedEffect
-        loadingPreviewUrl = target.url
-        try {
-            val fetched = actions.onFetchDetails(target)
-            val merged = target.mergeDetails(fetched)
-            previewCache[target.url] = merged
-        } finally {
-            if (loadingPreviewUrl == target.url) loadingPreviewUrl = null
         }
     }
 
@@ -123,12 +108,8 @@ fun SourceBrowseScreen(
                     val title = entry.asTitle(source.kind, source.id)
                     val saved = entry.url in state.inLibrary || entry.url in state.adding
                     val open = { actions.onOpenEntry(entry) }
-                    // Cards keep direct quick-add; grid and list open the preview panel which also offers quick-add.
+                    // A long press adds the title in every layout; the summary shows only under the mouse.
                     val add = if (saved) null else ({ actions.onQuickAdd(entry) })
-                    val inspect = {
-                        hovered = null
-                        inspected = entry
-                    }
                     val hoverMod = Modifier
                         .animateItem()
                         .mouseHoverPreview(
@@ -143,10 +124,10 @@ fun SourceBrowseScreen(
                             onClick = open,
                             modifier = hoverMod,
                             saved = saved,
-                            onLongClick = inspect,
+                            onLongClick = add,
                         )
 
-                        BrowseStyle.List -> BrowseLine(title, saved, open, hoverMod, onLongClick = inspect)
+                        BrowseStyle.List -> BrowseLine(title, saved, open, hoverMod, onLongClick = add)
 
                         BrowseStyle.Cards -> BrowseCard(title, saved, open, Modifier.animateItem(), onLongClick = add)
                     }
@@ -187,21 +168,6 @@ fun SourceBrowseScreen(
             sourceId = source.id,
             loading = activeHover != null && loadingPreviewUrl == activeHover.url,
             modifier = Modifier.align(Alignment.BottomCenter),
-        )
-    }
-
-    inspected?.let { target ->
-        val resolved = previewCache[target.url] ?: target
-        val saved = target.url in state.inLibrary || target.url in state.adding
-        EntryPreviewDialog(
-            entry = resolved,
-            kind = source.kind,
-            sourceId = source.id,
-            saved = saved,
-            loading = loadingPreviewUrl == target.url,
-            onQuickAdd = { actions.onQuickAdd(resolved) },
-            onOpen = { actions.onOpenEntry(resolved) },
-            onDismiss = { inspected = null },
         )
     }
 

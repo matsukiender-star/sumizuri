@@ -16,12 +16,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Alignment
@@ -38,17 +35,11 @@ import com.sumizuri.app.data.model.Kind
 import com.sumizuri.app.data.model.Status
 import com.sumizuri.app.feature.browse.asTitle
 import com.sumizuri.app.shared.resources.Res
-import com.sumizuri.app.shared.resources.suki_preview_add
 import com.sumizuri.app.shared.resources.suki_preview_loading
 import com.sumizuri.app.shared.resources.suki_preview_no_summary
-import com.sumizuri.app.shared.resources.suki_preview_open
-import com.sumizuri.app.shared.resources.suki_preview_saved
 import com.sumizuri.app.source.model.SourceEntry
-import com.sumizuri.app.ui.kit.art.InkButton
 import com.sumizuri.app.ui.kit.art.InkCircularProgressIndicator
 import com.sumizuri.app.ui.kit.cover.CoverArt
-import com.sumizuri.app.ui.kit.dialog.AppDialog
-import com.sumizuri.app.ui.kit.dialog.CancelButton
 import com.sumizuri.app.ui.text.displayName
 import org.jetbrains.compose.resources.stringResource
 
@@ -145,71 +136,6 @@ internal fun HoverPreviewBanner(
             }
         }
     }
-}
-
-// Long-press preview sheet/dialog that shows summary and genres while preserving Quick Add.
-@Composable
-internal fun EntryPreviewDialog(
-    entry: SourceEntry,
-    kind: Kind,
-    sourceId: String,
-    saved: Boolean,
-    loading: Boolean,
-    onQuickAdd: () -> Unit,
-    onOpen: () -> Unit,
-    onDismiss: () -> Unit,
-) {
-    val title = entry.asTitle(kind, sourceId)
-    AppDialog(
-        onDismissRequest = onDismiss,
-        title = {
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.Top) {
-                Box(Modifier.width(64.dp)) {
-                    CoverArt(title, Modifier.fillMaxWidth(), letterSize = 18)
-                }
-                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Text(
-                        title.displayName(),
-                        style = MaterialTheme.typography.titleMedium,
-                        maxLines = 3,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                    PreviewMetaLine(title.author, title.status)
-                    if (saved) {
-                        Text(
-                            stringResource(Res.string.suki_preview_saved),
-                            style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.primary,
-                        )
-                    }
-                }
-            }
-        },
-        text = {
-            Column(
-                Modifier.verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.spacedBy(10.dp),
-            ) {
-                PreviewGenres(title.genres, maxGenres = 12)
-                PreviewSummary(title.summary, loading, maxLines = 12)
-            }
-        },
-        confirmButton = {
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                TextButton(onClick = {
-                    onDismiss()
-                    onOpen()
-                }) { Text(stringResource(Res.string.suki_preview_open)) }
-                if (!saved) {
-                    InkButton(onClick = {
-                        onQuickAdd()
-                        onDismiss()
-                    }) { Text(stringResource(Res.string.suki_preview_add)) }
-                }
-            }
-        },
-        dismissButton = { CancelButton(onDismiss) },
-    )
 }
 
 @Composable
