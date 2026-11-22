@@ -310,6 +310,9 @@ class SyncClient {
             return withScheme
         }
 
+        // Whether the address leads into the home network, which newer systems ask the person about first.
+        fun leadsHome(address: String): Boolean = runCatching { isHome(Url(addressOf(address)).host) }.getOrDefault(false)
+
         // This computer, or an address only reachable inside a home network.
         fun isHome(host: String): Boolean {
             val name = host.lowercase().removePrefix("[").removeSuffix("]")

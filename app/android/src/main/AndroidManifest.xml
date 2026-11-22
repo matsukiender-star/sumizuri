@@ -10,6 +10,8 @@
     <!-- Saving chapters only on Wi-Fi looks at the kind of connection, and the lock of the app asks for the fingerprint or screen lock of the phone. -->
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.USE_BIOMETRIC" />
+    <!-- Android 17 keeps the app off the home network, where a sync server can be, until the person allows it. -->
+    <uses-permission android:name="android.permission.ACCESS_LOCAL_NETWORK" />
     <!-- The updater installs a new version it downloaded from the releases of the app. -->
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
 

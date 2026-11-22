@@ -1,12 +1,15 @@
 package com.sumizuri.app.feature.sync
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.sumizuri.app.data.LocalAppContainer
+import com.sumizuri.app.data.account.SyncClient
+import com.sumizuri.app.data.net.rememberLocalNetworkAccess
 import com.sumizuri.app.data.profile.LocalProfiles
 import com.sumizuri.app.feature.settings.PageRefresh
 import com.sumizuri.app.feature.settings.SettingsPageFrame
@@ -41,6 +44,10 @@ fun SyncRoute(onBack: () -> Unit, onOpen: (SettingsTarget) -> Unit) {
     val ui by model.ui.collectAsStateWithLifecycle()
     // Signed in, the page uses more of a wide window for its tabs, and the tabs of what is on the server can be pulled down to fetch it again.
     val connected = ui.step as? SyncStep.Connected
+    val askHomeNetwork = rememberLocalNetworkAccess()
+    // An account kept from before the system began to ask is asked for when its page opens.
+    val homeServer = connected?.account?.server?.takeIf(SyncClient::leadsHome)
+    LaunchedEffect(homeServer) { if (homeServer != null) askHomeNetwork {} }
     val refresh = connected?.let { step ->
         val home = rememberSyncHome(step.account)
         val state by home.home.collectAsStateWithLifecycle()
@@ -54,7 +61,9 @@ fun SyncRoute(onBack: () -> Unit, onOpen: (SettingsTarget) -> Unit) {
         refresh = refresh,
     ) {
         when (val step = ui.step) {
-            SyncStep.Address -> AddressSection(ui.busy, model::connect)
+            SyncStep.Address -> AddressSection(ui.busy) { typed ->
+                if (SyncClient.leadsHome(typed)) askHomeNetwork { model.connect(typed) } else model.connect(typed)
+            }
 
             is SyncStep.Server -> {
                 ServerSection(step.address, step.info, ui.busy, model::back)
