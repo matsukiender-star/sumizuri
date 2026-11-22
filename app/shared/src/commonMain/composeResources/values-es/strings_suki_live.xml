@@ -32,6 +32,7 @@
     <string name="suki_live_error_too_large">La lista supera el límite de 20 MB.</string>
     <string name="suki_live_error_empty">No se encontraron canales http o https válidos en esta lista.</string>
     <string name="suki_live_error_read">No se pudo cargar la lista. Revisa el enlace o archivo e intenta de nuevo.</string>
+    <string name="suki_live_error_save">No se pudo guardar la lista. Revisa el espacio disponible e intenta de nuevo.</string>
     <string name="suki_live_badge">EN VIVO</string>
     <string name="suki_live_player_error_title">Canal no disponible</string>
     <string name="suki_live_player_error_hint">No se pudo reproducir esta transmisión en este momento.</string>

@@ -3,16 +3,19 @@ package com.sumizuri.app.data.live
 // Hard caps for untrusted M3U files so huge playlists cannot exhaust memory.
 const val MaxLivePlaylistBytes = 20L * 1024L * 1024L
 const val MaxLiveChannels = 50_000
+private const val MaxExtInfHeaderChars = 8 * 1024
 
 // Result of parsing M3U text, noting whether the channel cap stopped reading early.
 data class M3uParseResult(val channels: List<LiveChannel>, val truncated: Boolean)
 
 // Parses M3U / M3U8 playlists line by line, keeping only http/https streams and safe headers.
 object M3uParser {
-    private val attrRegex = Regex("""([a-zA-Z0-9_-]+)=("([^"]*)"|'([^']*)'|([^\s,]+))""")
+    // Negative lookbehind prevents quadratic backtracking on long attribute-free #EXTINF lines.
+    private val attrRegex = Regex("""(?<![a-zA-Z0-9_-])([a-zA-Z0-9_-]+)=("([^"]*)"|'([^']*)'|([^\s,]+))""")
 
     fun parse(playlistId: String, text: String): M3uParseResult {
         val channels = ArrayList<LiveChannel>()
+        val seenIds = HashSet<String>()
         var pendingName = ""
         var pendingGroup = ""
         var pendingLogo: String? = null
@@ -31,7 +34,13 @@ object M3uParser {
             when {
                 line.startsWith("#EXTINF:", ignoreCase = true) -> {
                     val split = splitExtInf(line.substring(8))
-                    val attrs = parseAttributes(split.first)
+                    val header =
+                        if (split.first.length > MaxExtInfHeaderChars) {
+                            split.first.substring(0, MaxExtInfHeaderChars)
+                        } else {
+                            split.first
+                        }
+                    val attrs = parseAttributes(header)
                     pendingName = split.second.trim()
                     pendingGroup = attrs["group-title"]?.trim().orEmpty()
                     pendingLogo = attrs["tvg-logo"]?.trim()?.takeIf(::isHttpUrl)
@@ -63,24 +72,26 @@ object M3uParser {
 
                 else -> {
                     if (isHttpUrl(line)) {
-                        if (channels.size >= MaxLiveChannels) {
-                            truncated = true
-                            break
-                        }
                         val displayName = pendingName.ifBlank { fallbackName(line) }
                         val id = stableChannelId(playlistId, line, displayName)
-                        channels.add(
-                            LiveChannel(
-                                id = id,
-                                playlistId = playlistId,
-                                name = displayName,
-                                url = line,
-                                group = pendingGroup,
-                                logo = pendingLogo,
-                                userAgent = pendingUserAgent,
-                                referrer = pendingReferrer,
-                            ),
-                        )
+                        if (seenIds.add(id)) {
+                            if (channels.size >= MaxLiveChannels) {
+                                truncated = true
+                                break
+                            }
+                            channels.add(
+                                LiveChannel(
+                                    id = id,
+                                    playlistId = playlistId,
+                                    name = displayName,
+                                    url = line,
+                                    group = pendingGroup,
+                                    logo = pendingLogo,
+                                    userAgent = pendingUserAgent,
+                                    referrer = pendingReferrer,
+                                ),
+                            )
+                        }
                     }
                     // Reset entry metadata after every URL line, even skipped schemes.
                     pendingName = ""

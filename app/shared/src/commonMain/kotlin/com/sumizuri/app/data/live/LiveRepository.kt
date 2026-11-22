@@ -8,6 +8,7 @@ import io.ktor.client.request.prepareGet
 import io.ktor.client.statement.bodyAsChannel
 import io.ktor.http.isSuccess
 import io.ktor.utils.io.readAvailable
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
@@ -92,12 +93,39 @@ class LiveRepository(
         return saveParsed(id, name.trim().ifBlank { redactLiveUrl(cleanUrl) }, LiveSourceKind.Url, cleanUrl, fetched)
     }
 
-    suspend fun addFromFile(name: String, path: Path): LiveLoadResult {
-        val text = readLocalPlaylist(path) ?: return LiveLoadResult.ReadFailed
+    suspend fun addFromFile(
+        name: String,
+        path: Path,
+        displayName: String? = null,
+        temporary: Boolean = false,
+    ): LiveLoadResult {
+        val isTemp = temporary || isTemporaryLiveFile(path.name)
+        val text = try {
+            readLocalPlaylist(path)
+        } finally {
+            if (temporary) withContext(Dispatchers.IO) { runCatching { files.delete(path) } }
+        } ?: return LiveLoadResult.ReadFailed
         if (text === TooLargeSentinel) return LiveLoadResult.TooLarge
         val id = newId()
-        val label = name.trim().ifBlank { path.name.substringBeforeLast('.').ifBlank { path.name } }
-        return saveParsed(id, label, LiveSourceKind.File, path.toString(), text)
+        val label = name.trim().ifBlank {
+            cleanFileLabel(displayName) ?: cleanFileLabel(path.name) ?: "IPTV"
+        }
+        // Never persist a temporary picker cache path, so refreshes ask the user for the file again.
+        val storedSource = if (isTemp) "" else path.toString()
+        return saveParsed(id, label, LiveSourceKind.File, storedSource, text)
+    }
+
+    suspend fun refreshFromFile(playlistId: String, path: Path, temporary: Boolean = false): LiveLoadResult {
+        val list = currentPlaylists().firstOrNull { it.id == playlistId } ?: return LiveLoadResult.ReadFailed
+        val isTemp = temporary || isTemporaryLiveFile(path.name)
+        val text = try {
+            readLocalPlaylist(path)
+        } finally {
+            if (temporary) withContext(Dispatchers.IO) { runCatching { files.delete(path) } }
+        } ?: return LiveLoadResult.ReadFailed
+        if (text === TooLargeSentinel) return LiveLoadResult.TooLarge
+        val storedSource = if (isTemp) "" else path.toString()
+        return saveParsed(list.id, list.name, LiveSourceKind.File, storedSource, text)
     }
 
     suspend fun refresh(playlistId: String): LiveLoadResult {
@@ -108,7 +136,10 @@ class LiveRepository(
                 downloadPlaylist(list.source)
             }
 
-            LiveSourceKind.File -> readLocalPlaylist(list.source.toPath())
+            LiveSourceKind.File -> {
+                if (isTemporaryLiveFile(list.source)) return LiveLoadResult.PickFileRequired
+                readLocalPlaylist(list.source.toPath())
+            }
         } ?: return LiveLoadResult.ReadFailed
         if (text === TooLargeSentinel) return LiveLoadResult.TooLarge
         return saveParsed(list.id, list.name, list.kind, list.source, text)
@@ -174,18 +205,36 @@ class LiveRepository(
         val serialized = withContext(Dispatchers.Default) {
             json.encodeToString(ListSerializer(LiveChannel.serializer()), parsed.channels)
         }
-        withContext(Dispatchers.IO) {
-            file.parent?.let { files.createDirectories(it) }
-            val temp = file.parent!! / "${file.name}.tmp"
-            files.write(temp) { writeUtf8(serialized) }
-            files.atomicMove(temp, file)
+        try {
+            withContext(Dispatchers.IO) {
+                file.parent?.let { files.createDirectories(it) }
+                val temp = file.parent!! / "${file.name}.tmp"
+                try {
+                    files.write(temp) { writeUtf8(serialized) }
+                    files.atomicMove(temp, file)
+                } catch (error: Throwable) {
+                    runCatching { files.delete(temp) }
+                    throw error
+                }
+            }
+            val entry = LivePlaylist(id, name, kind, source, parsed.channels.size, nowMillis())
+            val current = currentPlaylists()
+            val next =
+                if (current.any { it.id == id }) current.map { if (it.id == id) entry else it } else current + entry
+            savePlaylists(next)
+            cacheLock.withLock { channelCache[id] = parsed.channels }
+            return LiveLoadResult.Ok(entry, parsed.truncated)
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (_: Throwable) {
+            return LiveLoadResult.SaveFailed
         }
-        cacheLock.withLock { channelCache[id] = parsed.channels }
-        val entry = LivePlaylist(id, name, kind, source, parsed.channels.size, nowMillis())
-        val current = currentPlaylists()
-        val next = if (current.any { it.id == id }) current.map { if (it.id == id) entry else it } else current + entry
-        savePlaylists(next)
-        return LiveLoadResult.Ok(entry, parsed.truncated)
+    }
+
+    private fun cleanFileLabel(rawName: String?): String? {
+        val trimmed = rawName?.trim().orEmpty()
+        if (trimmed.isEmpty() || isTemporaryLiveFile(trimmed)) return null
+        return trimmed.substringBeforeLast('.').ifBlank { trimmed }
     }
 
     // Reads at most MaxLivePlaylistBytes from an HTTP(S) response without logging the URL.

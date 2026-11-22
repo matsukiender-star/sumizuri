@@ -2,6 +2,7 @@ package com.sumizuri.app.playback
 
 import androidx.compose.runtime.mutableStateOf
 import com.sumizuri.app.core.log.AppLog
+import com.sumizuri.app.data.live.redactUrlsInText
 import com.sumizuri.app.data.model.player.SubtitleBackground
 import com.sun.jna.Memory
 import com.sun.jna.Native
@@ -267,7 +268,7 @@ class MpvEngine(style: SubtitleStyle = SubtitleStyle()) : PlayerEngine {
                         ?.getString(0)
                         .orEmpty()
                         .trim()
-                    if (text.isNotEmpty()) AppLog.warn("mpv", "$prefix: $text")
+                    if (text.isNotEmpty()) AppLog.warn("mpv", "$prefix: ${redactUrlsInText(text)}")
                     if (signs.read(text)) mutable.update { it.copy(message = text) }
                 }
 
