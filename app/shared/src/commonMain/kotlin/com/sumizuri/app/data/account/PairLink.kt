@@ -20,6 +20,9 @@ class PairLink(val addresses: List<String>, val fingerprint: String, val secret:
         append("&s=").append(secret.toHexString())
     }
 
+    // A phone scans again when its computer changed address, so only the same certificate may take the place of an account.
+    fun fits(account: SyncAccount?): Boolean = account == null || account.fingerprint == fingerprint
+
     companion object {
         // Nothing for a link that is not whole or that points out of the home network, since anyone can make a link.
         fun parse(text: String): PairLink? {

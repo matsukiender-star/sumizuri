@@ -13,6 +13,7 @@ import com.sumizuri.app.data.homeserver.homeHostOf
 import com.sumizuri.app.data.homeserver.linkComputer
 import com.sumizuri.app.data.homeserver.linkPhone
 import com.sumizuri.app.data.profile.ProfileHost
+import com.sumizuri.app.data.settings.SettingKey
 import com.sumizuri.app.data.settings.SettingsRepository
 import com.sumizuri.app.data.text.nowMillis
 import com.sumizuri.app.navigation.AppLinks
@@ -66,14 +67,17 @@ internal class PairModel(
     }
 
     fun join(link: PairLink) {
-        if (mutable.value.joining || store.account.value != null) return
+        val before = store.account.value
+        if (mutable.value.joining || !link.fits(before)) return
         mutable.update { it.copy(joining = true, joinProblem = null) }
         viewModelScope.launch {
             val problem = pairStep {
                 val joined = client.joinPairing(link, thisDevice())
                 // Kept at once, since the code is used up now whatever happens next.
                 store.save(joined)
-                if (linkPhone(client, settings, joined, profileName())) syncer.syncSoon()
+                // Scanned again it keeps the profile it had, and only the address is new.
+                val again = before?.userId == joined.userId && settings.textNow(SettingKey.SyncLibraryId) != null
+                if (again || linkPhone(client, settings, joined, profileName())) syncer.syncSoon()
                 AppLog.info("sync", "linked with a computer by its code")
                 AppLinks.pairTaken()
             }

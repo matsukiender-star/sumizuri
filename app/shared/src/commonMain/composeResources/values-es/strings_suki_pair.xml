@@ -2,7 +2,7 @@
 <!-- Text of the Suki pairing by QR code, kept apart so it never meets the files Weblate writes. -->
 <resources>
     <string name="pair_section">Vincular un celular</string>
-    <string name="pair_hint">Escanea una vez y los dos se mantienen al día por la red de tu casa mientras Sumizuri esté abierto en esta computadora.</string>
+    <string name="pair_hint">Escanea una vez y los dos se mantienen al día por la red de tu casa mientras Sumizuri esté abierto en esta computadora. Si la dirección de la computadora cambia, escanea otra vez.</string>
     <string name="pair_show">Mostrar código QR</string>
     <string name="pair_again">Otro código</string>
     <string name="pair_scan">Escanéalo con la cámara del celular. Si la cámara no abre Sumizuri, copia el enlace y pégalo en Ajustes, Sincronización, como dirección del servidor.</string>
