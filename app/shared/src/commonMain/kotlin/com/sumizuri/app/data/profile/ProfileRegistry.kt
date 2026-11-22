@@ -65,10 +65,8 @@ class ProfileRegistry(
             val since = system.metadataOrNull(legacyFile)?.createdAtMillis ?: nowMillis()
             return RegistryState(listOf(Profile(1, FirstName, null, since, null)), 1).also(::save)
         }
-        // Nothing is open yet, so every file can be given the name its profile asks for.
-        val settled = profiles.map { settleFile(it, profiles) }
-        val open = saved?.active?.takeIf { id -> settled.any { it.id == id } } ?: settled.first().id
-        return RegistryState(settled, open).also(::save)
+        val open = saved?.active?.takeIf { id -> profiles.any { it.id == id } } ?: profiles.first().id
+        return RegistryState(profiles, open).also(::save)
     }
 
     private fun save(state: RegistryState) {
@@ -81,17 +79,6 @@ class ProfileRegistry(
 
     // The file a profile keeps its library in.
     fun fileOf(profile: Profile): Path = profile.file?.let { profilesFolder / it } ?: legacyFile
-
-    // Gives a profile the file name its name asks for. The file of the profile that is open cannot be renamed, so that waits for the next start.
-    private fun settleFile(profile: Profile, all: List<Profile>): Profile {
-        val file = profile.file ?: return profile
-        val wanted = profileFileName(profile.name, all.filter { it.id != profile.id }.mapNotNull { it.file })
-        if (wanted == file || !system.exists(profilesFolder / file)) return profile
-        return runCatching {
-            system.atomicMove(profilesFolder / file, profilesFolder / wanted)
-            profile.copy(file = wanted)
-        }.getOrDefault(profile)
-    }
 
     private fun change(edit: (RegistryState) -> RegistryState) {
         val next = edit(mutable.value)
@@ -106,9 +93,9 @@ class ProfileRegistry(
         return profile
     }
 
+    // Only the name changes. The file keeps the one it was made with, as downloads, backups, covers, the journal and the sync base are all found by it, and covers are saved as whole paths.
     fun rename(id: Long, name: String) = change { now ->
-        val renamed = now.profiles.map { if (it.id == id) it.copy(name = name) else it }
-        now.copy(profiles = renamed.map { if (it.id == id && id != now.activeId) settleFile(it, renamed) else it })
+        now.copy(profiles = now.profiles.map { if (it.id == id) it.copy(name = name) else it })
     }
 
     fun setAvatar(id: Long, avatar: String?) = change { now ->
