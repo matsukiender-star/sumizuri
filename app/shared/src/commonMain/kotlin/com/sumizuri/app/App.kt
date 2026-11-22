@@ -247,6 +247,11 @@ private fun AppContent(container: AppContainer, windowBar: (@Composable () -> Un
                 AppLinks.trackTaken()
                 TrackerId.of(link.tracker)?.let { container.trackers.finish(it, link.answer) }
             }
+            val linkedPair by AppLinks.pair.collectAsStateWithLifecycle()
+            LaunchedEffect(linkedPair, place.restored) {
+                val syncPage = Page.SettingsPage(SettingsTarget.Sync)
+                if (linkedPair != null && place.restored && place.top != syncPage) navigation.push(syncPage)
+            }
             val linkedUpdates by AppLinks.openUpdates.collectAsStateWithLifecycle()
             LaunchedEffect(linkedUpdates, place.restored) {
                 if (linkedUpdates && place.restored) {

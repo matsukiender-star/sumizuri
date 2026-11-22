@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Text of the Suki pairing by QR code, kept apart so it never meets the files Weblate writes. -->
+<resources>
+    <string name="pair_section">Link a phone</string>
+    <string name="pair_hint">Scan once and both stay in sync over your home network while Sumizuri is open on this computer.</string>
+    <string name="pair_show">Show QR code</string>
+    <string name="pair_again">New code</string>
+    <string name="pair_scan">Scan it with the camera of the phone. If the camera does not open Sumizuri, copy the link and paste it in Settings, Sync as the server address.</string>
+    <string name="pair_qr">QR code to link a phone</string>
+    <string name="pair_copy">Copy link</string>
+    <string name="pair_left">The code works once, for %1$d more seconds.</string>
+    <string name="pair_expired">The code is too old. Show a new one.</string>
+    <string name="pair_join_title">Link with this computer?</string>
+    <string name="pair_join_text">Only go on if you just showed this code on your own computer (%1$s). Your library will sync with it.</string>
+    <string name="pair_join">Link</string>
+    <string name="pair_joined_already">This device already syncs with a server. Sign out of it first to link with another computer.</string>
+    <string name="pair_bad_link">That code is not a valid Sumizuri code for a home network.</string>
+    <string name="pair_error_over">That code was used or is too old. Show a new one on the computer.</string>
+    <string name="pair_error_other_server">This computer already syncs with another server. Sign out of it first to link a phone this way.</string>
+    <string name="pair_error_not_started">The server of this computer could not start. The log in Diagnostics says more.</string>
+    <string name="pair_error_no_network">This computer is not connected to a home network.</string>
+    <string name="pair_error_unreachable">The computer did not answer. Both must be on the same Wi-Fi, Sumizuri must be open there, and its firewall must allow it.</string>
+</resources>

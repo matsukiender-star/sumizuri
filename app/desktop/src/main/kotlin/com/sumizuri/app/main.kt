@@ -28,6 +28,8 @@ import com.sumizuri.app.core.log.CrashReport
 import com.sumizuri.app.core.log.FileLogSink
 import com.sumizuri.app.data.AppContainer
 import com.sumizuri.app.data.db.databaseBuilder
+import com.sumizuri.app.data.homeserver.HomePairing
+import com.sumizuri.app.data.homeserver.homeHostOf
 import com.sumizuri.app.data.profile.ProfileHost
 import com.sumizuri.app.data.profile.ProfileRegistry
 import com.sumizuri.app.data.sync.DesktopFront
@@ -170,6 +172,11 @@ fun main(args: Array<String>) {
             LaunchedEffect(forward) { if (forward > 0) toFront(window, state) }
             LaunchedEffect(window) { DesktopFront.bring = { toFront(window, state) } }
             LaunchedEffect(Unit) { StartColor.keep(folder) }
+            // A computer that phones are linked with is their server again as soon as the app opens.
+            LaunchedEffect(profiles) {
+                val home = folder.absolutePath.toPath()
+                homeHostOf(home)?.let { HomePairing(home, profiles.syncAccounts, it).resume() }
+            }
             // A window put away lets go of the work Skia keeps for drawing, which it makes again when the window comes back.
             LaunchedEffect(state.isMinimized) { if (state.isMinimized) Graphics.purgeAllCaches() }
             val maximized = state.placement == WindowPlacement.Maximized

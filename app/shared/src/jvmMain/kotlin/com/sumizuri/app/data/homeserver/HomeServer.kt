@@ -31,9 +31,14 @@ private val Fingerprint = Regex("fingerprint ([0-9a-f]{64})")
 private val SetupCode = Regex("^ {6}([A-Z0-9]{4}(?:-[A-Z0-9]{4}){2})$")
 
 // The server as it runs: where this computer reaches it, where phones do, and what they check. The setup code is there until someone claimed it.
-class HomeServerUp(val local: String, val homePort: Int, val fingerprint: String, val setupCode: String?) {
+class HomeServerUp(
+    override val local: String,
+    val homePort: Int,
+    override val fingerprint: String,
+    override val setupCode: String?,
+) : HomeUp {
     // Where phones at home can find this computer, private addresses of real connections first.
-    fun addresses(): List<String> = homeHosts().map { "$it:$homePort" }
+    override fun addresses(): List<String> = homeHosts().map { "$it:$homePort" }
 }
 
 // Runs the sync server of the project on this computer. It is a process of its own, since its SQLite and the one of the app crash each other in one process.
@@ -41,7 +46,7 @@ class HomeServer(
     private val folder: File,
     private val jars: File? = bundledJars(),
     private val java: File = bundledJava(),
-) {
+) : HomeHost {
     private val lock = Mutex()
     private var process: Process? = null
     private var up: HomeServerUp? = null
@@ -50,7 +55,7 @@ class HomeServer(
     val available: Boolean get() = jars?.isDirectory == true && java.isFile
 
     // Starts the server, or gives the one that runs. Nothing when it could not start.
-    suspend fun start(): HomeServerUp? = lock.withLock {
+    override suspend fun start(): HomeServerUp? = lock.withLock {
         up?.takeIf { process?.isAlive == true } ?: withContext(Dispatchers.IO) { launch() }
     }
 

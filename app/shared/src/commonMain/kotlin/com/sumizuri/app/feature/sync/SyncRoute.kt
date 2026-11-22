@@ -18,6 +18,9 @@ import com.sumizuri.app.feature.sync.account.rememberSyncHome
 import com.sumizuri.app.feature.sync.home.SyncHomeView
 import com.sumizuri.app.feature.sync.home.SyncPageWidth
 import com.sumizuri.app.feature.sync.home.SyncTab
+import com.sumizuri.app.feature.sync.pair.PairJoinDialog
+import com.sumizuri.app.feature.sync.pair.PairModel
+import com.sumizuri.app.feature.sync.pair.PairPhoneSection
 import com.sumizuri.app.feature.sync.signin.AddressSection
 import com.sumizuri.app.feature.sync.signin.ChooseProfileSection
 import com.sumizuri.app.feature.sync.signin.CreateSection
@@ -29,6 +32,7 @@ import com.sumizuri.app.feature.sync.signin.SignInSection
 import com.sumizuri.app.feature.sync.signin.SyncMode
 import com.sumizuri.app.feature.sync.signin.SyncStep
 import com.sumizuri.app.feature.sync.signin.SyncViewModel
+import com.sumizuri.app.navigation.AppLinks
 import com.sumizuri.app.shared.resources.Res
 import com.sumizuri.app.shared.resources.sync_hint
 import com.sumizuri.app.shared.resources.sync_title
@@ -42,6 +46,7 @@ fun SyncRoute(onBack: () -> Unit, onOpen: (SettingsTarget) -> Unit) {
     val profileName = remember(profiles) { profiles.registry.state.value.active.name }
     val model = viewModel { SyncViewModel(profiles.syncAccounts, container.settings, profileName) }
     val ui by model.ui.collectAsStateWithLifecycle()
+    val pair = viewModel { PairModel(profiles, container.settings, container.librarySync) }
     // Signed in, the page uses more of a wide window for its tabs, and the tabs of what is on the server can be pulled down to fetch it again.
     val connected = ui.step as? SyncStep.Connected
     val askHomeNetwork = rememberLocalNetworkAccess()
@@ -53,6 +58,7 @@ fun SyncRoute(onBack: () -> Unit, onOpen: (SettingsTarget) -> Unit) {
         val state by home.home.collectAsStateWithLifecycle()
         PageRefresh(state.busy, home::refreshCopy).takeIf { state.tab != SyncTab.Account && state.tab != SyncTab.Admin }
     }
+    PairJoinDialog(pair)
     SettingsPageFrame(
         Res.string.sync_title,
         onBack,
@@ -60,8 +66,11 @@ fun SyncRoute(onBack: () -> Unit, onOpen: (SettingsTarget) -> Unit) {
         maxWidth = if (connected != null) SyncPageWidth else ReadableWidth,
         refresh = refresh,
     ) {
+        val here = ui.step
+        if (here is SyncStep.Address || here is SyncStep.Connected) PairPhoneSection(pair)
         when (val step = ui.step) {
             SyncStep.Address -> AddressSection(ui.busy) { typed ->
+                if (AppLinks.open(typed)) return@AddressSection
                 if (SyncClient.leadsHome(typed)) askHomeNetwork { model.connect(typed) } else model.connect(typed)
             }
 
