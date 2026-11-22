@@ -113,6 +113,7 @@ private fun LiveScreen(
         ManageLivePlaylistsSheet(
             playlists = state.playlists,
             onRefresh = vm::refresh,
+            onReplaceFile = vm::refreshFromFile,
             onRename = vm::rename,
             onRemove = vm::remove,
             onAddNew = {
@@ -216,7 +217,7 @@ private fun LiveCatalogContent(
                             label = { Text(stringResource(Res.string.suki_live_all_groups)) },
                         )
                     }
-                    items(state.groups, key = { "grp_$it" }) { group ->
+                    items(state.groups, key = { "group:$it" }) { group ->
                         FilterChip(
                             selected = state.selectedGroup == group,
                             onClick = { vm.selectGroup(if (state.selectedGroup == group) null else group) },

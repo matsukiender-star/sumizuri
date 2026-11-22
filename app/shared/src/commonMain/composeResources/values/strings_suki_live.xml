@@ -32,6 +32,7 @@
     <string name="suki_live_error_too_large">The playlist exceeds the 20 MB limit.</string>
     <string name="suki_live_error_empty">No valid http or https channels were found in this playlist.</string>
     <string name="suki_live_error_read">Could not load the playlist. Check the link or file and try again.</string>
+    <string name="suki_live_error_save">Could not save the playlist. Check available storage and try again.</string>
     <string name="suki_live_badge">LIVE</string>
     <string name="suki_live_player_error_title">Channel unavailable</string>
     <string name="suki_live_player_error_hint">This stream could not be played right now.</string>

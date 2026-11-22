@@ -35,6 +35,7 @@ import androidx.compose.ui.unit.dp
 import com.sumizuri.app.data.live.LiveLoadResult
 import com.sumizuri.app.data.live.LivePlaylist
 import com.sumizuri.app.data.live.LiveSourceKind
+import com.sumizuri.app.data.live.isTemporaryLiveFile
 import com.sumizuri.app.data.live.redactLiveUrl
 import com.sumizuri.app.shared.resources.Res
 import com.sumizuri.app.shared.resources.profile_save
@@ -42,6 +43,7 @@ import com.sumizuri.app.shared.resources.suki_live_add_list
 import com.sumizuri.app.shared.resources.suki_live_channels_count
 import com.sumizuri.app.shared.resources.suki_live_error_empty
 import com.sumizuri.app.shared.resources.suki_live_error_read
+import com.sumizuri.app.shared.resources.suki_live_error_save
 import com.sumizuri.app.shared.resources.suki_live_error_too_large
 import com.sumizuri.app.shared.resources.suki_live_error_url
 import com.sumizuri.app.shared.resources.suki_live_file_selected
@@ -62,8 +64,8 @@ import com.sumizuri.app.ui.kit.art.InkButton
 import com.sumizuri.app.ui.kit.art.InkCircularProgressIndicator
 import com.sumizuri.app.ui.kit.dialog.AppDialog
 import com.sumizuri.app.ui.kit.dialog.CancelButton
-import com.sumizuri.app.ui.kit.input.FileKind
-import com.sumizuri.app.ui.kit.input.rememberFilePicker
+import com.sumizuri.app.ui.kit.input.PickedFile
+import com.sumizuri.app.ui.kit.input.rememberFilesImporter
 import com.sumizuri.app.ui.kit.page.AppSheet
 import kotlinx.coroutines.launch
 import okio.Path
@@ -74,19 +76,22 @@ import org.jetbrains.compose.resources.stringResource
 @Composable
 internal fun AddLivePlaylistSheet(
     onAddUrl: suspend (String, String) -> LiveLoadResult,
-    onAddFile: suspend (String, Path) -> LiveLoadResult,
+    onAddFile: suspend (String, Path, String?, Boolean) -> LiveLoadResult,
     onDismiss: () -> Unit,
 ) {
     var kind by remember { mutableStateOf(LiveSourceKind.Url) }
     var name by remember { mutableStateOf("") }
     var url by remember { mutableStateOf("") }
-    var pickedPath by remember { mutableStateOf<Path?>(null) }
+    var pickedFile by remember { mutableStateOf<PickedFile?>(null) }
     var busy by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<StringResource?>(null) }
     val scope = rememberCoroutineScope()
-    val pickFile = rememberFilePicker(FileKind.Any) { path ->
-        pickedPath = path
-        if (name.isBlank()) name = path.name.substringBeforeLast('.').ifBlank { path.name }
+    val pickFile = rememberFilesImporter { files ->
+        val file = files.firstOrNull() ?: return@rememberFilesImporter
+        pickedFile = file
+        if (name.isBlank() && !isTemporaryLiveFile(file.name)) {
+            name = file.name.substringBeforeLast('.').ifBlank { file.name }
+        }
         error = null
     }
 
@@ -131,7 +136,7 @@ internal fun AddLivePlaylistSheet(
             OutlinedButton(onClick = pickFile, enabled = !busy, modifier = Modifier.fillMaxWidth()) {
                 Icon(Icons.Outlined.FolderOpen, null, Modifier.size(18.dp))
                 Text(
-                    pickedPath?.let { stringResource(Res.string.suki_live_file_selected, it.name) }
+                    pickedFile?.let { stringResource(Res.string.suki_live_file_selected, it.name) }
                         ?: stringResource(Res.string.suki_live_pick_file),
                     modifier = Modifier.padding(start = 8.dp),
                     maxLines = 1,
@@ -156,7 +161,7 @@ internal fun AddLivePlaylistSheet(
                 Text(stringResource(Res.string.suki_live_loading), style = MaterialTheme.typography.bodySmall)
             }
         }
-        val canSubmit = !busy && if (kind == LiveSourceKind.Url) url.isNotBlank() else pickedPath != null
+        val canSubmit = !busy && if (kind == LiveSourceKind.Url) url.isNotBlank() else pickedFile != null
         InkButton(
             onClick = {
                 busy = true
@@ -164,15 +169,27 @@ internal fun AddLivePlaylistSheet(
                 scope.launch {
                     val result = when (kind) {
                         LiveSourceKind.Url -> onAddUrl(name, url)
-                        LiveSourceKind.File -> onAddFile(name, pickedPath!!)
+
+                        LiveSourceKind.File -> {
+                            val file = pickedFile!!
+                            onAddFile(name, file.path, file.name, file.temporary)
+                        }
                     }
                     busy = false
                     when (result) {
                         is LiveLoadResult.Ok -> onDismiss()
+
                         LiveLoadResult.InvalidUrl -> error = Res.string.suki_live_error_url
+
                         LiveLoadResult.TooLarge -> error = Res.string.suki_live_error_too_large
+
                         LiveLoadResult.Empty -> error = Res.string.suki_live_error_empty
-                        LiveLoadResult.ReadFailed -> error = Res.string.suki_live_error_read
+
+                        LiveLoadResult.ReadFailed, LiveLoadResult.PickFileRequired ->
+                            error =
+                                Res.string.suki_live_error_read
+
+                        LiveLoadResult.SaveFailed -> error = Res.string.suki_live_error_save
                     }
                 }
             },
@@ -189,16 +206,31 @@ internal fun AddLivePlaylistSheet(
 internal fun ManageLivePlaylistsSheet(
     playlists: List<LivePlaylist>,
     onRefresh: suspend (String) -> LiveLoadResult,
+    onReplaceFile: suspend (String, Path, Boolean) -> LiveLoadResult,
     onRename: (String, String) -> Unit,
     onRemove: (String) -> Unit,
     onAddNew: () -> Unit,
     onDismiss: () -> Unit,
 ) {
     var busyId by remember { mutableStateOf<String?>(null) }
+    var pendingPickId by remember { mutableStateOf<String?>(null) }
     var error by remember { mutableStateOf<StringResource?>(null) }
     var renaming by remember { mutableStateOf<LivePlaylist?>(null) }
     var removing by remember { mutableStateOf<LivePlaylist?>(null) }
     val scope = rememberCoroutineScope()
+    val pickReplacement = rememberFilesImporter { files ->
+        val targetId = pendingPickId
+        pendingPickId = null
+        val file = files.firstOrNull() ?: return@rememberFilesImporter
+        if (targetId == null) return@rememberFilesImporter
+        busyId = targetId
+        error = null
+        scope.launch {
+            val res = onReplaceFile(targetId, file.path, file.temporary)
+            busyId = null
+            error = loadErrorResource(res)
+        }
+    }
 
     AppSheet(onDismiss = onDismiss, spacing = 10.dp, title = stringResource(Res.string.suki_live_manage_lists)) {
         error?.let {
@@ -210,6 +242,11 @@ internal fun ManageLivePlaylistsSheet(
         }
         for (playlist in playlists) {
             val colors = MaterialTheme.colorScheme
+            val sourceLabel = if (playlist.kind == LiveSourceKind.File && isTemporaryLiveFile(playlist.source)) {
+                stringResource(Res.string.suki_live_source_file)
+            } else {
+                redactLiveUrl(playlist.source)
+            }
             Surface(
                 modifier = Modifier.fillMaxWidth(),
                 shape = MaterialTheme.shapes.medium,
@@ -231,7 +268,7 @@ internal fun ManageLivePlaylistsSheet(
                         )
                         Text(
                             stringResource(Res.string.suki_live_channels_count, playlist.channelCount) + " · " +
-                                redactLiveUrl(playlist.source),
+                                sourceLabel,
                             style = MaterialTheme.typography.bodySmall,
                             color = colors.onSurfaceVariant,
                             maxLines = 1,
@@ -242,17 +279,21 @@ internal fun ManageLivePlaylistsSheet(
                         InkCircularProgressIndicator(Modifier.size(20.dp).padding(end = 8.dp))
                     } else {
                         IconButton(onClick = {
+                            if (playlist.kind == LiveSourceKind.File && isTemporaryLiveFile(playlist.source)) {
+                                pendingPickId = playlist.id
+                                pickReplacement()
+                                return@IconButton
+                            }
                             busyId = playlist.id
                             error = null
                             scope.launch {
                                 val res = onRefresh(playlist.id)
                                 busyId = null
-                                error = when (res) {
-                                    is LiveLoadResult.Ok -> null
-                                    LiveLoadResult.InvalidUrl -> Res.string.suki_live_error_url
-                                    LiveLoadResult.TooLarge -> Res.string.suki_live_error_too_large
-                                    LiveLoadResult.Empty -> Res.string.suki_live_error_empty
-                                    LiveLoadResult.ReadFailed -> Res.string.suki_live_error_read
+                                if (res == LiveLoadResult.PickFileRequired) {
+                                    pendingPickId = playlist.id
+                                    pickReplacement()
+                                } else {
+                                    error = loadErrorResource(res)
                                 }
                             }
                         }) {
@@ -318,4 +359,13 @@ internal fun ManageLivePlaylistsSheet(
             dismissButton = { CancelButton({ removing = null }) },
         )
     }
+}
+
+private fun loadErrorResource(result: LiveLoadResult): StringResource? = when (result) {
+    is LiveLoadResult.Ok -> null
+    LiveLoadResult.InvalidUrl -> Res.string.suki_live_error_url
+    LiveLoadResult.TooLarge -> Res.string.suki_live_error_too_large
+    LiveLoadResult.Empty -> Res.string.suki_live_error_empty
+    LiveLoadResult.ReadFailed, LiveLoadResult.PickFileRequired -> Res.string.suki_live_error_read
+    LiveLoadResult.SaveFailed -> Res.string.suki_live_error_save
 }

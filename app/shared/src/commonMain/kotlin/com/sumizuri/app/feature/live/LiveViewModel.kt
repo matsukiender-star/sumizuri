@@ -127,10 +127,15 @@ class LiveViewModel(private val repo: LiveRepository) : ViewModel() {
         }
     }
 
-    suspend fun addFile(name: String, path: Path): LiveLoadResult {
+    suspend fun addFile(
+        name: String,
+        path: Path,
+        displayName: String? = null,
+        temporary: Boolean = false,
+    ): LiveLoadResult {
         loading.value = true
         return try {
-            repo.addFromFile(name, path)
+            repo.addFromFile(name, path, displayName, temporary)
         } finally {
             loading.value = false
         }
@@ -140,6 +145,15 @@ class LiveViewModel(private val repo: LiveRepository) : ViewModel() {
         loading.value = true
         return try {
             repo.refresh(playlistId)
+        } finally {
+            loading.value = false
+        }
+    }
+
+    suspend fun refreshFromFile(playlistId: String, path: Path, temporary: Boolean = false): LiveLoadResult {
+        loading.value = true
+        return try {
+            repo.refreshFromFile(playlistId, path, temporary)
         } finally {
             loading.value = false
         }

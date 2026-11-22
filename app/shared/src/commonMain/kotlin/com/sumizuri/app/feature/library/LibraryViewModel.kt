@@ -29,6 +29,7 @@ import com.sumizuri.app.data.sync.TitleSync
 import com.sumizuri.app.data.sync.UpdateFailure
 import com.sumizuri.app.data.sync.UpdateProgress
 import com.sumizuri.app.data.text.nowMillis
+import com.sumizuri.app.feature.library.top.effectiveLibraryKind
 import com.sumizuri.app.feature.library.top.settled
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -222,9 +223,11 @@ class LibraryViewModel(
         // Keep all shelves visible in the unified bar so switching from a kind tab to any shelf works directly.
         val categories = now.categories
         val prefs = now.prefs.settled(categories)
+        val kind = effectiveLibraryKind(prefs, typed.kind)
+        val effectiveTyped = if (kind == typed.kind) typed else typed.copy(kind = kind)
         val entries = now.entries
-        val rule = effectiveRule(prefs, typed.kind, categories.firstOrNull { it.id == prefs.category })
-        val list = listingFor(now, besides, typed, categories, prefs, rule)
+        val rule = effectiveRule(prefs, kind, categories.firstOrNull { it.id == prefs.category })
+        val list = listingFor(now, besides, effectiveTyped, categories, prefs, rule)
         val here = list.here
         val picked = if (typed.selected.isEmpty()) emptyList() else entries.filter { it.title.id in typed.selected }
         // The shelves the picked titles can all go on: the ones for their kind, or for every kind when they are of several kinds.
@@ -233,7 +236,7 @@ class LibraryViewModel(
         return LibraryState(
             loaded = true,
             query = typed.query,
-            kind = typed.kind,
+            kind = kind,
             titles = list.titles,
             rule = rule,
             total = entries.size,

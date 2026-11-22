@@ -3,7 +3,8 @@ package com.sumizuri.app.feature.browse.source
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -17,13 +18,16 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.PointerType
 import androidx.compose.ui.input.pointer.pointerInput
@@ -108,29 +112,35 @@ internal fun HoverPreviewBanner(
         val shown = entry ?: return@AnimatedVisibility
         val title = shown.asTitle(kind, sourceId)
         val colors = MaterialTheme.colorScheme
-        Surface(
-            modifier = Modifier.padding(16.dp).widthIn(max = 620.dp).fillMaxWidth(),
-            shape = MaterialTheme.shapes.large,
-            color = colors.surfaceContainerHigh,
-            tonalElevation = 6.dp,
-            shadowElevation = 8.dp,
-            border = BorderStroke(1.dp, colors.outlineVariant),
+        val shape = MaterialTheme.shapes.large
+        // Use a plain Box instead of Material Surface so pointer hover/clicks pass through to the items underneath.
+        Box(
+            modifier = Modifier
+                .padding(16.dp)
+                .widthIn(max = 620.dp)
+                .fillMaxWidth()
+                .shadow(8.dp, shape)
+                .clip(shape)
+                .background(colors.surfaceContainerHigh, shape)
+                .border(1.dp, colors.outlineVariant, shape),
         ) {
-            Row(Modifier.padding(12.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                Box(Modifier.width(72.dp)) {
-                    CoverArt(title, Modifier.fillMaxWidth(), letterSize = 20)
-                }
-                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Text(
-                        title.displayName(),
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.SemiBold,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                    PreviewMetaLine(title.author, title.status)
-                    PreviewGenres(title.genres, maxGenres = 6)
-                    PreviewSummary(title.summary, loading, maxLines = 4)
+            CompositionLocalProvider(LocalContentColor provides colors.onSurface) {
+                Row(Modifier.padding(12.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Box(Modifier.width(72.dp)) {
+                        CoverArt(title, Modifier.fillMaxWidth(), letterSize = 20)
+                    }
+                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Text(
+                            title.displayName(),
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.SemiBold,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                        PreviewMetaLine(title.author, title.status)
+                        PreviewGenres(title.genres, maxGenres = 6)
+                        PreviewSummary(title.summary, loading, maxLines = 4)
+                    }
                 }
             }
         }
@@ -227,10 +237,7 @@ private fun PreviewGenres(genres: List<String>, maxGenres: Int) {
         verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {
         for (genre in genres.take(maxGenres)) {
-            Surface(
-                shape = MaterialTheme.shapes.small,
-                color = colors.secondaryContainer,
-            ) {
+            Box(Modifier.background(colors.secondaryContainer, MaterialTheme.shapes.small)) {
                 Text(
                     genre,
                     modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),

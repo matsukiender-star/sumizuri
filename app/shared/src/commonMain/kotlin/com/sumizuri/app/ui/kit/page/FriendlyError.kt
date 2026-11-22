@@ -85,6 +85,14 @@ internal fun classifyError(raw: String, hasChallenge: Boolean): FriendlyErrorInf
             )
         }
 
+        "timeout" in lower || "timed out" in lower -> {
+            FriendlyErrorInfo(
+                Icons.Outlined.HourglassEmpty,
+                Res.string.suki_err_timeout_title,
+                Res.string.suki_err_timeout_hint,
+            )
+        }
+
         "unknownhost" in lower || "unresolved" in lower || "no address" in lower || "connect" in lower ||
             "network" in lower ||
             "offline" in lower ||
@@ -93,14 +101,6 @@ internal fun classifyError(raw: String, hasChallenge: Boolean): FriendlyErrorInf
                 Icons.Outlined.CloudOff,
                 Res.string.suki_err_network_title,
                 Res.string.suki_err_network_hint,
-            )
-        }
-
-        "timeout" in lower || "timed out" in lower -> {
-            FriendlyErrorInfo(
-                Icons.Outlined.HourglassEmpty,
-                Res.string.suki_err_timeout_title,
-                Res.string.suki_err_timeout_hint,
             )
         }
 
