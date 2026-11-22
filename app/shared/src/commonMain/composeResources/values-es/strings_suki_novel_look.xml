@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Text of the Suki patch for the look of the novel reader, kept apart so it never meets the files Weblate writes. -->
+<resources>
+    <string name="reader_font_serif">Con serifa</string>
+    <string name="reader_font_sans">Sin serifa</string>
+    <string name="reader_wattpad_look">Estilo Wattpad</string>
+</resources>
