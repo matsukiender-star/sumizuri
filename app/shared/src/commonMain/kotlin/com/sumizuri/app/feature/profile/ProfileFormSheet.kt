@@ -29,6 +29,7 @@ import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -38,6 +39,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.sumizuri.app.data.profile.Profile
@@ -105,8 +108,15 @@ internal fun ProfileFormSheet(profile: Profile?, isActive: Boolean, calls: Profi
         }
     }
     val shownAvatar = if (removed) null else profile?.avatar
+    // On a computer the whole form shows at once, so the name field is never hidden under the fold. A phone keeps the half-open sheet.
+    val wide = with(LocalDensity.current) {
+        LocalWindowInfo.current.containerSize.width
+            .toDp()
+    } >= WideFrom
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = wide)
 
     ModalBottomSheet(
+        sheetState = sheetState,
         modifier = Modifier.windowInsetsPadding(
             WindowInsets.statusBars.only(WindowInsetsSides.Top),
         ),
@@ -279,3 +289,5 @@ private fun PhotoButtons(busy: Boolean, onChange: () -> Unit, hasPicture: Boolea
         if (hasPicture) TextButton(onRemove, enabled = !busy) { Text(stringResource(Res.string.profile_remove_photo)) }
     }
 }
+
+private val WideFrom = 600.dp
