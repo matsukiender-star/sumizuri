@@ -10,18 +10,25 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.ContentCopy
 import androidx.compose.material.icons.outlined.DeleteOutline
+import androidx.compose.material.icons.outlined.Download
 import androidx.compose.material.icons.outlined.SystemUpdateAlt
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.sumizuri.app.shared.resources.Res
 import com.sumizuri.app.shared.resources.all
+import com.sumizuri.app.shared.resources.cancel
 import com.sumizuri.app.shared.resources.remove
 import com.sumizuri.app.shared.resources.repo_copy_address
 import com.sumizuri.app.shared.resources.repo_empty
@@ -33,6 +40,16 @@ import com.sumizuri.app.shared.resources.repo_show_nsfw
 import com.sumizuri.app.shared.resources.section_count
 import com.sumizuri.app.shared.resources.sources_update_all
 import com.sumizuri.app.shared.resources.sources_updates_notice
+import com.sumizuri.app.shared.resources.suki_repo_dismiss
+import com.sumizuri.app.shared.resources.suki_repo_install_all
+import com.sumizuri.app.shared.resources.suki_repo_install_all_message
+import com.sumizuri.app.shared.resources.suki_repo_install_all_notice
+import com.sumizuri.app.shared.resources.suki_repo_install_all_title
+import com.sumizuri.app.shared.resources.suki_repo_install_cancelled
+import com.sumizuri.app.shared.resources.suki_repo_install_done
+import com.sumizuri.app.shared.resources.suki_repo_install_done_failed
+import com.sumizuri.app.shared.resources.suki_repo_installing_progress
+import com.sumizuri.app.ui.kit.art.InkButton
 import com.sumizuri.app.ui.kit.card.AppListRow
 import com.sumizuri.app.ui.kit.card.AppSectionLabel
 import com.sumizuri.app.ui.kit.card.CardPlace
@@ -42,6 +59,8 @@ import com.sumizuri.app.ui.kit.chips.ChipSeparator
 import com.sumizuri.app.ui.kit.chips.ChoiceChip
 import com.sumizuri.app.ui.kit.chips.ToggleChip
 import com.sumizuri.app.ui.kit.cover.SourceMark
+import com.sumizuri.app.ui.kit.dialog.AppDialog
+import com.sumizuri.app.ui.kit.dialog.CancelButton
 import com.sumizuri.app.ui.kit.input.AppSearchBar
 import com.sumizuri.app.ui.kit.page.LoadStatus
 import com.sumizuri.app.ui.kit.page.PageList
@@ -59,6 +78,8 @@ fun RepoScreen(state: RepoState, actions: RepoActions) {
     val kind = state.kind
     val groups = state.groups
     val updates = state.updates
+    val missingVisible = state.missingVisible
+    var confirmInstallAll by remember { mutableStateOf(false) }
     ReadableColumn {
         Column(Modifier.fillMaxSize()) {
             PageTopBar(state.repo.name, subtitle = state.repo.url, onBack = actions.onBack) {
@@ -128,12 +149,24 @@ fun RepoScreen(state: RepoState, actions: RepoActions) {
                                         )
                                     },
                                     trailing = {
-                                        TextButton(actions.onUpdateAll, enabled = state.busy.isEmpty()) {
+                                        TextButton(
+                                            actions.onUpdateAll,
+                                            enabled =
+                                            state.busy.isEmpty() && state.batchInstall == null,
+                                        ) {
                                             Text(stringResource(Res.string.sources_update_all))
                                         }
                                     },
                                 )
                             }
+                            BatchInstallRow(
+                                progress = state.batchInstall,
+                                missingCount = missingVisible.size,
+                                enabled = state.busy.isEmpty(),
+                                onAskInstallAll = { confirmInstallAll = true },
+                                onCancel = actions.onCancelBatchInstall,
+                                onDismiss = actions.onDismissBatchResult,
+                            )
                         }
                     }
                 }
@@ -192,6 +225,89 @@ fun RepoScreen(state: RepoState, actions: RepoActions) {
                     }
                 }
             }
+        }
+    }
+    if (confirmInstallAll && missingVisible.isNotEmpty()) {
+        val count = missingVisible.size
+        AppDialog(
+            onDismissRequest = { confirmInstallAll = false },
+            title = { Text(stringResource(Res.string.suki_repo_install_all_title, count)) },
+            text = { Text(stringResource(Res.string.suki_repo_install_all_message, count)) },
+            confirmButton = {
+                InkButton(onClick = {
+                    confirmInstallAll = false
+                    actions.onInstallAllVisible()
+                }) { Text(stringResource(Res.string.suki_repo_install_all)) }
+            },
+            dismissButton = { CancelButton({ confirmInstallAll = false }) },
+        )
+    }
+}
+
+@Composable
+private fun BatchInstallRow(
+    progress: BatchInstallProgress?,
+    missingCount: Int,
+    enabled: Boolean,
+    onAskInstallAll: () -> Unit,
+    onCancel: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    when {
+        progress != null && !progress.finished -> {
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                AppListRow(
+                    title = stringResource(
+                        Res.string.suki_repo_installing_progress,
+                        (progress.done + 1).coerceAtMost(progress.total),
+                        progress.total,
+                        progress.currentName,
+                    ),
+                    leading = { Icon(Icons.Outlined.Download, null, tint = MaterialTheme.colorScheme.primary) },
+                    trailing = { TextButton(onCancel) { Text(stringResource(Res.string.cancel)) } },
+                )
+                LinearProgressIndicator(
+                    progress = { if (progress.total > 0) progress.done.toFloat() / progress.total else 0f },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
+        }
+
+        progress != null && progress.finished -> {
+            val summary = when {
+                progress.cancelled -> stringResource(
+                    Res.string.suki_repo_install_cancelled,
+                    progress.succeeded,
+                    progress.total,
+                    progress.failed,
+                )
+
+                progress.failed > 0 -> stringResource(
+                    Res.string.suki_repo_install_done_failed,
+                    progress.succeeded,
+                    progress.total,
+                    progress.failed,
+                )
+
+                else -> stringResource(Res.string.suki_repo_install_done, progress.succeeded, progress.total)
+            }
+            AppListRow(
+                title = summary,
+                leading = { Icon(Icons.Outlined.Download, null, tint = MaterialTheme.colorScheme.primary) },
+                trailing = { TextButton(onDismiss) { Text(stringResource(Res.string.suki_repo_dismiss)) } },
+            )
+        }
+
+        missingCount > 0 -> {
+            AppListRow(
+                title = stringResource(Res.string.suki_repo_install_all_notice, missingCount),
+                leading = { Icon(Icons.Outlined.Download, null, tint = MaterialTheme.colorScheme.primary) },
+                trailing = {
+                    TextButton(onAskInstallAll, enabled = enabled) {
+                        Text(stringResource(Res.string.suki_repo_install_all))
+                    }
+                },
+            )
         }
     }
 }
