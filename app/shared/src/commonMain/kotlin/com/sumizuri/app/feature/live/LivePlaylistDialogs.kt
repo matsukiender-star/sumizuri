@@ -176,6 +176,12 @@ internal fun AddLivePlaylistSheet(
                         }
                     }
                     busy = false
+                    // The picker copy is gone after a failed try, so the file is asked for again.
+                    if (result !is LiveLoadResult.Ok && kind == LiveSourceKind.File &&
+                        pickedFile?.temporary == true
+                    ) {
+                        pickedFile = null
+                    }
                     when (result) {
                         is LiveLoadResult.Ok -> onDismiss()
 
