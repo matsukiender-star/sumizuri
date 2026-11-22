@@ -36,8 +36,6 @@ import androidx.compose.ui.input.key.isCtrlPressed
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
-import androidx.compose.ui.input.pointer.PointerEventType
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigationevent.NavigationEventInfo
@@ -306,20 +304,14 @@ internal fun PlayerScreen(session: PlayerSession, engine: PlayerEngine, onClose:
                     else -> return@onPreviewKeyEvent false
                 }
                 true
-            }.pointerInput(touchPlayer) {
-                awaitPointerEventScope {
-                    while (true) {
-                        val event = awaitPointerEvent()
-                        if (touchPlayer) continue
-                        // The wheel sets the volume and a move of the mouse brings the controls back.
-                        val wheel = event.changes
-                            .first()
-                            .scrollDelta.y
-                        if (event.type == PointerEventType.Scroll && picker == null) volumeBy(if (wheel < 0) 5 else -5)
-                        if (event.type == PointerEventType.Move) show()
-                    }
-                }
-            },
+            }.playerMouseControls(
+                enabled = !touchPlayer,
+                canHide = player.playing && !scrubbing && picker == null,
+                allowVolume = picker == null,
+                onVolumeBy = ::volumeBy,
+                onShow = ::show,
+                onHide = { visible = false },
+            ),
     ) {
         // On a wide window a choice opens as a small card at the bottom right, over the video, which keeps its size.
         val aside = isWideWindow() && visible && !small && !failed && picker != null
