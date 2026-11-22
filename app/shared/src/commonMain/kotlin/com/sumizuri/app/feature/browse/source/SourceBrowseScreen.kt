@@ -63,11 +63,14 @@ fun SourceBrowseScreen(state: SourceBrowseState, style: BrowseStyle, actions: So
         shownHover = cached ?: target
         if (cached == null && !target.hasPreviewInfo()) {
             loadingPreviewUrl = target.url
-            val fetched = actions.onFetchDetails(target)
-            val merged = target.mergeDetails(fetched)
-            previewCache[target.url] = merged
-            if (hovered?.url == target.url) shownHover = merged
-            if (loadingPreviewUrl == target.url) loadingPreviewUrl = null
+            try {
+                val fetched = actions.onFetchDetails(target)
+                val merged = target.mergeDetails(fetched)
+                previewCache[target.url] = merged
+                if (hovered?.url == target.url) shownHover = merged
+            } finally {
+                if (loadingPreviewUrl == target.url) loadingPreviewUrl = null
+            }
         }
     }
 
@@ -76,10 +79,13 @@ fun SourceBrowseScreen(state: SourceBrowseState, style: BrowseStyle, actions: So
         val target = inspected ?: return@LaunchedEffect
         if (previewCache.containsKey(target.url) || target.hasPreviewInfo()) return@LaunchedEffect
         loadingPreviewUrl = target.url
-        val fetched = actions.onFetchDetails(target)
-        val merged = target.mergeDetails(fetched)
-        previewCache[target.url] = merged
-        if (loadingPreviewUrl == target.url) loadingPreviewUrl = null
+        try {
+            val fetched = actions.onFetchDetails(target)
+            val merged = target.mergeDetails(fetched)
+            previewCache[target.url] = merged
+        } finally {
+            if (loadingPreviewUrl == target.url) loadingPreviewUrl = null
+        }
     }
 
     Box(Modifier.fillMaxSize()) {
