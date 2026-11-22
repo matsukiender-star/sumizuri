@@ -46,6 +46,7 @@ val StartedAt: Long = System.currentTimeMillis()
 val ServerVersion: String = Config::class.java.`package`?.implementationVersion ?: "dev"
 
 fun main() {
+    endWithParent()
     val config = try {
         Config.load()
     } catch (problem: ConfigException) {
@@ -90,7 +91,7 @@ fun main() {
             }
             if (tls != null) {
                 sslConnector(tls.store, HomeTls.Alias, { HomeTls.Password }, { HomeTls.Password }) {
-                    port = config.tlsPort!!
+                    port = config.tlsPort
                     // Plain http can stay on this machine while phones come in here.
                     host = "0.0.0.0"
                 }
@@ -99,6 +100,13 @@ fun main() {
     ) {
         sumizuri(config, live, setup, accounts, limiter, sessions)
     }.start(wait = true)
+}
+
+// A server the app started ends with the app, also when the app crashed and could not stop it.
+private fun endWithParent() {
+    val pid = System.getenv("SUMIZURI_PARENT_PID")?.toLongOrNull() ?: return
+    val parent = ProcessHandle.of(pid).orElse(null) ?: exitProcess(0)
+    parent.onExit().thenRun { Runtime.getRuntime().halt(0) }
 }
 
 // Everything the server answers, set up once at start.

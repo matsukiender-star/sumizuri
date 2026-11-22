@@ -142,7 +142,16 @@ val copySplash = tasks.register<Copy>("copySplash") {
 }
 
 // The installers take the files of the app once libmpv, wireproxy and the picture are there.
-tasks.matching { it.name == "prepareAppResources" }.configureEach { dependsOn(fetchLibmpv, fetchWireproxy, copySplash) }
+// The sync server goes with the app as jars of its own, for the process the app starts to pair a phone. Postgres and HTTP/3 are for a server that runs on its own.
+val copySyncServer = tasks.register<Sync>("copySyncServer") {
+    dependsOn(":sync:server:installDist")
+    from(rootProject.layout.projectDirectory.dir("sync/server/build/install/server/lib")) {
+        exclude("postgresql-*.jar", "netty-codec-native-quic-*.jar")
+    }
+    into(mpvRoot.map { it.dir("common/sync-server") })
+}
+
+tasks.matching { it.name == "prepareAppResources" }.configureEach { dependsOn(fetchLibmpv, fetchWireproxy, copySplash, copySyncServer) }
 
 compose.desktop {
     application {
@@ -363,7 +372,7 @@ tasks.withType<JavaExec>().configureEach {
         jvmArgs("--add-opens", "java.desktop/sun.lwawt=ALL-UNNAMED", "--add-opens", "java.desktop/sun.lwawt.macosx=ALL-UNNAMED")
     }
     // A run is not an installed app, so it finds libmpv and wireproxy in the folder the build puts them in.
-    dependsOn(fetchLibmpv, fetchWireproxy)
+    dependsOn(fetchLibmpv, fetchWireproxy, copySyncServer)
     systemProperty("sumizuri.mpv.dir", mpvRoot.get().dir("windows").asFile.absolutePath)
     // Marks the run as the debug build, so its window shows Debug and a red icon.
     systemProperty("sumizuri.debug", "true")
