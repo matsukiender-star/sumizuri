@@ -12,6 +12,8 @@ data class Config(
     val port: Int,
     // The address the server listens on. 127.0.0.1 keeps it to this machine, behind a proxy that adds HTTPS.
     val host: String,
+    // A second port with a certificate of the server's own, for phones that read its fingerprint from a QR code. Off unless given.
+    val tlsPort: Int?,
     val publicUrl: String?,
     val trustProxy: Boolean,
     val maxUploadMb: Int,
@@ -52,6 +54,7 @@ data class Config(
                 ),
                 port = number("PORT", 8080),
                 host = text("HOST") ?: "0.0.0.0",
+                tlsPort = text("TLS_PORT")?.let { number("TLS_PORT", 0) },
                 publicUrl = text("PUBLIC_URL")?.trimEnd('/'),
                 trustProxy = flag("TRUST_PROXY", true),
                 maxUploadMb = number("MAX_UPLOAD_MB", 100),

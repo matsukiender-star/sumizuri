@@ -16,8 +16,12 @@ object V1 {
     const val RecoveryKey = "/v1/auth/recovery-key"
     const val Recover = "/v1/auth/recover"
 
+    // Taking the code another device shows. Showing one, at Pair, needs the token.
+    const val PairClaim = "/v1/pair/claim"
+
     // These need the device's token in an Authorization: Bearer header.
     const val Signout = "/v1/auth/signout"
+    const val Pair = "/v1/pair"
     const val Account = "/v1/account"
     const val Devices = "/v1/devices"
     const val Libraries = "/v1/libraries"
