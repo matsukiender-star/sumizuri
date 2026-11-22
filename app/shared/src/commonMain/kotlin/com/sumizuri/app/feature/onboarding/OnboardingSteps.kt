@@ -44,7 +44,6 @@ import com.sumizuri.app.data.LocalAppContainer
 import com.sumizuri.app.data.appIconsShown
 import com.sumizuri.app.data.profile.LocalProfiles
 import com.sumizuri.app.data.profile.ProfileHost
-import com.sumizuri.app.feature.profile.PresetAvatarPicker
 import com.sumizuri.app.feature.profile.ProfileAvatar
 import com.sumizuri.app.feature.settings.SettingsViewModel
 import com.sumizuri.app.feature.settings.look.AppIconSection
@@ -174,10 +173,6 @@ internal fun ProfileStep() {
             ProfileAvatar(name, profile.avatar, 116.dp)
         }
         QuietButton(stringResource(Res.string.onboarding_profile_photo), pick, Icons.Outlined.PhotoCamera)
-        PresetAvatarPicker(
-            selectedKey = profile.avatar,
-            onSelect = { key -> profiles.setAvatar(profile.id, key) },
-        )
     }
     OutlinedTextField(name, {
         name = it

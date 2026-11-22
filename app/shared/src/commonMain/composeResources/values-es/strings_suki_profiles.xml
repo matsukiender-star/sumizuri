@@ -2,5 +2,4 @@
 <resources>
     <string name="suki_profile_picker_title">¿Quién está viendo?</string>
     <string name="suki_profile_picker_subtitle">Elige un perfil para continuar</string>
-    <string name="suki_profile_preset_avatars">Avatares incluidos</string>
 </resources>
