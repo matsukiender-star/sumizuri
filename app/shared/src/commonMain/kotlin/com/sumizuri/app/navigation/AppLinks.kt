@@ -40,6 +40,12 @@ object AppLinks {
                 true
             }
 
+            // The code a computer shows to link a phone, which asks before it does anything.
+            "pair" -> {
+                pairing.value = link.trim()
+                true
+            }
+
             "updates" -> {
                 updates.value = true
                 true
@@ -81,6 +87,15 @@ object AppLinks {
 
     fun trackTaken() {
         track.value = null
+    }
+
+    private val pairing = MutableStateFlow<String?>(null)
+
+    // A code to link with a computer, until the person said yes or no. It holds a secret, so it is never logged.
+    val pair: StateFlow<String?> = pairing
+
+    fun pairTaken() {
+        pairing.value = null
     }
 
     private val updates = MutableStateFlow(false)

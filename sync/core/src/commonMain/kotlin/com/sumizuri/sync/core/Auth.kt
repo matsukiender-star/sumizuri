@@ -143,4 +143,7 @@ object ErrorCodes {
     // The account has two-step sign in, and the sign in or change needs the code from the authenticator app.
     const val CodeNeeded = "code_needed"
     const val WrongTwoStep = "wrong_two_step"
+
+    // The code another device showed was used, replaced or too old.
+    const val PairOver = "pair_over"
 }
