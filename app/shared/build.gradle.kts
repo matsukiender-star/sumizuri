@@ -62,6 +62,7 @@ kotlin {
     sourceSets {
         getByName("jvmSharedMain").dependencies {
             implementation(libs.jsch)
+            implementation(libs.ktor.client.okhttp)
             implementation(libs.zxing)
         }
         androidMain.dependencies {
