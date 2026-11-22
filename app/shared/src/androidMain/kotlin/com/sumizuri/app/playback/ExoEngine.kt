@@ -61,7 +61,6 @@ class ExoEngine(context: Context) : PlayerEngine {
     // Last opened media and retry guard for HLS streams served without an .m3u8 extension or explicit type.
     private var currentMedia: PlayerMedia? = null
     private var currentStartMs: Long = 0L
-    private var currentPlay: Boolean = true
     private var retriedAsHls: Boolean = false
 
     init {
@@ -87,8 +86,7 @@ class ExoEngine(context: Context) : PlayerEngine {
                     ) {
                         retriedAsHls = true
                         val resumeAt = exo.currentPosition.takeIf { it > 0L } ?: currentStartMs
-                        val shouldPlay = exo.playWhenReady || currentPlay
-                        prepareMedia(media, resumeAt, shouldPlay, forceHls = true)
+                        prepareMedia(media, resumeAt, exo.playWhenReady, forceHls = true)
                         return
                     }
                     mutable.update {
@@ -113,7 +111,6 @@ class ExoEngine(context: Context) : PlayerEngine {
     override fun open(media: PlayerMedia, startMs: Long, play: Boolean) {
         currentMedia = media
         currentStartMs = startMs
-        currentPlay = play
         retriedAsHls = false
         prepareMedia(media, startMs, play, forceHls = media.type == "hls")
     }
