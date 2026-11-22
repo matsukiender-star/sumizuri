@@ -12,4 +12,5 @@
     <string name="suki_repo_all_kinds">Todos los tipos</string>
     <string name="suki_repo_all_languages">Todos los idiomas</string>
     <string name="suki_busy_sources_install">Instalando fuentes</string>
+    <string name="suki_busy_moving_downloads">Moviendo descargas</string>
 </resources>

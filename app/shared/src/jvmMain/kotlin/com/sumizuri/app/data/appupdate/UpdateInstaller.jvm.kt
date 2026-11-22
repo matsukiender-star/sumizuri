@@ -1,6 +1,7 @@
 package com.sumizuri.app.data.appupdate
 
 import com.sumizuri.app.core.log.AppLog
+import com.sumizuri.app.data.storage.DownloadRoot
 import com.sumizuri.app.setup.StartApart
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
@@ -30,7 +31,9 @@ actual object UpdateInstaller {
         return listOfNotNull(chosen?.let { UpdateFile(it, true) })
     }
 
-    actual fun folder(): Path = FileSystem.SYSTEM_TEMPORARY_DIRECTORY / "sumizuri-updates"
+    // In the place the person chose, where an AppImage or a tar.gz outlives a restart, and otherwise the temporary folder. Only this folder of the app is ever emptied.
+    actual fun folder(): Path =
+        DownloadRoot.base()?.let { it / "updates" } ?: FileSystem.SYSTEM_TEMPORARY_DIRECTORY / "sumizuri-updates"
 
     // Opens the installer, which closes the app when it needs to replace its files. Starting a program apart waits for Windows, so it is done away from the screen.
     actual suspend fun install(file: String): InstallResult = withContext(Dispatchers.IO) {

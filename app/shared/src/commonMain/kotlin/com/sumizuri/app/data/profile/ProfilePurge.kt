@@ -4,6 +4,7 @@ import com.sumizuri.app.core.log.AppLog
 import com.sumizuri.app.data.backup.backupFolder
 import com.sumizuri.app.data.download.downloadFolder
 import com.sumizuri.app.data.library.coverFolder
+import com.sumizuri.app.data.storage.DownloadRoot
 import com.sumizuri.app.ui.kit.image.snapshotFolder
 import okio.FileSystem
 import okio.Path
@@ -46,7 +47,9 @@ internal fun purgeProfileFiles(
             snapshotFolder(path),
             parent / LiveFolder / stem,
         )
-    if (folders.any { it.name != stem || it.parent?.parent != parent }) return false
+    // Downloads and backups may sit in the place the person chose, everything else beside the database.
+    val homes = setOfNotNull(parent, DownloadRoot.base())
+    if (folders.any { it.name != stem || it.parent?.parent !in homes }) return false
 
     var clean = true
     fun attempt(what: Path, delete: () -> Unit) {

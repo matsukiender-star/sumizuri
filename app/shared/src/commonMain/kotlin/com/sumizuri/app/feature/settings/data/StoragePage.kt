@@ -29,6 +29,7 @@ import coil3.SingletonImageLoader
 import coil3.compose.LocalPlatformContext
 import com.sumizuri.app.data.LocalAppContainer
 import com.sumizuri.app.data.storage.StorageUse
+import com.sumizuri.app.data.storage.removablePlaces
 import com.sumizuri.app.feature.settings.SettingsPageFrame
 import com.sumizuri.app.feature.settings.SettingsViewModel
 import com.sumizuri.app.shared.resources.Res
@@ -99,6 +100,7 @@ fun StorageRoute(onBack: () -> Unit) {
     val booksKept by settings.booksKept.collectAsStateWithLifecycle()
     val aniListCovers by settings.aniListSeasonCovers.collectAsStateWithLifecycle()
     val scope = rememberCoroutineScope()
+    val places = remember { removablePlaces() }
     // Counted again after each clear.
     var round by remember { mutableIntStateOf(0) }
     val images by produceState(0L, round, diskMb) {
@@ -225,6 +227,10 @@ fun StorageRoute(onBack: () -> Unit) {
             }
         }
         SettingsSection(Res.string.storage_group_paths) {
+            when {
+                places == null -> row { DownloadPlaceRow(null) }
+                places.isNotEmpty() -> padded { DownloadPlaceRow(places) }
+            }
             row { PathRow(Res.string.storage_path_database, database, Icons.Outlined.Description) }
             row { PathRow(Res.string.storage_path_data, dataFolder, Icons.Outlined.Folder) }
             row { PathRow(Res.string.storage_path_images, imageFolder, Icons.Outlined.PhotoLibrary) }

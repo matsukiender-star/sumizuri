@@ -1,5 +1,6 @@
 package com.sumizuri.app.data.profile
 
+import com.sumizuri.app.data.storage.DownloadRoot
 import com.sumizuri.app.data.text.nowMillis
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -48,6 +49,9 @@ class ProfileRegistry(
 
     // The proxy the whole app goes through, which belongs to this device like the sync account.
     val networkFile: Path = folder / "network.json"
+
+    // Where this device keeps downloads, backups and updates, for every profile.
+    val downloadsFile: Path = folder / "downloads.json"
 
     private val mutable = MutableStateFlow(load())
     val state: StateFlow<RegistryState> = mutable
@@ -116,7 +120,17 @@ class ProfileRegistry(
             .map { it.name }
             .filter { ProfileExtension in it }
             .map { it.substringBeforeLast(ProfileExtension) + ProfileExtension }
-        return (mutable.value.profiles + mutable.value.trash).mapNotNull { it.file } + inFolders + beside
+        // In a chosen place the first profile shares the folders with the others, so its name is kept free too.
+        val chosen = DownloadRoot
+            .base()
+            ?.let { base ->
+                listOf("downloads", "backups").flatMap { system.listOrNull(base / it).orEmpty() }.map {
+                    it.name +
+                        ProfileExtension
+                } +
+                    legacyFile.name
+            }.orEmpty()
+        return (mutable.value.profiles + mutable.value.trash).mapNotNull { it.file } + inFolders + beside + chosen
     }
 
     private fun change(edit: (RegistryState) -> RegistryState) {

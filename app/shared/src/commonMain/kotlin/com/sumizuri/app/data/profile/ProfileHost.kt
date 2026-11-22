@@ -4,6 +4,7 @@ import com.sumizuri.app.core.log.AppLog
 import com.sumizuri.app.data.AppContainer
 import com.sumizuri.app.data.account.SyncAccountStore
 import com.sumizuri.app.data.net.Network
+import com.sumizuri.app.data.storage.DownloadRoot
 import com.sumizuri.app.data.text.nowMillis
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
@@ -38,6 +39,7 @@ class ProfileHost(val registry: ProfileRegistry, private val open: (Path) -> App
     // The network setting is read first, so no network client is made before the router is in place.
     init {
         Network.load(registry.networkFile)
+        DownloadRoot.load(registry.downloadsFile)
     }
 
     // The sync account, one for the whole app, shared by the profile page and the sync page so both always agree. It comes before the first container, which is given it.

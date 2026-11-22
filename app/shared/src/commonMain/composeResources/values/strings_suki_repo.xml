@@ -12,4 +12,5 @@
     <string name="suki_repo_all_kinds">All kinds</string>
     <string name="suki_repo_all_languages">All languages</string>
     <string name="suki_busy_sources_install">Installing sources</string>
+    <string name="suki_busy_moving_downloads">Moving downloads</string>
 </resources>

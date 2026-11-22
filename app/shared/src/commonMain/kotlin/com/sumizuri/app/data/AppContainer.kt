@@ -128,7 +128,7 @@ class AppContainer(
             sources,
             manager,
             settings,
-            DownloadFiles(downloadFolder(databasePath)),
+            DownloadFiles({ downloadFolder(databasePath) }),
             work,
             PlayerPrefsRepository(database),
         )
@@ -170,7 +170,7 @@ class AppContainer(
     val matcher = SourceMatcher(database, library, sources, manager, carry)
 
     // The backups the app makes by itself, in a folder beside the library.
-    val autoBackups = AutoBackups(backupWriter, settings, backupFolder(databasePath))
+    val autoBackups = AutoBackups(backupWriter, settings) { backupFolder(databasePath) }
 
     // Keeps this profile the same as its copy on the sync server, once the profile host gives it the account.
     val librarySync =
