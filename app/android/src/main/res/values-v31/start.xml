@@ -1,21 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- From Android 12 the system draws the splash screen with the Sumizuri medallion and ink seal. -->
+    <!-- From Android 12 the system draws the splash screen with the Sumizuri medallion. -->
     <style name="Theme.Sumizuri.Start" parent="Theme.Sumizuri">
         <item name="android:windowSplashScreenBackground">@color/start_background</item>
         <item name="android:windowSplashScreenAnimatedIcon">@drawable/start_mark</item>
-        <item name="android:windowSplashScreenBrandingImage">@drawable/start_branding</item>
         <item name="postSplashScreenTheme">@style/Theme.Sumizuri</item>
     </style>
     <!-- The splash screen Android 13 and newer keeps for the next start, when the app is darker or lighter than the system. -->
     <style name="Theme.Sumizuri.Start.Light">
         <item name="android:windowSplashScreenBackground">@color/start_light</item>
         <item name="android:windowSplashScreenAnimatedIcon">@drawable/splash_mark_light</item>
-        <item name="android:windowSplashScreenBrandingImage">@drawable/splash_branding_light</item>
     </style>
     <style name="Theme.Sumizuri.Start.Dark">
         <item name="android:windowSplashScreenBackground">@color/start_dark</item>
         <item name="android:windowSplashScreenAnimatedIcon">@drawable/splash_mark_dark</item>
-        <item name="android:windowSplashScreenBrandingImage">@drawable/splash_branding_dark</item>
     </style>
 </resources>

@@ -5,7 +5,6 @@
     <color name="start_dark">#0F1114</color>
     <color name="start_background">@color/start_light</color>
     <drawable name="start_mark">@drawable/splash_mark_light</drawable>
-    <drawable name="start_branding">@drawable/splash_branding_light</drawable>
 
     <!-- The window of the app, in the background it opens with until the theme of the person is known. -->
     <style name="Theme.Sumizuri" parent="@android:style/Theme.Material.Light.NoActionBar">
