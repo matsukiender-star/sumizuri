@@ -113,16 +113,18 @@ class SyncClient {
     private fun pinnedTo(fingerprint: String): HttpClient = pinned?.takeIf { it.first == fingerprint }?.second
         ?: pinnedHttpClient(fingerprint, setUp).also { pinned = fingerprint to it }
 
-    // What the server says about itself, turned down when it speaks a newer version than this app knows.
-    suspend fun info(server: String): ServerInfo {
-        val info = read(ServerInfo.serializer()) { http.get(server + V1.Info) }
+    // What the server says about itself, turned down when it speaks a newer version than this app knows. A server paired by its code is only trusted by the certificate of that code.
+    suspend fun info(server: String, fingerprint: String? = null): ServerInfo {
+        val info = read(ServerInfo.serializer()) { (fingerprint?.let(::pinnedTo) ?: http).get(server + V1.Info) }
         if (info.apiVersion > ApiVersion) throw SyncProblem(SyncProblem.TooNew, "This server is newer than the app. Update the app to use it.")
         return info
     }
 
     suspend fun setup(server: String, request: SetupRequest): SignedIn = send(server + V1.Setup, request, SetupRequest.serializer())
 
-    suspend fun salt(server: String, username: String): SaltAnswer = read(SaltAnswer.serializer()) { http.get(server + V1.Salt) { parameter("username", username) } }
+    suspend fun salt(server: String, username: String, fingerprint: String? = null): SaltAnswer = read(SaltAnswer.serializer()) {
+        (fingerprint?.let(::pinnedTo) ?: http).get(server + V1.Salt) { parameter("username", username) }
+    }
 
     suspend fun signin(server: String, request: SigninRequest): SignedIn = send(server + V1.Signin, request, SigninRequest.serializer())
 
