@@ -59,6 +59,8 @@ fun redactLiveUrl(raw: String): String {
     val authorityEnd = rest.indexOfAny(charArrayOf('/', '?', '#'))
     val authority = if (authorityEnd >= 0) rest.substring(0, authorityEnd) else rest
     val hostOnly = authority.substringAfterLast('@')
+    // A password with one of those marks would pass for the host, so then not even the host is shown.
+    if ('@' !in authority && '@' in rest) return "$scheme…"
     return "$scheme$hostOnly/…"
 }
 
