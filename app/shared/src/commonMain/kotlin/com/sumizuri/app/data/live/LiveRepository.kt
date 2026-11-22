@@ -27,7 +27,6 @@ import okio.Path.Companion.toPath
 import kotlin.random.Random
 
 // All keys live under memo.live. so playlists (which may carry credentials in URLs) never export or sync.
-private const val KeyDirId = "memo.live.dirId"
 private const val KeyPlaylists = "memo.live.playlists"
 private const val KeyFavorites = "memo.live.favorites"
 private const val KeyRecents = "memo.live.recents"
@@ -267,12 +266,12 @@ class LiveRepository(
         }.getOrNull()
     }
 
-    // Uses a stable random folder ID saved in profile settings so renaming the profile never orphans playlists.
-    private suspend fun playlistFile(playlistId: String): Path {
-        val dirId =
-            settings.textNow(KeyDirId)?.takeIf { it.isNotBlank() } ?: newId().also { settings.setText(KeyDirId, it) }
-        val base = databasePath.takeIf { it.isNotBlank() }?.toPath()?.parent ?: FileSystem.SYSTEM_TEMPORARY_DIRECTORY
-        return base / "live" / dirId / "$playlistId.json"
+    // Named after the database, whose name never changes, so deleting a profile for good finds its lists without opening it.
+    private fun playlistFile(playlistId: String): Path {
+        val database = databasePath.takeIf { it.isNotBlank() }?.toPath()
+        val base = database?.parent ?: FileSystem.SYSTEM_TEMPORARY_DIRECTORY
+        val profile = database?.name?.substringBeforeLast('.') ?: "sumizuri"
+        return base / "live" / profile / "$playlistId.json"
     }
 
     private suspend fun currentPlaylists(): List<LivePlaylist> {
