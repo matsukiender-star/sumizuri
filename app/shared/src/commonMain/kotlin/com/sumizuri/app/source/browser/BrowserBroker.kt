@@ -150,13 +150,14 @@ class BrowserBroker(
     }
 
     private suspend fun session(site: String, request: BrowserFetchRequest): Session {
-        stateLock.withLock {
-            sessions[site]?.also { kept ->
-                kept.inUse = true
-                kept.lastUsed = TimeSource.Monotonic.markNow()
-                kept.idle?.cancel()
-            }
-        }?.let { return it }
+        stateLock
+            .withLock {
+                sessions[site]?.also { kept ->
+                    kept.inUse = true
+                    kept.lastUsed = TimeSource.Monotonic.markNow()
+                    kept.idle?.cancel()
+                }
+            }?.let { return it }
         // A site that could not be reached a moment ago fails at once, since opening a page is heavy and would only fail the same way.
         stateLock.withLock { unreachable[site] }?.let { (since, message) ->
             if (since.elapsedNow() < UnreachableQuiet) throw PageLoadException(message)

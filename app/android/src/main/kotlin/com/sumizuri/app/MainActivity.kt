@@ -45,7 +45,8 @@ class MainActivity : ComponentActivity() {
         }
         // Short fade-out once the first frame is ready so startup is never delayed.
         splash.setOnExitAnimationListener { provider ->
-            provider.view.animate()
+            provider.view
+                .animate()
                 .alpha(0f)
                 .scaleX(1.04f)
                 .scaleY(1.04f)
