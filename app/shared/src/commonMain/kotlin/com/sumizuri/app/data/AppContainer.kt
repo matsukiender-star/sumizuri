@@ -26,6 +26,7 @@ import com.sumizuri.app.data.library.LibraryRepository
 import com.sumizuri.app.data.library.SeasonCovers
 import com.sumizuri.app.data.library.StatisticsRepository
 import com.sumizuri.app.data.library.coverFolder
+import com.sumizuri.app.data.live.LiveRepository
 import com.sumizuri.app.data.local.localFolder
 import com.sumizuri.app.data.migration.MigrationPrefsRepository
 import com.sumizuri.app.data.migration.MigrationSession
@@ -157,6 +158,7 @@ class AppContainer(
     val migrations = MigrationSession(library, sources, manager, migration, migrationPrefs)
     val controls = ControlsRepository(database)
     val libraryPrefs = LibraryPrefsRepository(database)
+    val live = LiveRepository(settings, databasePath, shared)
     val statistics = StatisticsRepository(database, library)
     val blocks = ProfileBlocksRepository(settings)
     val storage = StorageRepository(database)

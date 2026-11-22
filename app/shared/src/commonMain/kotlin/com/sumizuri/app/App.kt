@@ -47,6 +47,7 @@ import com.sumizuri.app.core.perf.PerfWatch
 import com.sumizuri.app.core.perf.reportActivity
 import com.sumizuri.app.data.AppContainer
 import com.sumizuri.app.data.LocalAppContainer
+import com.sumizuri.app.data.live.ShowLiveTabKey
 import com.sumizuri.app.data.model.Kind
 import com.sumizuri.app.data.model.controls.AppShortcut
 import com.sumizuri.app.data.model.controls.NavDoubleTapAction
@@ -268,8 +269,9 @@ private fun AppContent(container: AppContainer, windowBar: (@Composable () -> Un
 
             val scope = rememberCoroutineScope()
             val libraryPrefs by container.libraryPrefs.prefs.collectAsStateWithLifecycle(LibraryPrefs())
-            // The updates and the history are tabs unless the person folded them into the library.
-            val tabs = Destination.entries.filter { (it != Destination.Updates || libraryPrefs.showUpdatesTab) && (it != Destination.History || libraryPrefs.showHistoryTab) }
+            val showLiveTab by remember(container) { container.settings.flag(ShowLiveTabKey, true) }.collectAsStateWithLifecycle(true)
+            // The updates, history and live tabs can be hidden in settings.
+            val tabs = Destination.entries.filter { (it != Destination.Updates || libraryPrefs.showUpdatesTab) && (it != Destination.History || libraryPrefs.showHistoryTab) && (it != Destination.Live || showLiveTab) }
             LaunchedEffect(tabs, place.tab, place.restored) {
                 if (place.restored && place.tab !in tabs) navigation.select(Destination.Library)
             }

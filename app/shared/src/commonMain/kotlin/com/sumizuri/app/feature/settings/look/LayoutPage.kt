@@ -9,6 +9,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.sumizuri.app.data.LocalAppContainer
+import com.sumizuri.app.data.live.ShowLiveTabKey
 import com.sumizuri.app.data.settings.SettingKey
 import com.sumizuri.app.feature.settings.SettingsPageFrame
 import com.sumizuri.app.feature.settings.SettingsViewModel
@@ -39,6 +40,8 @@ import com.sumizuri.app.shared.resources.settings_reopen_place
 import com.sumizuri.app.shared.resources.settings_reopen_place_hint
 import com.sumizuri.app.shared.resources.settings_title_split
 import com.sumizuri.app.shared.resources.settings_title_split_hint
+import com.sumizuri.app.shared.resources.suki_live_show_tab
+import com.sumizuri.app.shared.resources.suki_live_show_tab_hint
 import com.sumizuri.app.shared.resources.web_in_app
 import com.sumizuri.app.shared.resources.web_in_app_hint
 import com.sumizuri.app.ui.kit.card.ListChevron
@@ -73,6 +76,9 @@ fun LayoutRoute(onBack: () -> Unit, onOpenLibraryDisplay: () -> Unit) {
     }.collectAsStateWithLifecycle(false)
     val split by remember(container) {
         container.settings.flag(SettingKey.TitleSplit, true)
+    }.collectAsStateWithLifecycle(true)
+    val showLiveTab by remember(container) {
+        container.settings.flag(ShowLiveTabKey, true)
     }.collectAsStateWithLifecycle(true)
     val scope = rememberCoroutineScope()
     SettingsPageFrame(Res.string.settings_layout, onBack, subtitle = Res.string.settings_layout_hint, onReset = {
@@ -133,6 +139,13 @@ fun LayoutRoute(onBack: () -> Unit, onOpenLibraryDisplay: () -> Unit) {
                         container.settings.setFlag(SettingKey.WebInApp, on)
                     }
                 }, Res.string.web_in_app_hint)
+            }
+            padded {
+                SwitchSetting(Res.string.suki_live_show_tab, showLiveTab, { on ->
+                    scope.launch {
+                        container.settings.setFlag(ShowLiveTabKey, on)
+                    }
+                }, Res.string.suki_live_show_tab_hint)
             }
             row {
                 SettingRow(
