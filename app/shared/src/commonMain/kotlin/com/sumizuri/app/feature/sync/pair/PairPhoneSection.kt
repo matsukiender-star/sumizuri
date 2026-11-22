@@ -11,6 +11,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
 import androidx.compose.ui.Modifier
@@ -40,11 +41,24 @@ import org.jetbrains.compose.resources.stringResource
 
 private const val TickMs = 1_000L
 
+// Asked by the button of the library, so the page shows the code without one more tap.
+internal object PairRequest {
+    private var asked = false
+
+    fun ask() {
+        asked = true
+    }
+
+    fun take(): Boolean = asked.also { asked = false }
+}
+
 // On a computer that can be the server: the button that shows the code, and the code while it works.
 @Composable
 internal fun PairPhoneSection(model: PairModel) {
     if (!model.canShow) return
     val ui by model.ui.collectAsStateWithLifecycle()
+    // Opened from the button of the library, the code shows at once.
+    LaunchedEffect(model) { if (PairRequest.take()) model.show() }
     val copy = rememberCopyText()
     val left by produceState(0, ui.code, ui.until) {
         while (ui.code != null) {

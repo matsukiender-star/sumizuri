@@ -11,12 +11,12 @@ import com.sumizuri.app.data.model.library.LibrarySection
 import kotlinx.coroutines.launch
 
 @Composable
-fun LibraryRoute(onOpenTitle: (Long) -> Unit, onOpenChapter: (Long) -> Unit, onOpenShelves: () -> Unit, onMove: (Long) -> Unit, onMigrate: (List<Long>) -> Unit, onSeeAll: (LibrarySection) -> Unit, onOpenMissing: () -> Unit, onOpenDownloads: () -> Unit, onSearchSources: (String) -> Unit, showLive: Boolean = false, onOpenLive: () -> Unit = {}) {
+fun LibraryRoute(onOpenTitle: (Long) -> Unit, onOpenChapter: (Long) -> Unit, onOpenShelves: () -> Unit, onMove: (Long) -> Unit, onMigrate: (List<Long>) -> Unit, onSeeAll: (LibrarySection) -> Unit, onOpenMissing: () -> Unit, onOpenDownloads: () -> Unit, onSearchSources: (String) -> Unit, showLive: Boolean = false, onOpenLive: () -> Unit = {}, onOpenSync: () -> Unit = {}) {
     val container = LocalAppContainer.current
     val viewModel = viewModel { LibraryViewModel(container.library, container.session, container.libraryPrefs, container.categories, container.sources, container.sync) }
     val state by viewModel.state.collectAsStateWithLifecycle()
     val scope = rememberCoroutineScope()
-    val calls = remember(viewModel, onOpenTitle, onOpenChapter, onOpenShelves, onMove, onMigrate, onSeeAll, onOpenMissing, onOpenDownloads, onSearchSources, onOpenLive) {
+    val calls = remember(viewModel, onOpenTitle, onOpenChapter, onOpenShelves, onMove, onMigrate, onSeeAll, onOpenMissing, onOpenDownloads, onSearchSources, onOpenLive, onOpenSync) {
         LibraryCalls(
             onQuery = viewModel::onQuery,
             onKind = viewModel::onKind,
@@ -48,6 +48,7 @@ fun LibraryRoute(onOpenTitle: (Long) -> Unit, onOpenChapter: (Long) -> Unit, onO
             onContinue = { id -> scope.launch { continueChapterOf(container.library, id)?.let(onOpenChapter) ?: onOpenTitle(id) } },
             onSelectShelf = viewModel::onSelectShelf,
             onOpenLive = onOpenLive,
+            onOpenSync = onOpenSync,
         )
     }
     LibraryScreen(state, calls, showLive)

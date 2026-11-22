@@ -20,4 +20,5 @@
     <string name="pair_error_not_started">El servidor de esta computadora no pudo iniciar. El registro en Diagnóstico dice más.</string>
     <string name="pair_error_no_network">Esta computadora no está conectada a una red de casa.</string>
     <string name="pair_error_unreachable">La computadora no respondió. Los dos deben estar en el mismo Wi-Fi, Sumizuri debe estar abierto allá y su firewall debe permitirlo.</string>
+    <string name="suki_pair_from_library">Sincronizar con otro dispositivo</string>
 </resources>

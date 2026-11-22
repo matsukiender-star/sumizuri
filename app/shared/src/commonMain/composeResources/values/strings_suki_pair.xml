@@ -20,4 +20,5 @@
     <string name="pair_error_not_started">The server of this computer could not start. The log in Diagnostics says more.</string>
     <string name="pair_error_no_network">This computer is not connected to a home network.</string>
     <string name="pair_error_unreachable">The computer did not answer. Both must be on the same Wi-Fi, Sumizuri must be open there, and its firewall must allow it.</string>
+    <string name="suki_pair_from_library">Sync with another device</string>
 </resources>

@@ -10,6 +10,7 @@ import com.sumizuri.app.feature.library.LibraryRoute
 import com.sumizuri.app.feature.live.LiveRoute
 import com.sumizuri.app.feature.profile.ProfileRoute
 import com.sumizuri.app.feature.settings.SettingsTarget
+import com.sumizuri.app.feature.sync.pair.PairRequest
 import com.sumizuri.app.feature.updates.UpdatesRoute
 import com.sumizuri.app.navigation.Destination
 import com.sumizuri.app.navigation.NavigationViewModel
@@ -48,6 +49,10 @@ internal fun AppTab(tab: Destination, tabs: List<Destination>, navigation: Navig
             onSearchSources = { navigation.push(Page.GlobalSearch(it)) },
             showLive = Destination.Live in tabs,
             onOpenLive = { navigation.select(Destination.Live) },
+            onOpenSync = {
+                PairRequest.ask()
+                navigation.push(Page.SettingsPage(SettingsTarget.Sync))
+            },
         )
 
         Destination.Updates -> UpdatesRoute({

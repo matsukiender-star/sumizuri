@@ -45,6 +45,8 @@ internal class LibraryCalls(
     val onContinue: (Long) -> Unit,
     val onSelectShelf: (Long?) -> Unit,
     val onOpenLive: () -> Unit,
+    // Opens syncing with the code ready to scan, from the button at the top of the library.
+    val onOpenSync: () -> Unit = {},
 ) {
     // Opens one shelf, or all the titles for null.
     fun onShelf(id: Long?) = onSelectShelf(id)
