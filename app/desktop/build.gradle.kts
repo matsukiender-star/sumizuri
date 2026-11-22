@@ -226,6 +226,11 @@ compose.desktop {
                     }
                 }
             }
+            // The version of the app, and the suffix of a release tag such as suki.6.
+            val appVersion = providers.gradleProperty("app.version").get()
+            val appVersionSuffix = appVersion.substringAfter('-', "")
+            // The installers refuse a version that starts with 0 and take only numbers, so 0.1.0 is packaged as 1.1.0 and a suffix such as beta is left out.
+            val packageBaseVersion = appVersion.substringBefore('-').replace(Regex("^0\\."), "1.")
             linux {
                 iconFile.set(project.file("icons/app-icon.png"))
                 // A Linux package name must be lower case.
@@ -234,9 +239,10 @@ compose.desktop {
                 shortcut = true
                 menuGroup = "Sumizuri"
                 appCategory = "Graphics"
+                // The suki builds share the number of the release they come from, so the deb keeps its suffix for Discover to tell them apart.
+                if (appVersionSuffix.startsWith("suki.")) debPackageVersion = "$packageBaseVersion+$appVersionSuffix"
             }
-            // The installers refuse a version that starts with 0 and take only numbers, so 0.1.0 is packaged as 1.1.0 and a suffix such as beta is left out.
-            packageVersion = providers.gradleProperty("app.version").get().substringBefore('-').replace(Regex("^0\\."), "1.")
+            packageVersion = packageBaseVersion
         }
     }
 }

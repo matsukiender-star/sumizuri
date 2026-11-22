@@ -24,7 +24,6 @@ import androidx.compose.material.icons.outlined.NewReleases
 import androidx.compose.material.icons.outlined.SystemUpdate
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -41,9 +40,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.sumizuri.app.BuildInfo
 import com.sumizuri.app.data.appupdate.AppRelease
+import com.sumizuri.app.data.appupdate.DownloadProblem
+import com.sumizuri.app.data.appupdate.ReleaseAsset
 import com.sumizuri.app.data.appupdate.UpdateDownload
+import com.sumizuri.app.data.appupdate.UpdateFile
 import com.sumizuri.app.data.appupdate.UpdatePrefs
-import com.sumizuri.app.data.appupdate.UpdateSource
 import com.sumizuri.app.data.appupdate.UpdateState
 import com.sumizuri.app.shared.resources.Res
 import com.sumizuri.app.shared.resources.appupdate_cancel_download
@@ -61,20 +62,19 @@ import com.sumizuri.app.shared.resources.appupdate_no_notes
 import com.sumizuri.app.shared.resources.appupdate_no_source
 import com.sumizuri.app.shared.resources.appupdate_not_found
 import com.sumizuri.app.shared.resources.appupdate_opening
-import com.sumizuri.app.shared.resources.appupdate_source
-import com.sumizuri.app.shared.resources.appupdate_source_hint
-import com.sumizuri.app.shared.resources.appupdate_source_invalid
 import com.sumizuri.app.shared.resources.appupdate_test_version
 import com.sumizuri.app.shared.resources.appupdate_up_to_date
 import com.sumizuri.app.shared.resources.appupdate_version_now
-import com.sumizuri.app.shared.resources.cancel
-import com.sumizuri.app.shared.resources.save
+import com.sumizuri.app.shared.resources.suki_appupdate_bad_hash
+import com.sumizuri.app.shared.resources.suki_appupdate_no_hash
+import com.sumizuri.app.shared.resources.suki_appupdate_recommended
 import com.sumizuri.app.ui.kit.art.InkButton
 import com.sumizuri.app.ui.kit.art.InkCircularProgressIndicator
 import com.sumizuri.app.ui.kit.art.InkLinearProgressIndicator
 import com.sumizuri.app.ui.kit.art.InkOutlinedButton
 import com.sumizuri.app.ui.kit.card.AppCard
-import com.sumizuri.app.ui.kit.dialog.AppDialog
+import com.sumizuri.app.ui.kit.chips.ChipRow
+import com.sumizuri.app.ui.kit.chips.ChoiceChip
 import com.sumizuri.app.ui.kit.text.MarkdownText
 import com.sumizuri.app.ui.text.agoText
 import com.sumizuri.app.ui.text.byteSizeText
@@ -175,10 +175,10 @@ internal fun failureText(state: UpdateState.Failed): StringResource = when {
     else -> Res.string.appupdate_failed
 }
 
-// Saving the newest version and installing it: a button, then how far the download got, then the button that installs it.
+// Saving the newest version and installing it: the formats to choose from, a button, then how far the download got, then the button that installs it.
 @Composable
 internal fun DownloadPart(
-    hasFile: Boolean,
+    asset: ReleaseAsset?,
     download: UpdateDownload?,
     note: StringResource?,
     onDownload: () -> Unit,
@@ -187,43 +187,45 @@ internal fun DownloadPart(
     // While the setup opens the button waits, so it is not opened twice.
     opening: Boolean = false,
 ) {
+    // A download of another file of the release does not count for the one chosen now.
+    val current = download?.takeIf { it.asset.url == asset?.url }
     Column(Modifier.fillMaxWidth().padding(vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         when {
-            !hasFile -> Text(
+            asset == null -> Text(
                 stringResource(Res.string.appupdate_no_file),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.outline,
             )
 
-            download == null -> InkButton(onDownload, Modifier.fillMaxWidth()) {
+            current == null -> InkButton(onDownload, Modifier.fillMaxWidth()) {
                 Text(stringResource(Res.string.appupdate_download))
             }
 
-            download.error != null -> {
+            current.problem != null -> {
                 Text(
-                    stringResource(Res.string.appupdate_download_failed),
+                    stringResource(problemText(current.problem)),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.error,
                 )
                 InkButton(onDownload, Modifier.fillMaxWidth()) { Text(stringResource(Res.string.appupdate_download)) }
             }
 
-            download.finished -> InkButton(onInstall, Modifier.fillMaxWidth(), enabled = !opening) {
+            current.finished -> InkButton(onInstall, Modifier.fillMaxWidth(), enabled = !opening) {
                 Text(stringResource(if (opening) Res.string.appupdate_opening else Res.string.appupdate_install))
             }
 
             else -> {
-                val total = download.total
+                val total = current.total
                 if (total != null && total > 0) {
                     InkLinearProgressIndicator(progress = {
-                        (download.done.toFloat() / total).coerceIn(0f, 1f)
+                        (current.done.toFloat() / total).coerceIn(0f, 1f)
                     }, modifier = Modifier.fillMaxWidth().height(6.dp))
                 } else {
                     InkLinearProgressIndicator(Modifier.fillMaxWidth().height(6.dp))
                 }
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
-                        byteSizeText(download.done) + (total?.let { " / " + byteSizeText(it) } ?: ""),
+                        byteSizeText(current.done) + (total?.let { " / " + byteSizeText(it) } ?: ""),
                         Modifier.weight(1f),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.outline,
@@ -232,12 +234,10 @@ internal fun DownloadPart(
                 }
             }
         }
-        if (download !=
-            null
-        ) {
+        if (current != null) {
             Text(
-                download.asset.name + (
-                    download.asset.size?.let {
+                current.asset.name + (
+                    current.asset.size?.let {
                         " · " + byteSizeText(it)
                     } ?: ""
                     ),
@@ -253,6 +253,38 @@ internal fun DownloadPart(
             )
         }
     }
+}
+
+// Why a file was not kept, in words.
+internal fun problemText(problem: DownloadProblem): StringResource = when (problem) {
+    DownloadProblem.NoHash -> Res.string.suki_appupdate_no_hash
+    DownloadProblem.BadHash -> Res.string.suki_appupdate_bad_hash
+    DownloadProblem.Failed -> Res.string.appupdate_download_failed
+}
+
+// The formats a release brings for this computer, with the one it likes best marked, so another can be taken instead.
+@Composable
+internal fun FileChoices(files: List<UpdateFile>, chosen: ReleaseAsset?, onChoose: (ReleaseAsset) -> Unit) {
+    ChipRow {
+        files.forEach { file ->
+            ChoiceChip(formatLabel(file), file.asset.url == chosen?.url) { onChoose(file.asset) }
+        }
+    }
+}
+
+// The format of a file as its name gives it, with a word when it is the one this computer likes best.
+@Composable
+private fun formatLabel(file: UpdateFile): String {
+    val name = file.asset.name.lowercase()
+    val kind = when {
+        name.endsWith(".appimage") -> "AppImage"
+        name.endsWith(".tar.gz") -> "tar.gz"
+        name.endsWith(".deb") -> "deb"
+        name.endsWith(".rpm") -> "rpm"
+        name.endsWith(".apk") -> "APK"
+        else -> file.asset.name.substringAfterLast('.', file.asset.name)
+    }
+    return if (file.recommended) kind + " · " + stringResource(Res.string.suki_appupdate_recommended) else kind
 }
 
 // One version with when it came out and its notes. A tap on the name shows or hides the notes, and only the first version starts open, so a long list stays short.
@@ -319,41 +351,4 @@ internal fun ReleaseNotes(release: AppRelease, startOpen: Boolean = true) {
             }
         }
     }
-}
-
-// The address of the repo to check. Empty goes back to the one the app was built with.
-@Composable
-internal fun SourceDialog(current: String, onDismiss: () -> Unit, onSave: (String) -> Unit) {
-    var text by remember { mutableStateOf(current) }
-    val valid = text.isBlank() || UpdateSource.of(text) != null
-    AppDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(stringResource(Res.string.appupdate_source)) },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text(
-                    stringResource(Res.string.appupdate_source_hint),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.outline,
-                )
-                OutlinedTextField(text, {
-                    text = it
-                }, singleLine = true, isError = !valid, placeholder = { Text("https://github.com/owner/repo") })
-                if (!valid) {
-                    Text(
-                        stringResource(Res.string.appupdate_source_invalid),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.error,
-                    )
-                }
-            }
-        },
-        confirmButton = {
-            InkButton(
-                { if (valid) onSave(text) },
-                enabled = valid,
-            ) { Text(stringResource(Res.string.save)) }
-        },
-        dismissButton = { InkOutlinedButton(onDismiss) { Text(stringResource(Res.string.cancel)) } },
-    )
 }

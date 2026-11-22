@@ -21,8 +21,11 @@ data class AppRelease(
     val assets: List<ReleaseAsset>,
 )
 
-// A file of a release, such as the APK for Android or the installer for a computer.
-data class ReleaseAsset(val name: String, val url: String, val size: Long?)
+// A file of a release, such as the APK for Android or the installer for a computer, with the sha256 the release gives for it.
+data class ReleaseAsset(val name: String, val url: String, val size: Long?, val digest: String? = null)
+
+// The sha256 of a file as the letters of an address, or null when the release gives none.
+val ReleaseAsset.sha256Hex: String? get() = digest?.removePrefix("sha256:")?.lowercase()?.takeIf { it.length == 64 }
 
 // Where the releases are kept: GitHub, or GitLab on its own site or on another.
 sealed interface UpdateSource {
@@ -88,6 +91,7 @@ internal fun gitHubReleases(reply: JsonElement): List<AppRelease> =
                     file.text("name") ?: return@mapNotNull null,
                     file.text("browser_download_url") ?: return@mapNotNull null,
                     file.number("size"),
+                    file.text("digest"),
                 )
             },
         )
@@ -112,6 +116,7 @@ internal fun gitLabReleases(reply: JsonElement, source: UpdateSource.GitLab): Li
                 ReleaseAsset(
                     file.text("name") ?: return@mapNotNull null,
                     file.text("direct_asset_url") ?: file.text("url") ?: return@mapNotNull null,
+                    null,
                     null,
                 )
             },

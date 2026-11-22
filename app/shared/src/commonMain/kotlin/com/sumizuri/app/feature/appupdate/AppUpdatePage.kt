@@ -3,6 +3,8 @@ package com.sumizuri.app.feature.appupdate
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.OpenInNew
 import androidx.compose.material.icons.outlined.Link
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -33,10 +35,9 @@ import com.sumizuri.app.shared.resources.appupdate_prerelease_hint
 import com.sumizuri.app.shared.resources.appupdate_skip
 import com.sumizuri.app.shared.resources.appupdate_skipped
 import com.sumizuri.app.shared.resources.appupdate_source
-import com.sumizuri.app.shared.resources.appupdate_source_built_in
-import com.sumizuri.app.shared.resources.appupdate_source_none
 import com.sumizuri.app.shared.resources.appupdate_title
 import com.sumizuri.app.shared.resources.appupdate_title_hint
+import com.sumizuri.app.shared.resources.suki_appupdate_restart
 import com.sumizuri.app.ui.kit.setting.SettingIcon
 import com.sumizuri.app.ui.kit.setting.SettingRow
 import com.sumizuri.app.ui.kit.setting.SettingsSection
@@ -61,7 +62,7 @@ fun AppUpdateRoute(onBack: () -> Unit) {
     val scope = rememberCoroutineScope()
     val openSite = LocalOpenSite.current
     var installNote by remember { mutableStateOf<StringResource?>(null) }
-    var editingSource by remember { mutableStateOf(false) }
+    var restarted by remember { mutableStateOf(false) }
     // The page checks when it opens, unless a check is running or one ran a moment ago.
     LaunchedEffect(updater) {
         val now = updater.state.value
@@ -74,25 +75,54 @@ fun AppUpdateRoute(onBack: () -> Unit) {
         StatusCard(state, prefs) { scope.launch { updater.check() } }
         (state as? UpdateState.Available)?.let { found ->
             val latest = found.latest
+            // The file being saved, or the one this system likes best, and another the person takes instead.
+            var chosen by remember(latest.version) {
+                mutableStateOf(found.files.firstOrNull { it.asset.url == download?.asset?.url }?.asset ?: found.asset)
+            }
             SettingsSection(stringResource(Res.string.appupdate_new_version, latest.version)) {
-                padded {
-                    DownloadPart(
-                        found.asset != null,
-                        download,
-                        installNote,
-                        onDownload = { found.asset?.let(updater::startDownload) },
-                        onCancel = updater::cancelDownload,
-                        onInstall = {
-                            scope.launch {
-                                installNote = when (updater.install()) {
-                                    InstallResult.Started -> null
-                                    InstallResult.NeedsPermission -> Res.string.appupdate_install_permission
-                                    InstallResult.Failed -> Res.string.appupdate_install_failed
+                if (found.files.size > 1) {
+                    padded {
+                        FileChoices(found.files, chosen) { asset ->
+                            if (asset == chosen) return@FileChoices
+                            chosen = asset
+                            if (download != null) updater.cancelDownload()
+                            installNote = null
+                            restarted = false
+                        }
+                    }
+                }
+                if (restarted) {
+                    padded {
+                        Text(
+                            stringResource(Res.string.suki_appupdate_restart),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.primary,
+                        )
+                    }
+                }
+                if (!restarted) {
+                    padded {
+                        DownloadPart(
+                            chosen,
+                            download,
+                            installNote,
+                            onDownload = { chosen?.let(updater::startDownload) },
+                            onCancel = updater::cancelDownload,
+                            onInstall = {
+                                scope.launch {
+                                    val result = updater.install()
+                                    installNote = when (result) {
+                                        InstallResult.Started -> null
+                                        InstallResult.NeedsPermission -> Res.string.appupdate_install_permission
+                                        InstallResult.Failed -> Res.string.appupdate_install_failed
+                                        InstallResult.Restart -> null
+                                    }
+                                    restarted = result == InstallResult.Restart
                                 }
-                            }
-                        },
-                        opening = opening,
-                    )
+                            },
+                            opening = opening,
+                        )
+                    }
                 }
                 if (latest.pageUrl.isNotBlank()) {
                     row {
@@ -148,27 +178,13 @@ fun AppUpdateRoute(onBack: () -> Unit) {
                 }, Res.string.appupdate_prerelease_hint)
             }
             row {
-                val source = prefs.source.ifBlank { BuildInfo.UpdateRepo }
+                // The repo the app was built with, which is the only one it checks, so it is shown and not changed.
                 SettingRow(
                     stringResource(Res.string.appupdate_source),
                     leading = { SettingIcon(Icons.Outlined.Link) },
-                    subtitle = when {
-                        source.isBlank() -> stringResource(Res.string.appupdate_source_none)
-                        prefs.source.isBlank() -> stringResource(Res.string.appupdate_source_built_in, source)
-                        else -> source
-                    },
+                    subtitle = BuildInfo.UpdateRepo,
                     subtitleLines = 1,
-                    onClick = { editingSource = true },
                 )
-            }
-        }
-    }
-    if (editingSource) {
-        SourceDialog(prefs.source, onDismiss = { editingSource = false }) { address ->
-            editingSource = false
-            scope.launch {
-                updater.setSource(address)
-                updater.check()
             }
         }
     }
