@@ -147,16 +147,19 @@ class HomeServer(
                 .split(' ')
                 .map(String::toInt)
         }.getOrNull()
-        if (kept?.size == 2) return kept[0] to kept[1]
+        // The ports are kept so a paired phone finds the same address, unless another program took one meanwhile, and then new ones are picked and the phone scans again.
+        if (kept?.size == 2 && kept.all(::isFree)) return kept[0] to kept[1]
         val local = freePort(FirstLocalPort) ?: return null
         val home = freePort(FirstHomePort) ?: return null
         file.writeText("$local $home")
         return local to home
     }
 
-    private fun freePort(first: Int): Int? = (first until first + PortsTried).firstOrNull { port ->
-        runCatching { ServerSocket().use { it.bind(InetSocketAddress(port)) } }.isSuccess
-    }
+    private fun freePort(first: Int): Int? = (first until first + PortsTried).firstOrNull(::isFree)
+
+    private fun isFree(port: Int): Boolean = runCatching {
+        ServerSocket().use { it.bind(InetSocketAddress(port)) }
+    }.isSuccess
 }
 
 private fun bundledJars(): File? {
