@@ -248,9 +248,10 @@ private fun Reader(state: ReaderState, actions: ReaderActions, translator: Novel
     LaunchedEffect(page) { actions.onActive(page) }
 
     ReaderSystemUi(settings.hideSystemBars, settings.keepScreenOn, settings.orientation)
+    val pdfDark = settings.pdfDark && restingOn?.startsWith("sumizuri-local://pdf/") == true
     val pageFilter =
-        remember(settings.grayscale, settings.invertColors, settings.sepia, settings.contrast) {
-            pageFilterOf(settings.grayscale, settings.invertColors, settings.sepia, settings.contrast)
+        remember(settings.grayscale, settings.invertColors, settings.sepia, settings.contrast, pdfDark) {
+            pageFilterOf(settings.grayscale, settings.invertColors, settings.sepia, settings.contrast, pdfDark)
         }
     CompositionLocalProvider(LocalWordLookup provides lookup, LocalPageFilter provides pageFilter) {
         // What each panel of the dock shows. Closing one, or picking a chapter in it, folds the dock back.
