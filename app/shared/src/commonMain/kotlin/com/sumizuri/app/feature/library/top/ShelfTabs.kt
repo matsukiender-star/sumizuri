@@ -68,9 +68,16 @@ internal fun LibraryState.swipeOrder(): List<LibraryTab> =
 
 internal fun LibraryState.activeTab(): LibraryTab = when (val cat = prefs.category) {
     UncategorizedShelf -> LibraryTab.Uncategorized
-    null -> kind?.let { LibraryTab.ByKind(it) } ?: LibraryTab.All
+
+    null -> kind?.let { LibraryTab.ByKind(it) }
+        ?: if (prefs.hideAllTab) LibraryTab.ByKind(KindTabOrder.first()) else LibraryTab.All
+
     else -> LibraryTab.Shelf(cat)
 }
+
+// Picks the first visible kind tab when "All" is hidden and neither a kind nor a shelf is selected.
+internal fun effectiveLibraryKind(prefs: LibraryPrefs, kind: Kind?): Kind? =
+    if (prefs.category == null && kind == null && prefs.hideAllTab) KindTabOrder.first() else kind
 
 // The shelf to show when the open one has no tab any more, because the tab was hidden or the shelf is gone.
 internal fun LibraryPrefs.settled(categories: List<Category>): LibraryPrefs {
