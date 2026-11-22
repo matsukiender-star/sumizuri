@@ -33,6 +33,12 @@ data class SessionState(
     val prefs: PlayerPrefs = PlayerPrefs(),
 ) {
     val episode: EpisodeRef? get() = episodes.getOrNull(index)
+
+    // The title with the episode that plays, by its name or else its number, as "Frieren - 12".
+    val playingName: String? get() {
+        val part = episode?.let { it.name?.takeIf(String::isNotBlank) ?: it.number.toString().removeSuffix(".0") }
+        return listOfNotNull(titleName.takeIf(String::isNotBlank), part).joinToString(" - ").ifEmpty { null }
+    }
     val hasNext: Boolean get() = index < episodes.size - 1
     val hasPrevious: Boolean get() = index > 0
     val hasAnotherVideo: Boolean get() = videos.indexOf(current) + 1 in 1 until videos.size

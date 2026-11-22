@@ -153,6 +153,7 @@ class MpvEngine(style: SubtitleStyle = SubtitleStyle()) : PlayerEngine {
             val now = mutable.value
             mpv.mpv_set_property_string(here, "speed", String.format(Locale.ROOT, "%.2f", now.speed))
             mpv.mpv_set_property_string(here, "volume", now.volume.coerceIn(0, 200).toString())
+            mpv.mpv_set_property_string(here, "force-media-title", media.title.orEmpty())
             mpv.command(here, "loadfile", media.url, "replace")
         }
     }

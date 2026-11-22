@@ -25,6 +25,8 @@ data class PlayerMedia(
     val pairedAudio: PlayerTrack? = null,
     // What the source says the address is ("hls", "mp4"), for an address whose ending does not tell.
     val type: String? = null,
+    // The title and episode, for the sound mixer and the media controls of the system, which show the name of the file otherwise.
+    val title: String? = null,
 )
 
 // How the picture fills the screen: whole with bars, cropped to fill, or stretched out of shape.

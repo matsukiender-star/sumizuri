@@ -17,11 +17,11 @@ import com.sumizuri.app.source.model.SourceVideo
 internal class Snapshot(val positionMs: Long, val durationMs: Long)
 
 // A video of the source as the engine plays it, with its subtitle and sound tracks and the subtitle files added from the device.
-internal fun mediaOf(video: SourceVideo, extraSubtitles: List<PlayerTrack>): PlayerMedia {
+internal fun mediaOf(video: SourceVideo, extraSubtitles: List<PlayerTrack>, title: String?): PlayerMedia {
     val subtitles = video.subtitles.mapIndexed { at, one -> PlayerTrack("sub$at", one.label, one.language, one.url) }
     val audios = video.audioTracks.mapIndexed { at, one -> PlayerTrack("aud$at", one.label, one.language, one.url) }
     val paired = video.pairedAudio?.let { PlayerTrack("paired", it.label, it.language, it.url) }
-    return PlayerMedia(video.url, video.headers, subtitles + extraSubtitles, audios, paired, video.type)
+    return PlayerMedia(video.url, video.headers, subtitles + extraSubtitles, audios, paired, video.type, title)
 }
 
 // What the screen tells the person when the engine stops on a problem.
