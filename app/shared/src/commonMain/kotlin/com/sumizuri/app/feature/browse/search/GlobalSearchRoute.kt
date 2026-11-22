@@ -20,10 +20,26 @@ fun GlobalSearchRoute(
 ) {
     val container = LocalAppContainer.current
     val viewModel =
-        viewModel { GlobalSearchViewModel(initial, kind, container.sources, container.manager, container.library) }
+        viewModel {
+            GlobalSearchViewModel(
+                initial,
+                kind,
+                container.sources,
+                container.manager,
+                container.library,
+                container.solver,
+            )
+        }
     val state by viewModel.state.collectAsStateWithLifecycle()
     val scope = rememberCoroutineScope()
-    GlobalSearchScreen(state, onBack, viewModel::onQuery, viewModel::onKind) { source, entry ->
+    GlobalSearchScreen(
+        state = state,
+        onBack = onBack,
+        onQuery = viewModel::onQuery,
+        onKind = viewModel::onKind,
+        onRetrySource = viewModel::onRetrySource,
+        onSolveSource = viewModel::onSolveSource,
+    ) { source, entry ->
         // An entry that is saved already opens as the saved title.
         scope.launch {
             val saved = viewModel.savedId(source, entry)
