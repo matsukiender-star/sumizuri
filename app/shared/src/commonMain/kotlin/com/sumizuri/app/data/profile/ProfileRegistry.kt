@@ -14,6 +14,9 @@ private const val ProfilesFolder = "profiles"
 private const val AvatarsFolder = "avatars"
 private const val FirstName = "Profile 1"
 
+// The folders beside the profiles that keep one folder for each, called after its file.
+private val FoldersByName = listOf("backups", "downloads", "covers", "pages")
+
 @Serializable
 private class Saved(val profiles: List<SavedProfile>, val active: Long)
 
@@ -79,6 +82,20 @@ class ProfileRegistry(
 
     // The file a profile keeps its library in.
     fun fileOf(profile: Profile): Path = profile.file?.let { profilesFolder / it } ?: legacyFile
+
+    // The file names a new profile may not take: those in use, and those of deleted profiles that left something behind, which the new one would otherwise open as its own.
+    fun takenFiles(): List<String> {
+        val inFolders = FoldersByName
+            .flatMap { system.listOrNull(profilesFolder / it).orEmpty() }
+            .map { it.name + ProfileExtension }
+        val beside = system
+            .listOrNull(profilesFolder)
+            .orEmpty()
+            .map { it.name }
+            .filter { ProfileExtension in it }
+            .map { it.substringBeforeLast(ProfileExtension) + ProfileExtension }
+        return mutable.value.profiles.mapNotNull { it.file } + inFolders + beside
+    }
 
     private fun change(edit: (RegistryState) -> RegistryState) {
         val next = edit(mutable.value)

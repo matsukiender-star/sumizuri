@@ -64,7 +64,7 @@ class ProfileHost(val registry: ProfileRegistry, private val open: (Path) -> App
 
     private suspend fun makeProfile(name: String, avatar: String?): Profile? = lock.withLock {
         val now = registry.state.value
-        val file = profileFileName(name, now.profiles.mapNotNull { it.file })
+        val file = profileFileName(name, registry.takenFiles())
         try {
             cloneWithoutLibrary(registry.fileOf(now.active), registry.profilesFolder / file)
         } catch (error: Throwable) {

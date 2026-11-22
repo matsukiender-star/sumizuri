@@ -13,12 +13,12 @@ data class RegistryState(val profiles: List<Profile>, val activeId: Long) {
     val active: Profile get() = profiles.first { it.id == activeId }
 }
 
-private const val Extension = ".db"
+internal const val ProfileExtension = ".db"
 private const val LongestName = 60
 
 // The file for a profile, called after it. Marks a file name cannot hold become underscores, and a name that is taken gets a number.
 fun profileFileName(name: String, taken: Collection<String>): String =
-    safeFileName(name, Extension, taken, fallback = "profile", longest = LongestName)
+    safeFileName(name, ProfileExtension, taken, fallback = "profile", longest = LongestName)
 
 // The place the view models of one profile are kept, so they end together when the profile is left.
 class ProfileStoreOwner : ViewModelStoreOwner {
