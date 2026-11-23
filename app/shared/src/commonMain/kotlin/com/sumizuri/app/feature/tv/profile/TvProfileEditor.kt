@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.QrCode2
 import androidx.compose.material3.Icon
@@ -20,12 +21,15 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -33,6 +37,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigationevent.NavigationEventInfo
 import androidx.navigationevent.compose.NavigationBackHandler
 import androidx.navigationevent.compose.rememberNavigationEventState
+import coil3.compose.AsyncImage
 import com.sumizuri.app.data.profile.LocalProfiles
 import com.sumizuri.app.data.profile.Profile
 import com.sumizuri.app.feature.profile.PresetAvatarBadge
@@ -48,6 +53,7 @@ import com.sumizuri.app.shared.resources.profile_edit
 import com.sumizuri.app.shared.resources.profile_name
 import com.sumizuri.app.shared.resources.profile_new
 import com.sumizuri.app.shared.resources.profile_save
+import com.sumizuri.app.shared.resources.suki_tv_characters
 import com.sumizuri.app.shared.resources.suki_tv_photo
 import com.sumizuri.app.shared.resources.suki_tv_picture
 import com.sumizuri.app.shared.resources.tv_profile_numbered
@@ -58,7 +64,7 @@ import com.sumizuri.app.ui.tv.tvCard
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.stringResource
 
-// Making a profile, when none is given, or changing one: its name, its picture from the ones that come with the app or a photo sent from a phone, and deleting one that is not open. Nothing is kept until the first button, so Back or Cancel leave the profile as it was.
+// Making a profile, when none is given, or changing one: its name, its picture from the ones that come with the app, an anime character from AniList or a photo sent from a phone, and deleting one that is not open. Nothing is kept until the first button, so Back or Cancel leave the profile as it was.
 @Composable
 internal fun TvProfileEditor(profile: Profile?, onClose: () -> Unit) {
     val profiles = LocalProfiles.current
@@ -71,10 +77,15 @@ internal fun TvProfileEditor(profile: Profile?, onClose: () -> Unit) {
     var photo by remember { mutableStateOf(false) }
     var busy by remember { mutableStateOf(false) }
     var deleting by remember { mutableStateOf(false) }
+    // The portrait of the character picked last, while its picture is the one in use, and whether one is downloading.
+    var picked by remember { mutableStateOf<String?>(null) }
+    var fetching by remember { mutableStateOf(false) }
+    val characters by produceState(emptyList<Character>()) { value = TvCharacters.load() }
     // A photo from the phone that is not kept in the end is removed again. Only pictures in the avatars folder are ever removed.
     val use: (String?) -> Unit = { next ->
         if (avatar != profile?.avatar) profiles.registry.deleteAvatar(avatar)
         avatar = next
+        picked = null
     }
     val cancel = {
         use(profile?.avatar)
@@ -116,11 +127,11 @@ internal fun TvProfileEditor(profile: Profile?, onClose: () -> Unit) {
     val deletable = profile != null && profile.id != registry.activeId && registry.profiles.size > 1
     val first = firstFocus()
     Column(
-        Modifier.fillMaxSize().padding(horizontal = 56.dp, vertical = 36.dp),
+        Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 56.dp, vertical = 36.dp),
         verticalArrangement = Arrangement.spacedBy(18.dp),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(20.dp)) {
-            ProfileAvatar(name, avatar, 96.dp)
+            ProfileAvatar(name, avatar, 80.dp)
             Text(
                 stringResource(if (profile == null) Res.string.profile_new else Res.string.profile_edit),
                 fontSize = 34.sp,
@@ -157,6 +168,39 @@ internal fun TvProfileEditor(profile: Profile?, onClose: () -> Unit) {
                         Modifier.size(30.dp),
                         tint = MaterialTheme.colorScheme.primary,
                     )
+                }
+            }
+        }
+        if (characters.isNotEmpty()) {
+            Text(
+                stringResource(Res.string.suki_tv_characters),
+                fontSize = 17.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Row(
+                Modifier.horizontalScroll(rememberScrollState()).padding(vertical = 4.dp),
+                horizontalArrangement = Arrangement.spacedBy(14.dp),
+            ) {
+                characters.forEach { character ->
+                    Choice(picked == character.image, {
+                        if (!fetching) {
+                            fetching = true
+                            scope.launch {
+                                TvCharacters.keep(profiles, character)?.let { kept ->
+                                    use(kept)
+                                    picked = character.image
+                                }
+                                fetching = false
+                            }
+                        }
+                    }) {
+                        AsyncImage(
+                            character.image,
+                            character.name,
+                            Modifier.size(Face).clip(CircleShape),
+                            contentScale = ContentScale.Crop,
+                        )
+                    }
                 }
             }
         }
