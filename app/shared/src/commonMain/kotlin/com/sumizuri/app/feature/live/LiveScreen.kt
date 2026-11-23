@@ -51,7 +51,6 @@ import com.sumizuri.app.data.live.LiveChannel
 import com.sumizuri.app.shared.resources.Res
 import com.sumizuri.app.shared.resources.suki_live_add_list
 import com.sumizuri.app.shared.resources.suki_live_all
-import com.sumizuri.app.shared.resources.suki_live_all_groups
 import com.sumizuri.app.shared.resources.suki_live_empty_hint
 import com.sumizuri.app.shared.resources.suki_live_empty_title
 import com.sumizuri.app.shared.resources.suki_live_favorite
@@ -211,24 +210,7 @@ private fun LiveCatalogContent(
                     }
                 }
             }
-            if (state.groups.isNotEmpty()) {
-                LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    item(key = "grp_all") {
-                        FilterChip(
-                            selected = state.selectedGroup == null,
-                            onClick = { vm.selectGroup(null) },
-                            label = { Text(stringResource(Res.string.suki_live_all_groups)) },
-                        )
-                    }
-                    items(state.groups, key = { "group:$it" }) { group ->
-                        FilterChip(
-                            selected = state.selectedGroup == group,
-                            onClick = { vm.selectGroup(if (state.selectedGroup == group) null else group) },
-                            label = { Text(group, maxLines = 1, overflow = TextOverflow.Ellipsis) },
-                        )
-                    }
-                }
-            }
+            if (state.groups.isNotEmpty()) LiveGroupButton(state.groups, state.selectedGroup, vm::selectGroup)
         }
 
         if (state.channels.isEmpty()) {
@@ -302,7 +284,9 @@ private fun LiveChannelRow(channel: LiveChannel, favorite: Boolean, onPlay: () -
                     overflow = TextOverflow.Ellipsis,
                 )
                 Text(
-                    channel.group.ifBlank { stringResource(Res.string.suki_live_ungrouped) },
+                    groupsOf(
+                        channel.group,
+                    ).joinToString(" · ").ifBlank { stringResource(Res.string.suki_live_ungrouped) },
                     style = MaterialTheme.typography.bodySmall,
                     color = colors.onSurfaceVariant,
                     maxLines = 1,

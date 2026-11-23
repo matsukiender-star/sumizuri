@@ -42,4 +42,7 @@
     <string name="suki_live_favorite">Favorite</string>
     <string name="suki_live_ungrouped">General</string>
     <string name="suki_live_truncated">Loaded the first 50,000 channels.</string>
+    <string name="suki_live_group_button">Category: %1$s</string>
+    <string name="suki_live_groups">Categories</string>
+    <string name="suki_live_group_search">Search categories…</string>
 </resources>

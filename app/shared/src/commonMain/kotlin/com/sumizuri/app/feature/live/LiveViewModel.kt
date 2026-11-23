@@ -73,14 +73,13 @@ class LiveViewModel(private val repo: LiveRepository) : ViewModel() {
             }
         }
         val groups = bySection
-            .map { it.group }
-            .filter { it.isNotBlank() }
+            .flatMap { groupsOf(it.group) }
             .distinct()
             .sorted()
         val activeGroup = spec.group?.takeIf { it in groups }
         val q = spec.query.trim()
         val filtered = bySection.filter { ch ->
-            (activeGroup == null || ch.group == activeGroup) &&
+            (activeGroup == null || activeGroup in groupsOf(ch.group)) &&
                 (q.isEmpty() || ch.name.contains(q, ignoreCase = true) || ch.group.contains(q, ignoreCase = true))
         }
         LiveUiState(
