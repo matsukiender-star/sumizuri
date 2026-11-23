@@ -11,9 +11,12 @@ import okio.Path.Companion.toOkioPath
 import java.io.File
 
 actual object UpdateInstaller {
-    // The APK made for the processor of this phone, the one it likes best first, or else the one for every phone, or else any APK, matched by the processor at the end of the name so x86 is not mistaken for x86_64.
+    // The APKs of this app only, as the TV app has its own with TV in the name, then the APK made for the processor of this phone, the one it likes best first, or else the one for every phone, or else any APK, matched by the processor at the end of the name so x86 is not mistaken for x86_64.
     actual fun pick(assets: List<ReleaseAsset>): ReleaseAsset? {
-        val apks = assets.filter { it.name.endsWith(".apk", ignoreCase = true) }
+        val apks = assets.filter {
+            it.name.endsWith(".apk", ignoreCase = true) &&
+                it.name.contains(TvMark, ignoreCase = true) == AndroidApp.tvApp
+        }
         val abis = Build.SUPPORTED_ABIS.orEmpty()
         return abis.firstNotNullOfOrNull { abi ->
             apks.firstOrNull {
@@ -29,7 +32,7 @@ actual object UpdateInstaller {
 
     actual fun folder(): Path = File(AndroidApp.context.cacheDir, "updates").toOkioPath()
 
-    actual fun install(file: String): InstallResult {
+    actual suspend fun install(file: String): InstallResult {
         val context = AndroidApp.context
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && !context.packageManager.canRequestPackageInstalls()) {
             val allow = Intent(
@@ -51,3 +54,6 @@ actual object UpdateInstaller {
         }.fold({ InstallResult.Started }, { InstallResult.Failed })
     }
 }
+
+// What the name of a file of the TV app holds, such as Sumizuri-TV-0.5.0-arm64-v8a.apk.
+private const val TvMark = "-TV-"

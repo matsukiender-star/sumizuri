@@ -16,6 +16,12 @@ defaults:
   run:
     shell: bash
 
+# The keys of the build, from the settings of the repo, as a secret or a variable. A pull request from a fork gets none, and the app builds without them.
+env:
+  ANILIST_CLIENT_ID: ${{ secrets.ANILIST_CLIENT_ID || vars.ANILIST_CLIENT_ID }}
+  MAL_CLIENT_ID: ${{ secrets.MAL_CLIENT_ID || vars.MAL_CLIENT_ID }}
+  MANGABAKA_CLIENT_ID: ${{ secrets.MANGABAKA_CLIENT_ID || vars.MANGABAKA_CLIENT_ID }}
+
 jobs:
   # On a version tag, makes the release as a draft first, so each build puts its files straight on it and nobody sees it half done.
   start:
@@ -104,17 +110,11 @@ jobs:
         run: |
           mkdir -p "$STORE"
           cp build/libmpv/out/libmpv-2.dll "$STORE/"
-      # The installer is made by Inno Setup 7, pinned to one release and checked against its hash, and set up once for the user of the runner, where the build finds it.
-      - name: Set up Inno Setup
-        env:
-          MSYS_NO_PATHCONV: 1
+      # The setup file starts with a small launcher of our own written in Rust. Rust sits in the home folder of the person the runner runs as, which is not on the path of the runner. The build uses the default toolchain, and a setup file gets its icon and version only where Visual Studio gives the MSVC tools.
+      - name: Set up Rust
         run: |
-          for place in "$LOCALAPPDATA/Programs/Inno Setup 7" "/c/Program Files/Inno Setup 7" "/c/Program Files (x86)/Inno Setup 7"; do
-            if [ -f "$place/ISCC.exe" ]; then echo "Inno Setup is already in $place"; exit 0; fi
-          done
-          curl -sSLf -o "$RUNNER_TEMP/innosetup.exe" https://github.com/jrsoftware/issrc/releases/download/is-7_1_0/innosetup-7.1.0-x64.exe
-          echo "0362a383ed217d4c4239b5933866dd96d3eb2102737da92f80f6057a4b40df2f  $RUNNER_TEMP/innosetup.exe" | sha256sum -c -
-          "$RUNNER_TEMP/innosetup.exe" /VERYSILENT /SUPPRESSMSGBOXES /NORESTART /SP- /CURRENTUSER
+          echo "$USERPROFILE\.cargo\bin" >> "$GITHUB_PATH"
+          "$(cygpath -u "$USERPROFILE")/.cargo/bin/rustup" toolchain install stable --profile minimal
       # Signed with the key kept in the GitHub secrets, the same key as on the computer of the developer, so every build installs over the one before it.
       - name: Put the key in a file
         run: echo "$ANDROID_KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/sumizuri-release.jks"
@@ -122,7 +122,7 @@ jobs:
           ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
       # Both apps in one Gradle run, so the Android and the Windows build share the cores instead of taking turns. The installer holds the app with its own Java and the small libmpv, so nothing else needs to be installed first.
       - name: Build the APKs and the installer
-        run: ./gradlew :app:android:assembleRelease :app:desktop:packageReleaseSetup -Pmpv.dll=build/libmpv/out/libmpv-2.dll ${{ steps.version.outputs.args }}
+        run: ./gradlew :app:android:assembleRelease :app:tv:assembleRelease :app:desktop:packageReleaseSetup -Pmpv.dll=build/libmpv/out/libmpv-2.dll ${{ steps.version.outputs.args }}
         env:
           ANDROID_KEYSTORE_PATH: ${{ runner.temp }}/sumizuri-release.jks
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
@@ -140,6 +140,11 @@ jobs:
           for apk in app/android/build/outputs/apk/release/android-*-release.apk; do
             kind=$(basename "$apk" -release.apk)
             cp "$apk" "Sumizuri-$VERSION-${kind#android-}.apk"
+          done
+          # The app for TVs has TV in its names, which is how each app updates only to its own files.
+          for apk in app/tv/build/outputs/apk/release/tv-*-release.apk; do
+            kind=$(basename "$apk" -release.apk)
+            cp "$apk" "Sumizuri-TV-$VERSION-${kind#tv-}.apk"
           done
           cp app/desktop/build/installer/*-setup.exe "Sumizuri-$VERSION-setup.exe"
           ls -l Sumizuri-*
@@ -275,7 +280,8 @@ jobs:
     # A run by hand has no start job, so the builds still run when it is skipped.
     if: ${{ !failure() && !cancelled() }}
     runs-on: macos-latest
-    timeout-minutes: 60
+    # The Release build of the framework studies the whole app at once, which takes a long time on a Mac of GitHub.
+    timeout-minutes: 120
     permissions:
       contents: write
     steps:
@@ -291,19 +297,29 @@ jobs:
       - uses: gradle/actions/setup-gradle@v5
         with:
           cache-disabled: true
-      # Xcode runs Gradle itself, without the version of the release, so the version goes in the Gradle settings of the user of the runner, which is thrown away after the run. The Release build of the framework studies the whole app at once and ran out of 5 GB as the app grew, so the Mac gives it 6 of its 7.
+      # Xcode runs Gradle itself, without the version of the release, so the version goes in the Gradle settings of the user of the runner, which is thrown away after the run. The Release build of the framework studies the whole app at once inside Gradle and ran out of 5 GB as the app grew, so Gradle gets 6 of the 7 of the Mac, with the collector made for long builds. The Kotlin daemon is not used for it, so it gets little, as both together were more than the Mac has.
       - name: Give Gradle the version
         env:
           VERSION: ${{ steps.version.outputs.name }}
         run: |
           mkdir -p ~/.gradle
-          printf 'app.version=%s\norg.gradle.jvmargs=-Xmx6g -Dfile.encoding=UTF-8\nkotlin.daemon.jvmargs=-Xmx6g\n' "$VERSION" >> ~/.gradle/gradle.properties
+          printf 'app.version=%s\norg.gradle.jvmargs=-Xmx6g -XX:+UseParallelGC -Dfile.encoding=UTF-8\nkotlin.daemon.jvmargs=-Xmx1g\n' "$VERSION" >> ~/.gradle/gradle.properties
       # Homebrew would update its whole list first, which takes minutes, and XcodeGen does not need the newest one.
       - name: Install XcodeGen
         env:
           HOMEBREW_NO_AUTO_UPDATE: 1
           HOMEBREW_NO_INSTALL_CLEANUP: 1
         run: brew install xcodegen
+      # The framework is built here first, so its progress shows in the log as it goes instead of all at once when Xcode ends. Xcode then finds it built and only copies it in.
+      - name: Build the Kotlin framework
+        run: |
+          # The free memory and the swap of the Mac once a minute, to see whether the build runs short of memory.
+          ( while sleep 60; do echo "memory: $(memory_pressure | tail -1), swap: $(sysctl -n vm.swapusage)"; done ) &
+          watch=$!
+          status=0
+          ./gradlew :app:shared:linkReleaseFrameworkIosArm64 --console=plain || status=$?
+          kill "$watch"
+          exit "$status"
       - name: Build the app
         working-directory: iosApp
         env:

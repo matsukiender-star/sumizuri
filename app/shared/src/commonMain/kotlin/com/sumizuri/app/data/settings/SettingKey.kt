@@ -10,6 +10,10 @@ object SettingKey {
     const val PerfOverlayLevel = "debug.perfOverlayLevel"
     const val PerfOverlayAt = "debug.perfOverlayAt"
 
+    // Whether the page of features still being tried out shows in the settings, and the features on it. All are off at first.
+    const val ShowExperimental = "debug.showExperimental"
+    const val ProfileBanner = "experimental.profileBanner"
+
     // Whether a site opens in a page of the app or in the person's own browser.
     const val WebInApp = "web.inApp"
     const val Oled = "app.oled"
@@ -30,13 +34,20 @@ object SettingKey {
     // Whether the person has gone through, or skipped, the first steps after installing.
     const val OnboardingDone = "onboarding.done"
 
+    // The step of the first run the person was on, so it opens there again after the app closes.
+    const val OnboardingStep = "onboarding.step"
+
     // How one page gives way to another, and whether the parts of a page rise in one after the other.
     const val PageMotion = "layout.pageMotion"
+    const val Opening = "layout.opening"
     const val Stagger = "layout.stagger"
     const val Language = "app.language"
 
     // The pages new in this version that the person has opened, so the home stops marking them.
     const val SettingsSeen = "settings.seen"
+
+    // Set once the official repo was added, so a person who removes it does not get it back.
+    const val OfficialRepoAdded = "repos.officialAdded"
 
     // How the entries of a source are laid out, the same for every source.
     const val BrowseStyle = "browse.style"
@@ -116,6 +127,25 @@ object SettingKey {
     const val SyncBackground = "sync.when.background"
     const val SyncOnOpen = "sync.when.onOpen"
     const val SyncAfterReading = "sync.when.afterReading"
+
+    // How often the linked titles are synced with the trackers while the app is open, in minutes, where 0 is only by hand.
+    const val TrackerEveryMinutes = "tracker.everyMinutes"
+    const val DefaultTrackerMinutes = 5
+
+    // The rules of the sync with the trackers, reset together on their page.
+    const val TrackerAfterReading = "tracker.rule.afterReading"
+    const val TrackerWifiOnly = "tracker.rule.wifiOnly"
+    const val TrackerBackground = "tracker.rule.background"
+    const val TrackerBothProgress = "tracker.rule.bothProgress"
+    const val TrackerBothOther = "tracker.rule.bothOther"
+    const val TrackerReadingMoves = "tracker.rule.readingMoves"
+    const val TrackerStatusFollows = "tracker.rule.statusFollows"
+    const val TrackerReread = "tracker.rule.reread"
+    const val TrackerOnLink = "tracker.rule.onLink"
+    const val TrackerMatchList = "tracker.rule.matchList"
+    const val TrackerAddNew = "tracker.rule.addNew"
+    const val TrackerGone = "tracker.rule.gone"
+    const val TrackerOnRemove = "tracker.rule.onRemove"
     const val SyncCharging = "sync.when.charging"
 
     const val DefaultImageDiskMb = 256

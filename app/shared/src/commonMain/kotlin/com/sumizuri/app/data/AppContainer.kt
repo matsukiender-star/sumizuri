@@ -22,6 +22,7 @@ import com.sumizuri.app.data.download.downloadFolder
 import com.sumizuri.app.data.library.CategoryRepository
 import com.sumizuri.app.data.library.ChapterCarry
 import com.sumizuri.app.data.library.CoverFiles
+import com.sumizuri.app.data.library.EpisodeStills
 import com.sumizuri.app.data.library.LibraryRepository
 import com.sumizuri.app.data.library.SeasonCovers
 import com.sumizuri.app.data.library.StatisticsRepository
@@ -51,10 +52,18 @@ import com.sumizuri.app.data.storage.DatabaseLogSink
 import com.sumizuri.app.data.storage.StorageRepository
 import com.sumizuri.app.data.sync.TitleSync
 import com.sumizuri.app.data.text.nowMillis
+import com.sumizuri.app.data.tracker.AniListClient
+import com.sumizuri.app.data.tracker.TrackerAccounts
+import com.sumizuri.app.data.tracker.TrackerApis
+import com.sumizuri.app.data.tracker.TrackerSync
+import com.sumizuri.app.data.tracker.TrackerUse
+import com.sumizuri.app.data.tracker.Trackers
 import com.sumizuri.app.feature.title.chapter.ChapterPictures
 import com.sumizuri.app.source.SourceManager
 import com.sumizuri.app.source.browser.ChallengeSolver
 import com.sumizuri.app.source.browser.page.RenderPageFactory
+import com.sumizuri.app.source.engine.fillSettingHeaders
+import com.sumizuri.app.source.host.store.FilledHeaders
 import com.sumizuri.app.ui.kit.image.PageCache
 import com.sumizuri.app.ui.kit.image.PageSnapshots
 import com.sumizuri.app.ui.kit.image.SourceReferers
@@ -92,6 +101,7 @@ class AppContainer(
     val settings = SettingsRepository(database, shared)
 
     // The covers of the seasons of anime from AniList, kept beside the cache of pictures.
+    val episodeStills = EpisodeStills()
     val seasonCovers = SeasonCovers(FileSystem.SYSTEM_TEMPORARY_DIRECTORY / "sumizuri_covers_meta")
     val session = SessionRepository(database)
     val reading = ReaderSettingsRepository(database)
@@ -132,6 +142,16 @@ class AppContainer(
     val chapterPictures = ChapterPictures(library, sources, manager, downloads)
     val lock = AppLock(settings, shared)
     val updater = AppUpdater(settings, work)
+
+    // The tracking sites this profile is signed in to.
+    private val trackerAccounts = TrackerAccounts(settings, work)
+    private val trackerApis = TrackerApis(AniListClient())
+
+    // Keeps the linked titles the same as their entries on the trackers.
+    val trackerSync = TrackerSync(database, trackerAccounts, settings, trackerApis, TrackerUse(settings), work)
+    val trackers = Trackers(trackerAccounts, work, trackerApis, trackerSync::forget, trackerSync::afterSignIn)
+        // A token that ends soon is renewed by its tracker before it is used.
+        .also { trackers -> trackerAccounts.renewer = trackers::renew }
     val sync = TitleSync(library, sources, manager, settings, carry, autoDownloads)
     val updates = SourceUpdates(sources, repos, manager.repos, settings)
     val focus = CoverFocusRepository(database)
@@ -170,7 +190,12 @@ class AppContainer(
 
     init {
         // Reading asks for a sync a little later, which waits while the reading goes on.
-        library.onReading = librarySync::syncSoon
+        library.onReading = {
+            librarySync.syncSoon()
+            trackerSync.afterReading()
+        }
+        library.onRemoved = trackerSync::removedFromLibrary
+        library.onAdded = trackerSync.linker::addedToLibrary
     }
 
     private val sweeper = CoroutineScope(SupervisorJob() + Dispatchers.Main)
@@ -187,8 +212,12 @@ class AppContainer(
                 SiteKinds.bySource = list.associate { it.id to it.kind }
                 SourceReferers.headersBySource =
                     list.associate { it.id to it.imageHeaders() }.filterValues { it.isNotEmpty() }
+                list.forEach { fillSettingHeaders(it, hostStore) }
             }
         }
+        // Covers ask again with the headers a source fills from its settings once they change.
+        shared.launch { FilledHeaders.bySource.collect { SourceReferers.filledBySource = it } }
+        work.launch { repos.addOfficialOnce(settings) }
         // The pictures of the pages last read sit beside the database of this profile.
         PageSnapshots.useFolder(snapshotFolder(databasePath))
         // Chapters that wait to be saved go on from where they were.

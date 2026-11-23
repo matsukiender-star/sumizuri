@@ -24,7 +24,6 @@ import androidx.compose.material.icons.outlined.NewReleases
 import androidx.compose.material.icons.outlined.SystemUpdate
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -60,6 +59,7 @@ import com.sumizuri.app.shared.resources.appupdate_no_file
 import com.sumizuri.app.shared.resources.appupdate_no_notes
 import com.sumizuri.app.shared.resources.appupdate_no_source
 import com.sumizuri.app.shared.resources.appupdate_not_found
+import com.sumizuri.app.shared.resources.appupdate_opening
 import com.sumizuri.app.shared.resources.appupdate_source
 import com.sumizuri.app.shared.resources.appupdate_source_hint
 import com.sumizuri.app.shared.resources.appupdate_source_invalid
@@ -74,6 +74,7 @@ import com.sumizuri.app.ui.kit.art.InkLinearProgressIndicator
 import com.sumizuri.app.ui.kit.art.InkOutlinedButton
 import com.sumizuri.app.ui.kit.card.AppCard
 import com.sumizuri.app.ui.kit.dialog.AppDialog
+import com.sumizuri.app.ui.kit.input.AppTextField
 import com.sumizuri.app.ui.kit.text.MarkdownText
 import com.sumizuri.app.ui.text.agoText
 import com.sumizuri.app.ui.text.byteSizeText
@@ -183,6 +184,8 @@ internal fun DownloadPart(
     onDownload: () -> Unit,
     onCancel: () -> Unit,
     onInstall: () -> Unit,
+    // While the setup opens the button waits, so it is not opened twice.
+    opening: Boolean = false,
 ) {
     Column(Modifier.fillMaxWidth().padding(vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         when {
@@ -205,8 +208,8 @@ internal fun DownloadPart(
                 InkButton(onDownload, Modifier.fillMaxWidth()) { Text(stringResource(Res.string.appupdate_download)) }
             }
 
-            download.finished -> InkButton(onInstall, Modifier.fillMaxWidth()) {
-                Text(stringResource(Res.string.appupdate_install))
+            download.finished -> InkButton(onInstall, Modifier.fillMaxWidth(), enabled = !opening) {
+                Text(stringResource(if (opening) Res.string.appupdate_opening else Res.string.appupdate_install))
             }
 
             else -> {
@@ -333,7 +336,7 @@ internal fun SourceDialog(current: String, onDismiss: () -> Unit, onSave: (Strin
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.outline,
                 )
-                OutlinedTextField(text, {
+                AppTextField(text, {
                     text = it
                 }, singleLine = true, isError = !valid, placeholder = { Text("https://github.com/owner/repo") })
                 if (!valid) {

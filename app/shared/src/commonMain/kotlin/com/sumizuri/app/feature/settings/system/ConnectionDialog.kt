@@ -14,7 +14,6 @@ import androidx.compose.material.icons.outlined.VisibilityOff
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -47,6 +46,7 @@ import com.sumizuri.app.shared.resources.network_state_failed
 import com.sumizuri.app.shared.resources.save
 import com.sumizuri.app.ui.kit.art.InkButton
 import com.sumizuri.app.ui.kit.dialog.AppDialog
+import com.sumizuri.app.ui.kit.input.AppTextField
 import com.sumizuri.app.ui.kit.input.rememberFilePicker
 import com.sumizuri.app.ui.kit.input.rememberImagePicker
 import com.sumizuri.app.ui.kit.setting.ChoiceSetting
@@ -54,6 +54,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import okio.FileSystem
+import okio.Path
 import org.jetbrains.compose.resources.stringResource
 
 // The largest file taken for a field. A key or a WireGuard config is a few kilobytes, so anything bigger is the wrong file.
@@ -61,6 +62,12 @@ private const val FileMaxBytes = 64L * 1024
 
 // What a file must hold to be taken for a field, so a public key or a picture is turned away at once.
 private val FileMarks = mapOf("key" to "PRIVATE KEY", "config" to "[Interface]")
+
+// The text of a file chosen for a field, or null when it is too big or not the right kind.
+internal fun connectionFileText(path: Path, key: String): String? = runCatching {
+    val size = FileSystem.SYSTEM.metadataOrNull(path)?.size ?: 0
+    if (size > FileMaxBytes) null else FileSystem.SYSTEM.read(path) { readUtf8() }
+}.getOrNull()?.takeIf { text -> FileMarks[key]?.let { it in text } != false }
 
 // Edits one connection, drawing the fields its kind lists, so every kind is edited the same way.
 @Composable
@@ -166,11 +173,8 @@ private fun Field(field: FieldSpec, connection: Connection, onChange: (String, S
 private fun FileField(field: FieldSpec, connection: Connection, hint: String?, onChange: (String, String) -> Unit) {
     var wrong by remember { mutableStateOf(false) }
     val pick = rememberFilePicker { path ->
-        val text = runCatching {
-            val size = FileSystem.SYSTEM.metadataOrNull(path)?.size ?: 0
-            if (size > FileMaxBytes) null else FileSystem.SYSTEM.read(path) { readUtf8() }
-        }.getOrNull()
-        wrong = text == null || FileMarks[field.key]?.let { it !in text } == true
+        val text = connectionFileText(path, field.key)
+        wrong = text == null
         if (!wrong && text != null) {
             onChange(field.key, text.trim() + "\n")
             onChange("${field.key}.name", path.name)
@@ -222,7 +226,7 @@ private fun LineField(
     onChange: (String) -> Unit,
 ) {
     var shown by remember { mutableStateOf(false) }
-    OutlinedTextField(
+    AppTextField(
         value,
         onChange,
         Modifier.fillMaxWidth(),

@@ -5,6 +5,11 @@ import com.sumizuri.app.data.db.cookie.CookieEntity
 import com.sumizuri.app.data.db.repo.RepoEntity
 import com.sumizuri.app.data.db.source.SourceEntity
 import com.sumizuri.app.data.db.value.SourceValueEntity
+import com.sumizuri.app.data.json.flag
+import com.sumizuri.app.data.json.int
+import com.sumizuri.app.data.json.list
+import com.sumizuri.app.data.json.strings
+import com.sumizuri.app.data.json.text
 import com.sumizuri.app.data.model.Kind
 import com.sumizuri.app.data.model.Status
 import com.sumizuri.app.data.model.library.LibrarySortField
@@ -13,6 +18,7 @@ import com.sumizuri.app.data.share.ShareProblem
 import com.sumizuri.app.data.share.ShareUnreadable
 import com.sumizuri.app.data.share.readShared
 import com.sumizuri.app.data.text.localOffsetMillis
+import com.sumizuri.app.data.tracker.ImportedTrack
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
@@ -26,6 +32,9 @@ import kotlinx.serialization.json.longOrNull
 import kotlin.time.Instant
 
 // Reads the titles and shelves of a Sumizuri backup. A backup of the Flutter app is version 2, and its sources, themes and fonts are for that app and are not used here. A backup of this app is version 3 and also brings its sources, settings and sign ins.
+// Reads the parts a later version may add to, leaving out names it does not know.
+private val Lenient = kotlinx.serialization.json.Json { ignoreUnknownKeys = true }
+
 fun readSumizuriBackup(text: String): ImportedBackup {
     val root = try {
         Json.parseToJsonElement(text).jsonObject
@@ -82,13 +91,13 @@ fun readSumizuriBackup(root: JsonObject): ImportedBackup {
                 url = entry.text("externalId"),
                 coverUrl = entry.text("coverUrl").ifEmpty { null },
                 kind = kindOf(entry.text("mediaType")) ?: Kind.Manga,
-                favorite = entry.bool("favorite"),
+                favorite = entry.flag("favorite"),
                 sourceName = entry.text("sourceName").ifEmpty { null },
                 sourceUrl = entry.text("sourceBaseUrl").ifEmpty { null },
                 shelves = entry.strings("categoryNames"),
                 chapters = entry.list("chapters").map { chapter ->
                     val url = chapter.text("url")
-                    val read = chapter.bool("consumed")
+                    val read = chapter.flag("consumed")
                     ImportedChapter(
                         url = url,
                         number = (chapter["number"] as? JsonPrimitive)?.doubleOrNull ?: 0.0,
@@ -106,7 +115,7 @@ fun readSumizuriBackup(root: JsonObject): ImportedBackup {
                                         0
                                 }?.coerceAtMost(1.0)
                         },
-                        bookmarked = chapter.bool("bookmarked"),
+                        bookmarked = chapter.flag("bookmarked"),
                         season = chapter.text("season").ifEmpty { null },
                         seasonName = chapter.text("seasonName").ifEmpty { null },
                         seasonCoverUrl = chapter.text("seasonCoverUrl").ifEmpty { null },
@@ -121,6 +130,9 @@ fun readSumizuriBackup(root: JsonObject): ImportedBackup {
                 genres = entry.strings("genres"),
                 rating = (entry["rating"] as? JsonPrimitive)?.doubleOrNull,
                 webUrl = entry.text("webUrl").ifEmpty { null },
+                trackers = (entry["trackers"] as? JsonArray).orEmpty().mapNotNull {
+                    runCatching { Lenient.decodeFromJsonElement(ImportedTrack.serializer(), it) }.getOrNull()
+                },
             )
         }
         return ImportedBackup(
@@ -137,10 +149,10 @@ fun readSumizuriBackup(root: JsonObject): ImportedBackup {
 }
 
 private fun flutterShelf(shelf: JsonObject): ImportedShelf {
-    val smart = shelf.bool("useSmartRule")
+    val smart = shelf.flag("useSmartRule")
     return ImportedShelf(
         name = shelf.text("name").trim(),
-        excludeFromUpdate = shelf.bool("excludeFromUpdate"),
+        excludeFromUpdate = shelf.flag("excludeFromUpdate"),
         sort = if (smart) sortOf(shelf.text("sortField")) else null,
         ascending = shelf["sortAscending"].let { (it as? JsonPrimitive)?.booleanOrNull } ?: true,
         status = if (smart) statusOf(shelf.text("statusFilter")) else null,
@@ -153,7 +165,7 @@ private fun ourShelf(shelf: JsonObject): ImportedShelf {
     val stored = CategoryEntity(
         name = name,
         sortOrder = shelf.int("sortOrder") ?: 0,
-        excludeFromUpdate = shelf.bool("excludeFromUpdate"),
+        excludeFromUpdate = shelf.flag("excludeFromUpdate"),
         sortField = shelf.int("sort"),
         sortAscending = (shelf["sortAscending"] as? JsonPrimitive)?.booleanOrNull ?: true,
         statusFilter = shelf.int("status") ?: 0,
@@ -213,8 +225,8 @@ private fun extrasOf(root: JsonObject) = BackupExtras(
             it.text("name"),
             it.text("value"),
             (it["expiresAt"] as? JsonPrimitive)?.longOrNull,
-            it.bool("secure"),
-            it.bool("httpOnly"),
+            it.flag("secure"),
+            it.flag("httpOnly"),
         )
     },
 )
@@ -236,7 +248,7 @@ private fun statusOf(name: String): Status? = when (name) {
 }
 
 // A time the Flutter app wrote as text. It leaves the zone off, which means the clock of the device that made it, so the clock of this device is the best guess.
-private fun timeOf(text: String): Long? {
+internal fun timeOf(text: String): Long? {
     if (text.isEmpty()) return null
     val zoned = text.endsWith("Z") || text.lastIndexOf('+') > 10 || text.lastIndexOf('-') > 10
     return try {
@@ -249,8 +261,4 @@ private fun timeOf(text: String): Long? {
     } catch (error: Exception) {
         null
     }
-}
-
-private fun JsonObject.strings(key: String): List<String> = (this[key] as? JsonArray).orEmpty().mapNotNull {
-    (it as? JsonPrimitive)?.contentOrNull
 }

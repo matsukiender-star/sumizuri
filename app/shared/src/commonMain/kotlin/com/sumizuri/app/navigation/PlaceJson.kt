@@ -80,6 +80,16 @@ internal object PlaceJson {
                                     put("id", page.titleId)
                                 }
 
+                                is Page.EditTitle -> {
+                                    put("type", "edit_title")
+                                    put("id", page.titleId)
+                                }
+
+                                is Page.EditShelf -> {
+                                    put("type", "edit_shelf")
+                                    put("id", page.shelfId)
+                                }
+
                                 // The work of moving many titles is kept in the app while it runs, and is not opened again after the app was closed.
                                 is Page.Migration -> put("type", "migration")
 
@@ -96,6 +106,7 @@ internal object PlaceJson {
                                 is Page.GlobalSearch -> {
                                     put("type", "global_search")
                                     put("query", page.query)
+                                    page.kind?.let { put("kind", it.toString()) }
                                 }
 
                                 is Page.BlockScript -> {
@@ -104,6 +115,8 @@ internal object PlaceJson {
                                 }
 
                                 Page.ArrangeBlocks -> put("type", "arrange_blocks")
+
+                                Page.ProfileLayouts -> put("type", "profile_layouts")
 
                                 is Page.ExtensionEditor -> {
                                     put("type", "extension_editor")
@@ -173,15 +186,21 @@ internal object PlaceJson {
 
                 "migrate" -> number("id")?.let { Page.Migrate(it) }
 
+                "edit_title" -> number("id")?.let { Page.EditTitle(it) }
+
+                "edit_shelf" -> number("id")?.let { Page.EditShelf(it) }
+
                 "reader" -> number("id")?.let { Page.Reader(it) }
 
                 "web" -> text("url")?.let { Page.Web(it) }
 
-                "global_search" -> Page.GlobalSearch(text("query").orEmpty())
+                "global_search" -> Page.GlobalSearch(text("query").orEmpty(), text("kind")?.toIntOrNull())
 
                 "block_script" -> text("block")?.let { Page.BlockScript(it) }
 
                 "arrange_blocks" -> Page.ArrangeBlocks
+
+                "profile_layouts" -> Page.ProfileLayouts
 
                 // The editor of a source that was removed is left out, rather than opened on a new one.
                 "extension_editor" -> {

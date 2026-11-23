@@ -19,8 +19,6 @@ import androidx.compose.material.icons.outlined.Hub
 import androidx.compose.material.icons.outlined.Lan
 import androidx.compose.material.icons.outlined.Movie
 import androidx.compose.material.icons.outlined.Wifi
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -76,6 +74,8 @@ import com.sumizuri.app.shared.resources.settings_network_hint
 import com.sumizuri.app.ui.kit.art.InkOutlinedButton
 import com.sumizuri.app.ui.kit.card.AppCard
 import com.sumizuri.app.ui.kit.input.MenuButton
+import com.sumizuri.app.ui.kit.menu.AppMenu
+import com.sumizuri.app.ui.kit.menu.AppMenuItem
 import com.sumizuri.app.ui.kit.setting.SettingIcon
 import com.sumizuri.app.ui.kit.setting.SettingRow
 import com.sumizuri.app.ui.kit.setting.SettingsSection
@@ -84,7 +84,7 @@ import org.jetbrains.compose.resources.stringResource
 import kotlin.random.Random
 
 // What a test found for one way: the address the sites saw and its country, or why it did not work.
-private class TraceLine(val way: String, val ip: String?, val country: String?, val problem: String?)
+internal class TraceLine(val way: String, val ip: String?, val country: String?, val problem: String?)
 
 // How the app reaches the sites: a card that says where the traffic goes with a test beside it, the way of each kind of title and of single sources, and the connections. Home network addresses always go straight.
 @Composable
@@ -168,7 +168,7 @@ private fun StatusCard(setting: NetworkSetting) {
 }
 
 @Composable
-private fun TraceRow(line: TraceLine) {
+internal fun TraceRow(line: TraceLine) {
     val failed = line.ip == null
     Column {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -192,7 +192,7 @@ private fun TraceRow(line: TraceLine) {
     }
 }
 
-private suspend fun traceAll(connections: List<Connection>, straight: String): List<TraceLine> =
+internal suspend fun traceAll(connections: List<Connection>, straight: String): List<TraceLine> =
     (listOf<Connection?>(null) + connections).map { way ->
         val traced = NetworkEngine.trace(way)
         val found = traced.getOrNull()
@@ -292,10 +292,10 @@ private fun ConnectionsSection(setting: NetworkSetting, states: Map<String, Link
                     leading = { SettingIcon(Icons.Outlined.Add) },
                     onClick = { adding = true },
                 )
-                DropdownMenu(adding, { adding = false }) {
+                AppMenu(adding, { adding = false }) {
                     for (type in ConnectionType.entries) {
                         val name = stringResource(type.label)
-                        DropdownMenuItem({ Text(name) }, {
+                        AppMenuItem({ Text(name) }, {
                             adding = false
                             onEdit(Connection(Random.nextLong().toULong().toString(36), name, type))
                         })
@@ -307,7 +307,7 @@ private fun ConnectionsSection(setting: NetworkSetting, states: Map<String, Link
 }
 
 @Composable
-private fun trafficName(traffic: Traffic): String = stringResource(
+internal fun trafficName(traffic: Traffic): String = stringResource(
     when (traffic) {
         Traffic.Anime -> Res.string.network_traffic_anime
         Traffic.Manga -> Res.string.network_traffic_manga
@@ -324,7 +324,7 @@ private fun trafficIcon(traffic: Traffic): ImageVector = when (traffic) {
 }
 
 @Composable
-private fun stateWord(state: LinkState?): String = stringResource(
+internal fun stateWord(state: LinkState?): String = stringResource(
     when (state) {
         null, LinkState.Idle -> Res.string.network_state_off
         LinkState.Connecting -> Res.string.network_state_connecting
@@ -338,7 +338,7 @@ private val BadDot = Color(0xFFE5534B)
 private val WaitDot = Color(0xFFE0A63A)
 
 @Composable
-private fun dotColor(state: LinkState?): Color = when (state) {
+internal fun dotColor(state: LinkState?): Color = when (state) {
     LinkState.Up -> GoodDot
     is LinkState.Failed -> BadDot
     LinkState.Connecting -> WaitDot
@@ -346,6 +346,6 @@ private fun dotColor(state: LinkState?): Color = when (state) {
 }
 
 @Composable
-private fun Dot(color: Color) {
+internal fun Dot(color: Color) {
     Box(Modifier.padding(horizontal = 6.dp).size(10.dp).background(color, CircleShape))
 }

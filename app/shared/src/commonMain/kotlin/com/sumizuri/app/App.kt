@@ -1,10 +1,12 @@
 package com.sumizuri.app
 
+import androidx.compose.foundation.layout.Box
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleOut
-import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
@@ -47,30 +49,43 @@ import com.sumizuri.app.core.perf.PerfWatch
 import com.sumizuri.app.core.perf.reportActivity
 import com.sumizuri.app.data.AppContainer
 import com.sumizuri.app.data.LocalAppContainer
+import com.sumizuri.app.data.model.Kind
 import com.sumizuri.app.data.model.controls.AppShortcut
 import com.sumizuri.app.data.model.controls.NavDoubleTapAction
 import com.sumizuri.app.data.model.library.LibraryPrefs
 import com.sumizuri.app.data.profile.LocalProfiles
 import com.sumizuri.app.data.profile.ProfileHost
 import com.sumizuri.app.data.profile.ProfileStoreOwner
+import com.sumizuri.app.data.tracker.TrackerId
 import com.sumizuri.app.data.settings.SettingKey
 import com.sumizuri.app.data.text.nowMillis
 import com.sumizuri.app.feature.appupdate.AppUpdateNotices
 import com.sumizuri.app.feature.library.continueChapterOf
 import com.sumizuri.app.feature.onboarding.OnboardingScreen
+import com.sumizuri.app.feature.tv.onboarding.TvOnboardingScreen
+import com.sumizuri.app.ui.tv.LocalTv
+import com.sumizuri.app.ui.tv.isTvDevice
+import com.sumizuri.app.ui.tv.keyboardOverOnTv
 import com.sumizuri.app.feature.settings.SettingsTarget
 import com.sumizuri.app.feature.settings.SettingsViewModel
 import com.sumizuri.app.feature.settings.controls.ControlsViewModel
 import com.sumizuri.app.feature.settings.system.perfDetails
 import com.sumizuri.app.feature.sync.HandoffNotice
+import com.sumizuri.app.navigation.AppPrompts
 import com.sumizuri.app.feature.theme.ThemeViewModel
 import com.sumizuri.app.navigation.AppLinks
 import com.sumizuri.app.navigation.Destination
 import com.sumizuri.app.navigation.KeptTabs
+import com.sumizuri.app.navigation.LocalSideNavWidth
 import com.sumizuri.app.navigation.MainScaffold
 import com.sumizuri.app.navigation.NavigationViewModel
+import com.sumizuri.app.navigation.LocalSearchSources
 import com.sumizuri.app.navigation.Page
 import com.sumizuri.app.navigation.PageBack
+import com.sumizuri.app.navigation.SideNav
+import com.sumizuri.app.navigation.fullWindow
+import com.sumizuri.app.navigation.shownNavStyle
+import com.sumizuri.app.navigation.sideNavWidth
 import com.sumizuri.app.navigation.PageStack
 import com.sumizuri.app.navigation.ShortcutActions
 import com.sumizuri.app.navigation.ShortcutsDialog
@@ -151,7 +166,6 @@ private fun AppContent(container: AppContainer, windowBar: (@Composable () -> Un
     }
     LaunchedEffect(pageMemoryMb, pageKeepMinutes) { PageCache.configure(pageMemoryMb * 1024L * 1024L, pageKeepMinutes * 60_000L) }
     LaunchedEffect(booksKept) { FetchedBooks.kept = booksKept }
-
     AppBackgroundWork(container, loader)
     val perfOverlay by remember(container) { container.settings.flag(SettingKey.PerfOverlay, false) }.collectAsStateWithLifecycle(false)
     val perfAdvanced by remember(container) { container.settings.text(SettingKey.PerfOverlayLevel) }.collectAsStateWithLifecycle(null)
@@ -179,7 +193,7 @@ private fun AppContent(container: AppContainer, windowBar: (@Composable () -> Un
     val profileState by LocalProfiles.current.state.collectAsStateWithLifecycle()
     val navAvatar = profileState.active.let { NavAvatar(it.name, it.avatar) }
     // The count of new chapters that are not read, on the tab of the updates.
-    val unreadCount by remember(container) { container.library.unreadUpdateCount }.collectAsStateWithLifecycle(0)
+    val unreadCount by remember(container) { if (isTvDevice()) container.library.unreadVideoUpdateCount else container.library.unreadUpdateCount }.collectAsStateWithLifecycle(0)
     val badges = mapOf(Destination.Updates to unreadCount)
     val language by settings.language.collectAsStateWithLifecycle()
     // The words are read again from the language the person chose, so the screens below are built again when it changes.
@@ -199,12 +213,12 @@ private fun AppContent(container: AppContainer, windowBar: (@Composable () -> Un
             container.library.library.map { titles -> titles.mapNotNull { it.coverUrl?.takeIf(String::isNotBlank) }.sortedBy { it.hashCode() }.take(30) }
         }
     }.collectAsStateWithLifecycle(emptyList())
-
     key(language) {
         CompositionLocalProvider(
             LocalAppContainer provides container,
             LocalCompactLists provides compactLists,
             LocalReduceMotion provides reduceMotion,
+            LocalTv provides remember { isTvDevice() },
             LocalReaderControls provides readerControls,
             LocalAppGestures provides gestures,
             LocalBackdropCovers provides backdropCovers,
@@ -236,6 +250,13 @@ private fun AppContent(container: AppContainer, windowBar: (@Composable () -> Un
                 val chapter = if (link.read) continueChapterOf(container.library, link.id) else null
                 navigation.push(chapter?.let { Page.Reader(it) } ?: Page.Saved(link.id))
             }
+            // A tracker that sent the person back with a token signs this profile in. The page the person left shows how it went.
+            val linkedTrack by AppLinks.trackSignIn.collectAsStateWithLifecycle()
+            LaunchedEffect(linkedTrack) {
+                val link = linkedTrack ?: return@LaunchedEffect
+                AppLinks.trackTaken()
+                TrackerId.of(link.tracker)?.let { container.trackers.finish(it, link.answer) }
+            }
             val linkedUpdates by AppLinks.openUpdates.collectAsStateWithLifecycle()
             LaunchedEffect(linkedUpdates, place.restored) {
                 if (linkedUpdates && place.restored) {
@@ -243,7 +264,6 @@ private fun AppContent(container: AppContainer, windowBar: (@Composable () -> Un
                     navigation.select(Destination.Updates)
                 }
             }
-
 
             // Back closes the top page, and on a tab other than the library it goes to the library first. A back gesture of the system moves the top page with the finger, and one given up lets the page slide back.
             val backState = rememberNavigationEventState(NavigationEventInfo.None)
@@ -290,32 +310,46 @@ private fun AppContent(container: AppContainer, windowBar: (@Composable () -> Un
             val openSite: (String) -> Unit = { address -> if (webInApp) navigation.push(Page.Web(address)) else runCatching { uriHandler.openUri(address) } }
             // A cover tapped in the library flies to its place on the page of the title.
             val flight = remember { CoverFlight() }
-            CompositionLocalProvider(LocalOpenSite provides openSite, LocalPageMotion provides pageMotion, LocalStagger provides stagger, LocalCoverFlight provides flight) {
+            CompositionLocalProvider(LocalOpenSite provides openSite, LocalSearchSources provides { words: String, kind: Kind? -> navigation.push(Page.GlobalSearch(words, kind?.code)) }, LocalPageMotion provides pageMotion, LocalStagger provides stagger, LocalCoverFlight provides flight) {
                 if (!lookRead || !themeRead) StartBackdrop()
-                if (lookRead && themeRead) SumizuriTheme(themeMode, theme, oled, oledGlow) {
+                if (lookRead && themeRead) {
+                    // A new language rebuilds the screens once, so the words already shown are read again in it at once.
+                    key(language.code) {
+                        SumizuriTheme(themeMode, theme, oled, oledGlow) {
                     val tabMs = pageMotion.pageMs()
                     val shift = rememberMotionShift()
                     val locked by container.lock.locked.collectAsStateWithLifecycle()
                     // The splash screen of the phone stays until the lock or the first page has drawn.
-                    StartShown(locked == true || (locked == false && place.restored && onboardingDone != null))
+                    val ready = locked == true || (locked == false && place.restored && onboardingDone != null)
+                    StartShown(ready)
+                    // The logo of the splash gives way to the first screen, under the bar of the window, whose height is measured.
+                    val opening = rememberOpening(ready)
                     // The background under the tabs, which a page hides once it covers the whole window.
                     val rootSlot = remember { BackdropSlot() }
                     CompositionLocalProvider(LocalBackdropSlot provides rootSlot) {
+                    Box(Modifier.fillMaxSize()) {
                     Column(Modifier.fillMaxSize().ambientBackground(rootSlot).reportActivity().appShortcuts { shortcut -> locked != false || onShortcut(shortcut) }) {
-                        windowBar?.invoke()
+                        windowBar?.let { bar -> Box(Modifier.onSizeChanged { opening.barHeight = it.height }) { bar() } }
                         if (locked == false) {
-                            Surface(Modifier.weight(1f).fillMaxWidth(), color = Color.Transparent, contentColor = MaterialTheme.colorScheme.onBackground) {
+                            Surface(Modifier.weight(1f).fillMaxWidth().openingRise(opening), color = Color.Transparent, contentColor = MaterialTheme.colorScheme.onBackground) {
                                 // The tabs stay composed under the pages so a grid keeps its place, and nothing draws until the saved place is read.
                                 if (place.restored && onboardingDone != null) {
-                                    Box(Modifier.fillMaxSize()) {
+                                    BoxWithConstraints(Modifier.fillMaxSize().keyboardOverOnTv()) {
+                                        val shownNav = shownNavStyle(navStyle, maxWidth)
                                         // The tabs are the page under the first one, so they give way to it and come back in the same motion.
-                                        PageStack(place, navigation, backState, pageBack) {
-                                            MainScaffold(tabs, navStyle, navLabels, navSwipe, place.tab, navAvatar, badges, onSelect = onSelectTab) {
-                                                // The next tab moves in from the side it sits on, quicker than a page, in the style the person chose, and each tab is kept once made.
-                                                KeptTabs(place.tab, tabs, pageMotion, tabMs, shift) { tab ->
-                                                    AppTab(tab, tabs, navigation)
+                                        CompositionLocalProvider(LocalSideNavWidth provides sideNavWidth(shownNav)) {
+                                            PageStack(place, navigation, backState, pageBack) {
+                                                MainScaffold(tabs, navStyle, navLabels, navSwipe, place.tab, navAvatar, badges, onSelect = onSelectTab) {
+                                                    // The next tab moves in from the side it sits on, quicker than a page, in the style the person chose, and each tab is kept once made.
+                                                    KeptTabs(place.tab, tabs, pageMotion, tabMs, shift) { tab ->
+                                                        AppTab(tab, tabs, navigation)
+                                                    }
                                                 }
                                             }
+                                        }
+                                        // The tabs down the side of a wide window stay over every page.
+                                        if (sideNavWidth(shownNav) > 0.dp) {
+                                            SideNav(shownNav, place.top?.fullWindow != true, tabs, place.tab, navLabels, navAvatar, badges, onSelectTab)
                                         }
                                         CoverFlightLayer(flight)
                                         // An offer to go on with a title that was read further on another device.
@@ -333,8 +367,10 @@ private fun AppContent(container: AppContainer, windowBar: (@Composable () -> Un
                                         AppUpdateNotices({ navigation.push(Page.SettingsPage(SettingsTarget.AppUpdate)) }, Modifier.align(Alignment.TopCenter).windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal)).padding(12.dp))
                                         // The first steps after installing, over everything until they are gone through or skipped, then fading away to the library.
                                         androidx.compose.animation.AnimatedVisibility(onboardingDone == false, enter = fadeIn(tween(300)), exit = fadeOut(tween(450)) + scaleOut(tween(450), targetScale = 1.03f)) {
-                                            OnboardingScreen(onMigrate = { navigation.push(Page.Migration(it)) })
+                                            if (LocalTv.current) TvOnboardingScreen(onOpenSettings = { navigation.push(Page.SettingsPage(it)) }) else OnboardingScreen(onMigrate = { navigation.push(Page.Migration(it)) }, onOpenSettings = { navigation.push(Page.SettingsPage(it)) })
                                         }
+                                        // Prompts over everything, even the first steps: trackers of titles just removed, sending to a TV, and who is watching on a TV.
+                                        AppPrompts()
                                         if (perfOverlay) {
                                             // The box stays where it was dragged to, and starts in a corner that suits the screen.
                                             val place = perfAt
@@ -351,8 +387,12 @@ private fun AppContent(container: AppContainer, windowBar: (@Composable () -> Un
                         // While locked the lock takes the place of the app, dialogs and all, under the bar of the window so the window can still be moved and closed.
                         AppGuard(container.lock, container.reading)
                     }
+                    OpeningCover(opening, ready)
+                    }
                     }
                     if (locked == false && shortcutsOpen) ShortcutsDialog(gestures) { shortcutsOpen = false }
+                }
+                    }
                 }
             }
         }

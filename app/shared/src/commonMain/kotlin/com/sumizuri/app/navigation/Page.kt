@@ -50,6 +50,12 @@ sealed interface Page {
     // A page of the settings that has no page of its own above.
     data class SettingsPage(val target: SettingsTarget) : Page
 
+    // The page that edits what a saved title says about itself.
+    data class EditTitle(val titleId: Long) : Page
+
+    // The page that changes one shelf of the library.
+    data class EditShelf(val shelfId: Long) : Page
+
     // The search that moves a saved title to another source.
     data class Migrate(val titleId: Long) : Page
 
@@ -62,14 +68,17 @@ sealed interface Page {
     // An entry of a source that is not saved yet.
     data class Preview(val source: InstalledSource, val entry: SourceEntry) : Page
 
-    // The search of every installed source at once, started with these words.
-    data class GlobalSearch(val query: String = "") : Page
+    // The search of every installed source at once, started with these words, and in one kind when its code is given.
+    data class GlobalSearch(val query: String = "", val kind: Int? = null) : Page
 
     // The editor of an extension: the code of an installed source, or a new one started from the template of this engine when there is no id.
     data class ExtensionEditor(val sourceId: String?) : Page
 
     // The comments of a title or of one of its chapters, as its source has them.
     data class Comments(val target: CommentsTarget) : Page
+
+    // The layouts of the profile to start from, each shown with the person's own reading.
+    data object ProfileLayouts : Page
 
     // The page where the blocks of the profile are put in order, sized, added and removed.
     data object ArrangeBlocks : Page

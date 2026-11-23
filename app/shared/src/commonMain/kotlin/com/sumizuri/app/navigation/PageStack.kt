@@ -4,10 +4,14 @@ import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.EnterExitState
 import androidx.compose.animation.core.SeekableTransitionState
 import androidx.compose.animation.core.rememberTransition
+import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.only
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material3.MaterialTheme
@@ -15,19 +19,24 @@ import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.unit.dp
 import androidx.navigationevent.NavigationEventTransitionState
 import androidx.navigationevent.compose.NavigationEventState
 import com.sumizuri.app.ui.motion.LocalPageLeaving
 import com.sumizuri.app.ui.motion.LocalPageMotion
+import com.sumizuri.app.ui.motion.LocalPageSettled
 import com.sumizuri.app.ui.motion.MotionShift
 import com.sumizuri.app.ui.motion.PageMotion
 import com.sumizuri.app.ui.motion.pageTransform
@@ -99,7 +108,15 @@ internal fun PageStack(
     }
     val transition = rememberTransition(seekable, label = "page")
     // The tabs stay composed under the pages so a grid keeps its place. They move as the page that gives way to the first page, and are not drawn while a page covers them.
-    Box(Modifier.fillMaxSize().underPages(style, seekable, shift)) { tabs() }
+    // While a page covers them, the remote and the keyboard cannot move into them either.
+    val covered by rememberUpdatedState(place.pages.isNotEmpty())
+    Box(
+        Modifier
+            .fillMaxSize()
+            .underPages(style, seekable, shift)
+            .focusProperties { onEnter = { if (covered) cancelFocusChange() } }
+            .focusGroup(),
+    ) { tabs() }
     transition.AnimatedContent(
         // Always the whole window, so a page never grows out of a corner when there was no page before it.
         modifier = Modifier.fillMaxSize(),
@@ -125,14 +142,22 @@ internal fun PageStack(
             CompositionLocalProvider(
                 LocalBackdropSlot provides pageSlot,
                 LocalPageLeaving provides (now.depth > shown.depth),
+                LocalPageSettled provides settled,
             ) {
+                // The page keeps clear of the tabs down the side, which stay over it, unless it takes the whole window. Its background still runs under them, so the two meet without a seam.
+                val side = if (page.fullWindow) 0.dp else LocalSideNavWidth.current
+                val insets = if (side > 0.dp) {
+                    WindowInsets.safeDrawing.only(
+                        WindowInsetsSides.Top + WindowInsetsSides.End + WindowInsetsSides.Bottom,
+                    )
+                } else {
+                    WindowInsets.safeDrawing
+                }
                 Box(
                     if (page.edgeToEdge) {
-                        Modifier.fillMaxSize()
+                        Modifier.fillMaxSize().padding(start = side)
                     } else {
-                        Modifier.fillMaxSize().windowInsetsPadding(
-                            WindowInsets.safeDrawing,
-                        )
+                        Modifier.fillMaxSize().padding(start = side).windowInsetsPadding(insets)
                     },
                 ) {
                     saved.SaveableStateProvider(pageKey(now.depth, page)) { PageHost(page, navigation) }
