@@ -260,7 +260,7 @@ internal fun PlayerScreen(session: PlayerSession, engine: PlayerEngine, onClose:
         onVolume = if (touchPlayer) null else ::volumeTo,
     )
     // Subtitles of the source can be put into the language of the app, the way a video site makes automatic ones. The picker stays open, so its line shows the work.
-    val language = Locale.current.language
+    val language = state.prefs.translateLanguage.ifEmpty { Locale.current.language }
     val translatedName = translatedName(language)
     val translateScope = rememberCoroutineScope()
     val translate = if (SubtitleTranslate.offered(
@@ -310,6 +310,7 @@ internal fun PlayerScreen(session: PlayerSession, engine: PlayerEngine, onClose:
             logShown = !logShown
         },
         onTranslateSubtitles = translate,
+        translateLanguage = language,
     )
 
     Box(

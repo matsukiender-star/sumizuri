@@ -46,4 +46,5 @@ internal class PickerCalls(
     val onToggleLog: () -> Unit,
     // Makes subtitles in the language of the app from those of the source, when there are some to make.
     val onTranslateSubtitles: (() -> Unit)? = null,
+    val translateLanguage: String = "",
 )

@@ -18,7 +18,6 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.intl.Locale
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -63,6 +62,7 @@ internal class StripCalls(
     val onVideo: (SourceVideo) -> Unit,
     val onSpeed: (Float) -> Unit,
     val onTranslateSubtitles: (() -> Unit)? = null,
+    val translateLanguage: String = "",
 )
 
 // A choice of the player as a row of cards low over the video, the way the episodes are: its name over the row, and the one in use in focus. OK takes a card.
@@ -177,7 +177,7 @@ private fun stripCards(picker: Picker, state: SessionState, player: PlayerState,
             } +
             listOfNotNull(
                 calls.onTranslateSubtitles?.let { onTranslate ->
-                    StripCard("translate", translateTitle(Locale.current.language), null, false) { onTranslate() }
+                    StripCard("translate", translateTitle(calls.translateLanguage), null, false) { onTranslate() }
                 },
             )
 

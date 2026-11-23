@@ -27,7 +27,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.text.intl.Locale
 import com.sumizuri.app.data.library.seasonSlices
 import com.sumizuri.app.data.model.Kind
 import com.sumizuri.app.feature.player.SessionState
@@ -119,7 +118,7 @@ internal fun PlayerPicker(
         }
 
         Picker.Subtitles -> {
-            val translate = calls.onTranslateSubtitles?.let { it to translateTitle(Locale.current.language) }
+            val translate = calls.onTranslateSubtitles?.let { it to translateTitle(calls.translateLanguage) }
             val lines = buildList {
                 add(
                     Line(

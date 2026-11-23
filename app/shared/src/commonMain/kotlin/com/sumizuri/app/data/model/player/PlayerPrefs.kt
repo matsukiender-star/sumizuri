@@ -21,6 +21,8 @@ data class PlayerPrefs(
     // The subtitle language to turn on when a video has it, as a code such as en, or nothing for no choice.
     val subtitleLanguage: String = "",
     val showSubtitles: Boolean = true,
+    // The language automatic subtitles are made in, as a code such as es, or nothing for the language of the app.
+    val translateLanguage: String = "",
     // The size and the color are places in their lists, and the raise lifts the letters off the bottom edge.
     val subtitleSize: Int = 1,
     val subtitleColor: Int = 0,

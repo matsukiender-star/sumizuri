@@ -69,7 +69,7 @@ internal fun TvPlayerScreen(session: PlayerSession, engine: PlayerEngine, onClos
     val state by session.state.collectAsStateWithLifecycle()
     val player by engine.state.collectAsStateWithLifecycle()
     // Subtitles of the source put into the language of the app, from the row of subtitles. The row stays, so its card shows the work.
-    val language = Locale.current.language
+    val language = state.prefs.translateLanguage.ifEmpty { Locale.current.language }
     val translatedName = translatedName(language)
     val translateScope = rememberCoroutineScope()
     val translate = if (SubtitleTranslate.offered(
@@ -270,6 +270,7 @@ internal fun TvPlayerScreen(session: PlayerSession, engine: PlayerEngine, onClos
                         session.selectVideo(video)
                     },
                     onTranslateSubtitles = translate,
+                    translateLanguage = language,
                     onSpeed = { speed ->
                         strip = null
                         engine.setSpeed(speed)
