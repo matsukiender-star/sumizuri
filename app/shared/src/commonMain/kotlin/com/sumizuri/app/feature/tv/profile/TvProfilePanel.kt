@@ -21,9 +21,11 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigationevent.NavigationEventInfo
 import androidx.navigationevent.compose.NavigationBackHandler
 import androidx.navigationevent.compose.rememberNavigationEventState
+import com.sumizuri.app.data.profile.LocalProfiles
 import com.sumizuri.app.feature.settings.SettingsTarget
 import com.sumizuri.app.feature.sync.SyncRoute
 import com.sumizuri.app.feature.tv.onboarding.ProfileNameRow
@@ -46,7 +48,7 @@ import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
 
 // What opens over the profile page of a TV.
-internal enum class TvPanel { Look, Watching, Name, Sync, Phone }
+internal enum class TvPanel { Look, Watching, Name, New, Sync, Phone }
 
 // One part of the profile over the whole page, sliding in from the side. Back closes it, and so does Done.
 @Composable
@@ -79,10 +81,15 @@ internal fun TvProfilePanel(panel: TvPanel, onClose: () -> Unit, onOpenPage: (Se
                     }
                 }
 
-                TvPanel.Name -> Frame(Res.string.tv_profile_name, null) { first ->
-                    ProfileNameRow(Modifier.widthIn(max = 640.dp))
-                    TvButton(stringResource(Res.string.tv_profile_done), onClose, Modifier.focusRequester(first))
-                }
+                // The name, the picture and deleting, in the same editor the picker of profiles opens.
+                TvPanel.Name -> TvProfileEditor(
+                    LocalProfiles.current.state
+                        .collectAsStateWithLifecycle()
+                        .value.active,
+                    onClose,
+                )
+
+                TvPanel.New -> TvProfileEditor(null, onClose)
 
                 TvPanel.Phone -> TvPhonePair { onClose() }
 

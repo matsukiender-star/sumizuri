@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="suki_tv_manage">Manage profiles</string>
+    <string name="suki_tv_picture">Picture</string>
+    <string name="suki_tv_photo">Photo from your phone</string>
+    <string name="suki_tv_photo_title">Send a photo from your phone</string>
+    <string name="suki_tv_photo_hint">Scan the code with a phone on the same Wi-Fi as this TV and pick a picture.</string>
+    <string name="suki_tv_photo_no_network">Connect this TV to your home network to receive a photo.</string>
+    <string name="suki_tv_photo_waiting">Waiting for the photo…</string>
+    <string name="suki_tv_photo_failed">That photo could not be used. Try another one.</string>
+    <string name="suki_tv_page_text">Pick a picture from your phone and send it to the profile on the TV.</string>
+    <string name="suki_tv_page_send">Send to the TV</string>
+    <string name="suki_tv_page_sending">Sending…</string>
+    <string name="suki_tv_page_done">Done. The photo is on the TV.</string>
+    <string name="suki_tv_page_failed">It could not be sent. Try again.</string>
+</resources>

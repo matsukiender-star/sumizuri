@@ -63,7 +63,7 @@ private fun read(socket: Socket, path: String): ByteArray? {
 }
 
 // One line of the request, without its end, or null when the phone stopped sending.
-private fun line(input: InputStream): String? {
+internal fun line(input: InputStream): String? {
     val bytes = StringBuilder()
     while (true) {
         val next = input.read()
@@ -79,7 +79,7 @@ private val VirtualNames =
     listOf("vethernet", "docker", "virbr", "br-", "veth", "vmnet", "vbox", "hyper-v", "wsl", "tun", "tap", "utun")
 
 // The address of this device on the home network: a private IPv4 address of a real interface that is up, the kinds homes use most first, 192.168, then 10, then 172.16 to 172.31.
-private fun homeAddress(): String? = NetworkInterface
+internal fun homeAddress(): String? = NetworkInterface
     .getNetworkInterfaces()
     .toList()
     .filter { face ->
@@ -98,7 +98,7 @@ private fun homeAddress(): String? = NetworkInterface
     }?.hostAddress
 
 // Exactly the given number of bytes, or null when the phone stopped before them.
-private fun bodyOf(input: InputStream, length: Int): ByteArray? {
+internal fun bodyOf(input: InputStream, length: Int): ByteArray? {
     val bytes = ByteArray(length)
     var at = 0
     while (at < length) {

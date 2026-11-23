@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="suki_tv_manage">Administrar perfiles</string>
+    <string name="suki_tv_picture">Imagen</string>
+    <string name="suki_tv_photo">Foto desde el celular</string>
+    <string name="suki_tv_photo_title">Manda una foto desde tu celular</string>
+    <string name="suki_tv_photo_hint">Escanea el código con un celular conectado al mismo Wi-Fi que esta TV y elige una imagen.</string>
+    <string name="suki_tv_photo_no_network">Conecta esta TV a la red de tu casa para recibir una foto.</string>
+    <string name="suki_tv_photo_waiting">Esperando la foto…</string>
+    <string name="suki_tv_photo_failed">No se pudo usar esa foto. Prueba con otra.</string>
+    <string name="suki_tv_page_text">Elige una imagen de tu celular y mándala al perfil de la TV.</string>
+    <string name="suki_tv_page_send">Mandar a la TV</string>
+    <string name="suki_tv_page_sending">Mandando…</string>
+    <string name="suki_tv_page_done">Listo. La foto ya está en la TV.</string>
+    <string name="suki_tv_page_failed">No se pudo mandar. Inténtalo de nuevo.</string>
+</resources>
