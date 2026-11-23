@@ -18,6 +18,7 @@ import com.sumizuri.app.shared.resources.reader_hide_bars
 import com.sumizuri.app.shared.resources.reader_incognito_switch
 import com.sumizuri.app.shared.resources.reader_inline_next
 import com.sumizuri.app.shared.resources.reader_invert_colors
+import com.sumizuri.app.shared.resources.reader_pdf_dark
 import com.sumizuri.app.shared.resources.reader_invert_taps
 import com.sumizuri.app.shared.resources.reader_keep_on
 import com.sumizuri.app.shared.resources.reader_orientation
@@ -64,6 +65,13 @@ internal fun LookPart(settings: ReaderSettings, textual: Boolean, onSettings: (R
                     Res.string.reader_invert_colors,
                     settings.invertColors,
                     { onSettings(settings.copy(invertColors = it)) },
+                )
+            }
+            padded {
+                SwitchSetting(
+                    Res.string.reader_pdf_dark,
+                    settings.pdfDark,
+                    { onSettings(settings.copy(pdfDark = it)) },
                 )
             }
             padded {

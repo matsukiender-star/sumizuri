@@ -47,6 +47,7 @@ import com.sumizuri.app.shared.resources.reader_grayscale
 import com.sumizuri.app.shared.resources.reader_hide_bars
 import com.sumizuri.app.shared.resources.reader_inline_next
 import com.sumizuri.app.shared.resources.reader_invert_colors
+import com.sumizuri.app.shared.resources.reader_pdf_dark
 import com.sumizuri.app.shared.resources.reader_invert_taps
 import com.sumizuri.app.shared.resources.reader_keep_on
 import com.sumizuri.app.shared.resources.reader_line_height
@@ -272,6 +273,9 @@ private fun MangaPart(settings: ReaderSettings, model: GlobalReaderViewModel) {
                     it.copy(invertColors = on)
                 }
             })
+        }
+        padded {
+            SwitchSetting(Res.string.reader_pdf_dark, settings.pdfDark, { on -> model.update { it.copy(pdfDark = on) } })
         }
         padded { PageColorFilters(settings, model) }
     }
