@@ -14,6 +14,7 @@ import androidx.compose.material.icons.outlined.History
 import androidx.compose.material.icons.outlined.LiveTv
 import androidx.compose.material.icons.outlined.NewReleases
 import androidx.compose.ui.graphics.vector.ImageVector
+import com.sumizuri.app.data.model.library.LibraryPrefs
 import com.sumizuri.app.shared.resources.Res
 import com.sumizuri.app.shared.resources.nav_browse
 import com.sumizuri.app.shared.resources.nav_history
@@ -30,4 +31,10 @@ enum class Destination(val label: StringResource, val icon: ImageVector, val sel
     Browse(Res.string.nav_browse, Icons.Outlined.Explore, Icons.Filled.Explore),
     Live(Res.string.suki_live_tab, Icons.Outlined.LiveTv, Icons.Filled.LiveTv),
     Profile(Res.string.nav_profile, Icons.Outlined.AccountCircle, Icons.Filled.AccountCircle),
+}
+
+// The tabs that show: the updates, history and live tabs can be hidden in settings.
+fun shownTabs(prefs: LibraryPrefs, showLive: Boolean): List<Destination> = Destination.entries.filter {
+    (it != Destination.Updates || prefs.showUpdatesTab) && (it != Destination.History || prefs.showHistoryTab) &&
+        (it != Destination.Live || showLive)
 }

@@ -6,16 +6,22 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalWindowInfo
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.sumizuri.app.data.LocalAppContainer
 import com.sumizuri.app.data.live.ShowLiveTabKey
+import com.sumizuri.app.data.model.library.LibraryPrefs
 import com.sumizuri.app.data.settings.SettingKey
 import com.sumizuri.app.feature.browse.source.PicksKey
 import com.sumizuri.app.feature.settings.SettingsPageFrame
 import com.sumizuri.app.feature.settings.SettingsViewModel
 import com.sumizuri.app.navigation.bar.NavLabels
 import com.sumizuri.app.navigation.bar.NavStyle
+import com.sumizuri.app.navigation.bar.labelsFor
+import com.sumizuri.app.navigation.shownTabs
 import com.sumizuri.app.shared.resources.Res
 import com.sumizuri.app.shared.resources.layout_group_lists
 import com.sumizuri.app.shared.resources.layout_group_motion
@@ -86,6 +92,11 @@ fun LayoutRoute(onBack: () -> Unit, onOpenLibraryDisplay: () -> Unit) {
     val showPicks by remember(container) {
         container.settings.flag(PicksKey, true)
     }.collectAsStateWithLifecycle(true)
+    val libraryPrefs by container.libraryPrefs.prefs.collectAsStateWithLifecycle(LibraryPrefs())
+    // The page shows the names the bar shows now, which by default hangs on how many tabs there are and how wide the window is.
+    val window = LocalWindowInfo.current.containerSize
+    val narrow = with(LocalDensity.current) { window.width.toDp() } < 600.dp
+    val labelsNow = labelsFor(labels, shownTabs(libraryPrefs, showLiveTab).size, narrow)
     val scope = rememberCoroutineScope()
     SettingsPageFrame(Res.string.settings_layout, onBack, subtitle = Res.string.settings_layout_hint, onReset = {
         container.settings.resetInterface()
@@ -125,7 +136,7 @@ fun LayoutRoute(onBack: () -> Unit, onOpenLibraryDisplay: () -> Unit) {
                 }) { settings.onNavStyle(it) }
             }
             padded {
-                ChoiceSetting(Res.string.settings_nav_labels, NavLabels.entries, labels, {
+                ChoiceSetting(Res.string.settings_nav_labels, NavLabels.entries, labelsNow, {
                     stringResource(it.label)
                 }) { settings.onNavLabels(it) }
             }

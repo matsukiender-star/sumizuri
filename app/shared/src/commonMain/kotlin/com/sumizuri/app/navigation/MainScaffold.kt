@@ -32,6 +32,7 @@ import com.sumizuri.app.navigation.bar.NavLabels
 import com.sumizuri.app.navigation.bar.NavStyle
 import com.sumizuri.app.navigation.bar.SideNavDrawer
 import com.sumizuri.app.navigation.bar.SideNavRail
+import com.sumizuri.app.navigation.bar.labelsFor
 import com.sumizuri.app.ui.kit.page.LocalBottomClearance
 import com.sumizuri.app.ui.kit.page.LocalHideBottomBar
 import com.sumizuri.app.ui.motion.Rise
@@ -44,7 +45,7 @@ private val CompactWidth = 600.dp
 fun MainScaffold(
     tabs: List<Destination>,
     style: NavStyle,
-    labels: NavLabels,
+    chosenLabels: NavLabels?,
     swipe: Boolean,
     selected: Destination,
     avatar: NavAvatar?,
@@ -68,6 +69,7 @@ fun MainScaffold(
             } else {
                 NavStyle.Rail
             }
+            val labels = labelsFor(chosenLabels, tabs.size, maxWidth < CompactWidth)
             // A swipe is left out where a tab already uses it, which the library and the updates do to change the shelf.
             val swipeHere = swipe && selected != Destination.Library && selected != Destination.Updates
             val page = Modifier.swipeTabs(swipeHere && shown in Bottom, tabs, selected, onSelect)

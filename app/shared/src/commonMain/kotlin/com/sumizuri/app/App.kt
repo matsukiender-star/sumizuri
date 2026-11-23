@@ -74,6 +74,7 @@ import com.sumizuri.app.navigation.Destination
 import com.sumizuri.app.navigation.KeptTabs
 import com.sumizuri.app.navigation.MainScaffold
 import com.sumizuri.app.navigation.NavigationViewModel
+import com.sumizuri.app.navigation.shownTabs
 import com.sumizuri.app.navigation.LocalSearchSources
 import com.sumizuri.app.navigation.Page
 import com.sumizuri.app.navigation.PageBack
@@ -275,8 +276,7 @@ private fun AppContent(container: AppContainer, windowBar: (@Composable () -> Un
             val scope = rememberCoroutineScope()
             val libraryPrefs by container.libraryPrefs.prefs.collectAsStateWithLifecycle(LibraryPrefs())
             val showLiveTab by remember(container) { container.settings.flag(ShowLiveTabKey, true) }.collectAsStateWithLifecycle(true)
-            // The updates, history and live tabs can be hidden in settings.
-            val tabs = Destination.entries.filter { (it != Destination.Updates || libraryPrefs.showUpdatesTab) && (it != Destination.History || libraryPrefs.showHistoryTab) && (it != Destination.Live || showLiveTab) }
+            val tabs = shownTabs(libraryPrefs, showLiveTab)
             LaunchedEffect(tabs, place.tab, place.restored) {
                 if (place.restored && place.tab !in tabs) navigation.select(Destination.Library)
             }
