@@ -38,24 +38,24 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         // The splash screen stays until the first page has drawn in the colors of the person, or a few seconds at most.
         val opened = SystemClock.uptimeMillis()
-        // A TV draws its own splash on Android 11 and older, so it takes the white or black one of the last theme here.
-        StartLook.tvSplash(this)?.let(::setTheme)
         val splash = installSplashScreen()
         splash.setKeepOnScreenCondition {
             !AppStart.drawn.value &&
                 SystemClock.uptimeMillis() - opened < SplashMostMs
         }
-        // Short fade-out once the first frame is ready so startup is never delayed.
-        splash.setOnExitAnimationListener { provider ->
-            provider.view
-                .animate()
-                .alpha(0f)
-                .scaleX(1.04f)
-                .scaleY(1.04f)
-                .setDuration(SplashExitMs)
-                .setInterpolator(AccelerateDecelerateInterpolator())
-                .withEndAction { provider.remove() }
-                .start()
+        // Short fade-out once the first frame is ready so startup is never delayed. A TV leaves it out: the fade would draw the square splash over its wide one.
+        if (!AndroidApp.tvApp) {
+            splash.setOnExitAnimationListener { provider ->
+                provider.view
+                    .animate()
+                    .alpha(0f)
+                    .scaleX(1.04f)
+                    .scaleY(1.04f)
+                    .setDuration(SplashExitMs)
+                    .setInterpolator(AccelerateDecelerateInterpolator())
+                    .withEndAction { provider.remove() }
+                    .start()
+            }
         }
         StartLook.load(this)
         enableEdgeToEdge()
