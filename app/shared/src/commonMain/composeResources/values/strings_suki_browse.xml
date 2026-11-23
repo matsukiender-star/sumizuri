@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="suki_preview_loading">Loading details…</string>
+    <string name="suki_preview_no_summary">No summary available.</string>
+    <string name="suki_browse_picks">Recommendations in Popular</string>
+    <string name="suki_browse_picks_hint">More of the genre of the last thing you watched or read in that extension. Hidden in incognito.</string>
+    <string name="suki_browse_picks_watched">Because you watched %1$s · %2$s</string>
+    <string name="suki_browse_picks_read">Because you read %1$s · %2$s</string>
+    <string name="suki_library_picks_row">Recommendations</string>
+    <string name="suki_library_picks_rows">%1$d rows</string>
+    <string name="suki_library_picks_watched">Because you watched %1$s on %2$s · %3$s</string>
+    <string name="suki_library_picks_read">Because you read %1$s on %2$s · %3$s</string>
+    <string name="suki_picks_hint">Where Sumizuri suggests more of what you watched or read. They never show in incognito.</string>
+    <string name="suki_picks_in_library">In the library</string>
+    <string name="suki_picks_in_library_hint">Rows on the All tab, from your pinned sources and the ones you used lately.</string>
+    <string name="suki_picks_rows_title">Rows in the library</string>
+    <string name="suki_picks_from">From which sources</string>
+    <string name="suki_picks_from_recent">Pinned and used lately</string>
+    <string name="suki_picks_from_pinned">Only pinned</string>
+    <string name="suki_pick_add">Add</string>
+    <string name="suki_pick_cover">Cover</string>
+</resources>

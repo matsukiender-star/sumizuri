@@ -40,8 +40,11 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.boundsInRoot
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalWindowInfo
@@ -50,6 +53,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.sumizuri.app.data.model.Kind
+import com.sumizuri.app.feature.player.PlayerControlZones
 import com.sumizuri.app.feature.player.PlayerPhase
 import com.sumizuri.app.feature.player.SessionState
 import com.sumizuri.app.feature.player.picker.Picker
@@ -100,7 +104,10 @@ internal fun AnimatedVisibilityScope.PlayerOverlay(
     pickerContent: @Composable (Picker) -> Unit = {},
     // Told how tall the island is, so the buttons in the corners sit just above it.
     onIslandRoom: (Dp) -> Unit = {},
+    // Where the island is, for the mouse to hide the controls in a corner only away from it.
+    controlZones: PlayerControlZones? = null,
 ) {
+    DisposableEffect(controlZones) { onDispose { controlZones?.clear() } }
     val reduce = LocalReduceMotion.current
     val wide = isWideWindow()
     val density = LocalDensity.current
@@ -141,7 +148,10 @@ internal fun AnimatedVisibilityScope.PlayerOverlay(
             contentAlignment = Alignment.BottomCenter,
         ) {
             Column(
-                Modifier.widthIn(max = if (wide) WideIslandWidth else IslandWidth).fillMaxWidth(),
+                Modifier
+                    .widthIn(max = if (wide) WideIslandWidth else IslandWidth)
+                    .fillMaxWidth()
+                    .onGloballyPositioned { controlZones?.bottomBar = it.boundsInRoot() },
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 if (wide) IslandHang(picker, null, true, panelMax, choice)

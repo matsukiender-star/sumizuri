@@ -1,6 +1,7 @@
 package com.sumizuri.app.feature.browse.source
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -9,9 +10,9 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.sumizuri.app.data.LocalAppContainer
 import com.sumizuri.app.data.settings.SettingKey
 import com.sumizuri.app.data.text.enumNamed
-import com.sumizuri.app.feature.title.rememberDuplicateGuard
 import com.sumizuri.app.source.model.SourceEntry
 import com.sumizuri.app.source.repo.InstalledSource
+import com.sumizuri.app.source.valueOrNull
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 
@@ -22,9 +23,15 @@ fun SourceBrowseRoute(
     onOpenSaved: (Long) -> Unit,
     onOpenPreview: (InstalledSource, SourceEntry) -> Unit,
     onEditCode: () -> Unit,
+    // Opens the page where a title is edited, for a picked cover whose picture is changed.
+    onEditTitle: (Long) -> Unit = {},
 ) {
     val container = LocalAppContainer.current
+    // Opened from a row of recommendations, the page shows that genre. A model made now starts with it, and one kept from before is told.
+    val asked = remember(source.id) { GenreRequest.take(source.id) }
+    var made = false
     val viewModel = viewModel(key = "browse_${source.id}") {
+        made = true
         SourceBrowseViewModel(
             source,
             container.library,
@@ -33,9 +40,20 @@ fun SourceBrowseRoute(
             container.manager,
             container.session,
             container.solver,
+            asked,
         )
     }
+    LaunchedEffect(asked) { if (asked != null && !made) viewModel.onOpenGenre(asked) }
     val state by viewModel.state.collectAsStateWithLifecycle()
+    val picksModel = viewModel(key = "picks_${source.id}") {
+        SourcePicksViewModel(source.id, container.database.titles(), container.settings, container.reading) {
+            // The source as the page has it now, since opening an older copy would replace the updated one.
+            container.manager.open(viewModel.state.value.source).valueOrNull()
+        }
+    }
+    val picks by picksModel.picks.collectAsStateWithLifecycle()
+    val popularShown = state.tab == TabPopular && state.entries.isNotEmpty()
+    LaunchedEffect(picksModel, popularShown) { if (popularShown) picksModel.onPopularShown() }
     val style by remember {
         container.settings.text(SettingKey.BrowseStyle).map {
             enumNamed<BrowseStyle>(it)
@@ -43,9 +61,7 @@ fun SourceBrowseRoute(
         }
     }.collectAsStateWithLifecycle(BrowseStyle.Grid)
     val scope = rememberCoroutineScope()
-    // A title of the same name in the library is asked about before the cover adds another.
-    val guard = rememberDuplicateGuard(onOpen = onOpenSaved)
-    val actions = remember(viewModel, onBack, onOpenSaved, onOpenPreview, onEditCode, guard) {
+    val actions = remember(viewModel, onBack, onOpenSaved, onOpenPreview, onEditCode) {
         SourceBrowseActions(
             onBack = onBack,
             onQuery = viewModel::onQuery,
@@ -62,6 +78,7 @@ fun SourceBrowseRoute(
             },
             onOpenFilters = viewModel::onOpenFilters,
             onFilters = viewModel::onFilters,
+            onOpenGenre = viewModel::onOpenGenre,
             onSaveTab = viewModel::onSaveTab,
             onRenameTab = viewModel::onRenameTab,
             onDeleteTab = viewModel::onDeleteTab,
@@ -69,7 +86,7 @@ fun SourceBrowseRoute(
             onPreference = viewModel::onPreference,
             onClosePreferences = viewModel::onClosePreferences,
             onEditCode = onEditCode,
-            onQuickAdd = { entry -> guard(entry.title, source.kind, -1L) { viewModel.onQuickAdd(entry) } },
+            onFetchDetails = viewModel::fetchDetails,
             onImport = viewModel::onImport,
             onStyle = { scope.launch { container.settings.setText(SettingKey.BrowseStyle, it.name) } },
             onRemove = viewModel::onRemove,
@@ -77,5 +94,10 @@ fun SourceBrowseRoute(
             onCancelRemove = viewModel::onCancelRemove,
         )
     }
-    SourceBrowseScreen(state, style, actions)
+    val selection = viewModel(key = "pick_${source.id}") {
+        SourceSelectionModel({ viewModel.state.value.source }, container.library, container.categories) {
+            container.manager.open(viewModel.state.value.source).valueOrNull()
+        }
+    }
+    SourceBrowseScreen(state, style, actions, selection, picks.takeIf { popularShown }, onEditTitle)
 }

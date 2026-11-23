@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.window.WindowDraggableArea
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
@@ -28,9 +29,12 @@ import com.sumizuri.app.core.log.CrashReport
 import com.sumizuri.app.core.log.FileLogSink
 import com.sumizuri.app.data.AppContainer
 import com.sumizuri.app.data.db.databaseBuilder
+import com.sumizuri.app.data.homeserver.HomePairing
+import com.sumizuri.app.data.homeserver.homeHostOf
 import com.sumizuri.app.data.profile.ProfileHost
 import com.sumizuri.app.data.profile.ProfileRegistry
 import com.sumizuri.app.data.sync.DesktopFront
+import com.sumizuri.app.data.sync.LinuxNoticeHost
 import com.sumizuri.app.navigation.AppLinks
 import com.sumizuri.app.playback.LocalFullscreen
 import com.sumizuri.app.playback.LocalMiniPlayer
@@ -172,6 +176,11 @@ fun main(args: Array<String>) {
             LaunchedEffect(forward) { if (forward > 0) toFront(window, state) }
             LaunchedEffect(window) { DesktopFront.bring = { toFront(window, state) } }
             LaunchedEffect(Unit) { StartColor.keep(folder) }
+            // A computer that phones are linked with is their server again as soon as the app opens.
+            LaunchedEffect(profiles) {
+                val home = folder.absolutePath.toPath()
+                homeHostOf(home)?.let { HomePairing(home, profiles.syncAccounts, it).resume() }
+            }
             // A window put away lets go of the work Skia keeps for drawing, which it makes again when the window comes back.
             LaunchedEffect(state.isMinimized) { if (state.isMinimized) Graphics.purgeAllCaches() }
             val maximized = state.placement == WindowPlacement.Maximized
@@ -225,6 +234,8 @@ fun main(args: Array<String>) {
                         }
                     }
                     if (!maximized && !fullscreen && AppDrawnBar) ResizeHandles(window)
+                    // A notice of the system on Linux, or the same words in the window when it has no notify-send.
+                    if (isLinux) LinuxNoticeHost(Modifier.align(Alignment.TopCenter).padding(12.dp))
                     // The small player has no bar, so a strip along its top moves the window.
                     if (mini.active) {
                         WindowDraggableArea(

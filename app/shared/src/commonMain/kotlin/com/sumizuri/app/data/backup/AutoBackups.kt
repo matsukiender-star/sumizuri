@@ -4,6 +4,7 @@ import com.sumizuri.app.core.log.AppLog
 import com.sumizuri.app.data.settings.SettingKey
 import com.sumizuri.app.data.settings.SettingsRepository
 import com.sumizuri.app.data.share.ShareEnding
+import com.sumizuri.app.data.storage.DownloadRoot
 import com.sumizuri.app.data.text.localOffsetMillis
 import com.sumizuri.app.data.text.nowMillis
 import com.sumizuri.app.data.work.BusyKind
@@ -33,10 +34,11 @@ fun backupFileName(now: Long = nowMillis()): String {
     )}_${local.substring(11, 13)}${local.substring(14, 16)}${local.substring(17, 19)}$BackupEnding"
 }
 
-// The folder of the backups of a profile: beside its database, named after it, or in the temporary folder when there is no database file.
-fun backupFolder(databasePath: String): Path {
+// The folder of the backups of a profile, named after its database: in the place the person chose, or beside the database, or in the temporary folder when there is no database file.
+fun backupFolder(databasePath: String, base: Path? = DownloadRoot.base()): Path {
     if (databasePath.isBlank()) return FileSystem.SYSTEM_TEMPORARY_DIRECTORY / "sumizuri-backups"
     val database = databasePath.toPath()
+    if (base != null) return base / "backups" / database.name.substringBeforeLast('.')
     val parent = database.parent ?: FileSystem.SYSTEM_TEMPORARY_DIRECTORY
     return parent / "backups" / database.name.substringBeforeLast('.')
 }
@@ -45,7 +47,14 @@ fun backupFolder(databasePath: String): Path {
 data class SavedBackup(val path: Path, val name: String, val bytes: Long, val at: Long)
 
 // Makes a backup by itself every few days, packed small, into the folder of backups beside the library, and keeps only the newest few. The person can also make one there at any time, and each one can be restored, saved somewhere else or deleted.
-class AutoBackups(private val writer: BackupWriter, private val settings: SettingsRepository, val folder: Path) {
+class AutoBackups(
+    private val writer: BackupWriter,
+    private val settings: SettingsRepository,
+    private val folderOf: () -> Path,
+) {
+    // Read on each use, so a folder chosen while the app runs is used at once.
+    val folder: Path get() = folderOf()
+
     private val lock = Mutex()
     private val mutableSaved = MutableStateFlow<List<SavedBackup>>(emptyList())
     val saved: StateFlow<List<SavedBackup>> = mutableSaved

@@ -3,6 +3,7 @@ package com.sumizuri.app.feature.settings
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.FormatListBulleted
 import androidx.compose.material.icons.automirrored.outlined.Label
+import androidx.compose.material.icons.outlined.AutoAwesome
 import androidx.compose.material.icons.outlined.AutoStories
 import androidx.compose.material.icons.outlined.Dashboard
 import androidx.compose.material.icons.outlined.Download
@@ -185,6 +186,13 @@ import com.sumizuri.app.shared.resources.update_skip_completed
 import com.sumizuri.app.shared.resources.update_skip_not_started
 import com.sumizuri.app.shared.resources.update_skip_unread
 import com.sumizuri.app.shared.resources.update_wifi_only
+import com.sumizuri.app.shared.resources.suki_library_picks_row
+import com.sumizuri.app.shared.resources.suki_library_picks_rows
+import com.sumizuri.app.shared.resources.suki_picks_in_library
+import com.sumizuri.app.shared.resources.suki_browse_picks
+import com.sumizuri.app.shared.resources.suki_picks_rows_title
+import com.sumizuri.app.shared.resources.suki_picks_from
+import com.sumizuri.app.shared.resources.count_off
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.StringResource
@@ -239,6 +247,8 @@ internal fun settingsPages(now: SettingsNow, opens: SettingsOpens): List<Setting
         add(page(SettingsGroup.Library, Icons.Outlined.GridView, stringResource(Res.string.display_title), if (now.library.style.isGrid) "$style · ${now.library.cellWidth} dp" else style, displayItems, SettingsTarget.LibraryDisplay))
         add(page(SettingsGroup.Library, Icons.AutoMirrored.Outlined.Label, stringResource(Res.string.shelves_title), if (now.shelves > 0) pluralStringResource(Res.plurals.shelves_count, now.shelves, now.shelves) else stringResource(Res.string.shelves_hint), emptyList(), SettingsTarget.Shelves))
         add(page(SettingsGroup.Library, Icons.Outlined.Update, stringResource(Res.string.settings_library_updates), updateEvery, listOf(Res.string.update_interval, Res.string.update_background, Res.string.update_wifi_only, Res.string.update_charging, Res.string.update_notify, Res.string.update_skip_completed, Res.string.update_skip_not_started, Res.string.update_skip_unread), SettingsTarget.LibraryUpdates))
+        val picksNow = if (now.library.picksRows > 0) stringResource(Res.string.suki_library_picks_rows, now.library.picksRows) else stringResource(Res.string.count_off)
+        add(page(SettingsGroup.Library, Icons.Outlined.AutoAwesome, stringResource(Res.string.suki_library_picks_row), picksNow, listOf(Res.string.suki_picks_in_library, Res.string.suki_browse_picks, Res.string.suki_picks_rows_title, Res.string.suki_picks_from), SettingsTarget.Picks))
         add(page(SettingsGroup.Library, Icons.AutoMirrored.Outlined.FormatListBulleted, stringResource(Res.string.chapter_settings_title), stringResource(Res.string.chapter_settings_hint), listOf(Res.string.chapter_sort_title, Res.string.chapter_list_oldest, Res.string.chapter_list_grid, Res.string.chapter_list_pictures, Res.string.chapter_list_duplicates, Res.string.chapter_filter_title, Res.string.chapter_filter_unread, Res.string.chapter_filter_downloaded, Res.string.chapter_filter_bookmarked, Res.string.reader_skip_read, Res.string.reader_skip_filtered), SettingsTarget.ChapterList))
 
         // Reading: the reader, the player and every key, tap and gesture in one place.

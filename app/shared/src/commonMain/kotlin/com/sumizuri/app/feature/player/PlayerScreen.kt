@@ -106,6 +106,8 @@ internal fun PlayerScreen(session: PlayerSession, engine: PlayerEngine, onClose:
     var tick by remember { mutableIntStateOf(0) }
     var scrubbing by remember { mutableStateOf(false) }
     var locked by remember { mutableStateOf(false) }
+    // Where the controls are, so a mouse parked in a corner hides them only when it is not over them.
+    val controlZones = remember { PlayerControlZones() }
     var unlockShown by remember { mutableStateOf(false) }
     var flash by remember { mutableStateOf<Pair<ImageVector, Alignment>?>(null) }
     var picker by remember { mutableStateOf<Picker?>(null) }
@@ -317,20 +319,16 @@ internal fun PlayerScreen(session: PlayerSession, engine: PlayerEngine, onClose:
                     else -> return@onPreviewKeyEvent false
                 }
                 true
-            }.pointerInput(touchPlayer) {
-                awaitPointerEventScope {
-                    while (true) {
-                        val event = awaitPointerEvent()
-                        if (touchPlayer) continue
-                        // The wheel sets the volume and a move of the mouse brings the controls back.
-                        val wheel = event.changes
-                            .first()
-                            .scrollDelta.y
-                        if (event.type == PointerEventType.Scroll && picker == null) volumeBy(if (wheel < 0) 5 else -5)
-                        if (event.type == PointerEventType.Move) show()
-                    }
-                }
-            },
+            }.playerMouseControls(
+                enabled = !touchPlayer,
+                canHide = player.playing && !scrubbing && picker == null,
+                controlsVisible = visible && !small && !failed && !locked,
+                controlZones = controlZones,
+                allowVolume = picker == null,
+                onVolumeBy = ::volumeBy,
+                onShow = ::show,
+                onHide = { visible = false },
+            ),
     ) {
         Box(Modifier.fillMaxSize()) {
             // The light around the video, only where bars are left around the picture.
@@ -375,6 +373,7 @@ internal fun PlayerScreen(session: PlayerSession, engine: PlayerEngine, onClose:
                             picker = picker,
                             pickerContent = { PlayerPicker(it, state, player, aspect, logShown, pickerCalls) },
                             onIslandRoom = { islandRoom = it },
+                            controlZones = controlZones,
                         )
                     }
                 }

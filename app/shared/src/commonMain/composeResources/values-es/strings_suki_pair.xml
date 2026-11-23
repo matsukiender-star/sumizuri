@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Text of the Suki pairing by QR code, kept apart so it never meets the files Weblate writes. -->
+<resources>
+    <string name="pair_section">Vincular un celular</string>
+    <string name="pair_hint">Escanea una vez y los dos se mantienen al día por la red de tu casa mientras Sumizuri esté abierto en esta computadora. Si la dirección de la computadora cambia, escanea otra vez.</string>
+    <string name="pair_show">Mostrar código QR</string>
+    <string name="pair_again">Otro código</string>
+    <string name="pair_scan">Escanéalo con la cámara del celular. Si la cámara no abre Sumizuri, copia el enlace y pégalo en Ajustes, Sincronización, como dirección del servidor.</string>
+    <string name="pair_qr">Código QR para vincular un celular</string>
+    <string name="pair_copy">Copiar enlace</string>
+    <string name="pair_left">El código sirve una sola vez, durante %1$d segundos más.</string>
+    <string name="pair_expired">El código venció. Muestra otro.</string>
+    <string name="pair_join_title">¿Vincular con esta computadora?</string>
+    <string name="pair_join_text">Continúa solo si acabas de mostrar este código en tu propia computadora (%1$s). Tu biblioteca se va a sincronizar con ella.</string>
+    <string name="pair_join">Vincular</string>
+    <string name="pair_joined_already">Este dispositivo ya se sincroniza con un servidor. Cierra esa sesión primero para vincularlo con otra computadora.</string>
+    <string name="pair_bad_link">Ese código no es un código válido de Sumizuri para una red de casa.</string>
+    <string name="pair_error_over">Ese código ya se usó o venció. Muestra otro en la computadora.</string>
+    <string name="pair_error_other_server">Esta computadora ya se sincroniza con otro servidor. Cierra esa sesión primero para vincular un celular así.</string>
+    <string name="pair_error_not_started">El servidor de esta computadora no pudo iniciar. El registro en Diagnóstico dice más.</string>
+    <string name="pair_error_no_network">Esta computadora no está conectada a una red de casa.</string>
+    <string name="pair_error_unreachable">La computadora no respondió. Los dos deben estar en el mismo Wi-Fi, Sumizuri debe estar abierto allá y su firewall debe permitirlo.</string>
+    <string name="suki_pair_from_library">Sincronizar con otro dispositivo</string>
+</resources>

@@ -6,15 +6,22 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalWindowInfo
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.sumizuri.app.OpeningStyle
 import com.sumizuri.app.data.LocalAppContainer
+import com.sumizuri.app.data.live.ShowLiveTabKey
+import com.sumizuri.app.data.model.library.LibraryPrefs
 import com.sumizuri.app.data.settings.SettingKey
 import com.sumizuri.app.feature.settings.SettingsPageFrame
 import com.sumizuri.app.feature.settings.SettingsViewModel
 import com.sumizuri.app.navigation.bar.NavLabels
 import com.sumizuri.app.navigation.bar.NavStyle
+import com.sumizuri.app.navigation.bar.labelsFor
+import com.sumizuri.app.navigation.shownTabs
 import com.sumizuri.app.shared.resources.Res
 import com.sumizuri.app.shared.resources.layout_group_lists
 import com.sumizuri.app.shared.resources.layout_group_motion
@@ -41,6 +48,8 @@ import com.sumizuri.app.shared.resources.settings_reopen_place
 import com.sumizuri.app.shared.resources.settings_reopen_place_hint
 import com.sumizuri.app.shared.resources.settings_title_split
 import com.sumizuri.app.shared.resources.settings_title_split_hint
+import com.sumizuri.app.shared.resources.suki_live_show_tab
+import com.sumizuri.app.shared.resources.suki_live_show_tab_hint
 import com.sumizuri.app.shared.resources.web_in_app
 import com.sumizuri.app.shared.resources.web_in_app_hint
 import com.sumizuri.app.ui.kit.card.ListChevron
@@ -77,6 +86,14 @@ fun LayoutRoute(onBack: () -> Unit, onOpenLibraryDisplay: () -> Unit) {
     val split by remember(container) {
         container.settings.flag(SettingKey.TitleSplit, true)
     }.collectAsStateWithLifecycle(true)
+    val showLiveTab by remember(container) {
+        container.settings.flag(ShowLiveTabKey, true)
+    }.collectAsStateWithLifecycle(true)
+    val libraryPrefs by container.libraryPrefs.prefs.collectAsStateWithLifecycle(LibraryPrefs())
+    // The page shows the names the bar shows now, which by default hangs on how many tabs there are and how wide the window is.
+    val window = LocalWindowInfo.current.containerSize
+    val narrow = with(LocalDensity.current) { window.width.toDp() } < 600.dp
+    val labelsNow = labelsFor(labels, shownTabs(libraryPrefs, showLiveTab).size, narrow)
     val scope = rememberCoroutineScope()
     SettingsPageFrame(Res.string.settings_layout, onBack, subtitle = Res.string.settings_layout_hint, onReset = {
         container.settings.resetInterface()
@@ -111,7 +128,7 @@ fun LayoutRoute(onBack: () -> Unit, onOpenLibraryDisplay: () -> Unit) {
                 }) { settings.onNavStyle(it) }
             }
             padded {
-                ChoiceSetting(Res.string.settings_nav_labels, NavLabels.entries, labels, {
+                ChoiceSetting(Res.string.settings_nav_labels, NavLabels.entries, labelsNow, {
                     stringResource(it.label)
                 }) { settings.onNavLabels(it) }
             }
@@ -136,6 +153,13 @@ fun LayoutRoute(onBack: () -> Unit, onOpenLibraryDisplay: () -> Unit) {
                         container.settings.setFlag(SettingKey.WebInApp, on)
                     }
                 }, Res.string.web_in_app_hint)
+            }
+            padded {
+                SwitchSetting(Res.string.suki_live_show_tab, showLiveTab, { on ->
+                    scope.launch {
+                        container.settings.setFlag(ShowLiveTabKey, on)
+                    }
+                }, Res.string.suki_live_show_tab_hint)
             }
             row {
                 SettingRow(

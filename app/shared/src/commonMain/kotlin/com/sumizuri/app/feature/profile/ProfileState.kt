@@ -20,6 +20,8 @@ data class ProfileState(
     // How many titles of the library have a source that is missing or off, so the profile can point to where that is mended.
     val unreachable: Int = 0,
     val blocks: List<ShownBlock> = emptyList(),
+    // The deleted ones that can still be brought back.
+    val trash: List<Profile> = emptyList(),
 )
 
 // A block with what its graph gave, and the title typed on its Block node.
@@ -38,6 +40,8 @@ class ProfileCalls(
     val onSave: (id: Long, name: String, picture: ByteArray?, removePicture: Boolean) -> Unit,
     // Deletes a profile that is not open, and gives false when it could not be.
     val onDelete: suspend (Long) -> Boolean,
+    val onRestore: (Long) -> Unit,
+    val onDeleteNow: (Long) -> Unit,
     // Opens the layouts to start from.
     val onLayouts: () -> Unit,
     val onArrange: () -> Unit,

@@ -27,6 +27,8 @@ data class PlayerMedia(
     val type: String? = null,
     // The title and episode, for the sound mixer and the media controls of the system, which show the name of the file otherwise.
     val title: String? = null,
+    // A channel of Live, the one place a phone may play plain http.
+    val live: Boolean = false,
 )
 
 // How the picture fills the screen: whole with bars, cropped to fill, or stretched out of shape.

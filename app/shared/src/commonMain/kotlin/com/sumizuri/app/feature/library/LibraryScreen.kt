@@ -25,6 +25,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -39,6 +40,8 @@ import com.sumizuri.app.data.model.library.LibrarySection
 import com.sumizuri.app.feature.library.display.LibraryDisplaySheet
 import com.sumizuri.app.feature.library.display.LibrarySortSheet
 import com.sumizuri.app.feature.library.part.LibraryPartOf
+import com.sumizuri.app.feature.library.part.LibraryPick
+import com.sumizuri.app.feature.library.part.LibraryPicksRow
 import com.sumizuri.app.feature.library.part.partItems
 import com.sumizuri.app.feature.library.tile.CoverDrag
 import com.sumizuri.app.feature.library.tile.CoverDragLayer
@@ -47,10 +50,12 @@ import com.sumizuri.app.feature.library.tile.TileCalls
 import com.sumizuri.app.feature.library.tile.TileContext
 import com.sumizuri.app.feature.library.tile.coverDrag
 import com.sumizuri.app.feature.library.top.LibraryPickBottom
+import com.sumizuri.app.feature.library.top.LibraryTab
 import com.sumizuri.app.feature.library.top.LibraryTopBar
 import com.sumizuri.app.feature.library.top.ShelvesDialog
 import com.sumizuri.app.feature.library.top.UpdateFailuresSheet
-import com.sumizuri.app.feature.library.top.shelfOrder
+import com.sumizuri.app.feature.library.top.activeTab
+import com.sumizuri.app.feature.library.top.swipeOrder
 import com.sumizuri.app.feature.library.top.swipeShelves
 import com.sumizuri.app.navigation.LocalTabShown
 import com.sumizuri.app.shared.resources.Res
@@ -92,7 +97,12 @@ private enum class Window { None, Sort, Display, Failures, Shelves, Remove }
 // The library. A bar on top, which becomes the bar of the picked titles. Under it the notes about titles that cannot be reached, the search, the shelves as tabs, a row of chips for the order, the kinds and the filters, the titles read last, and the covers. Pulling the page down checks the library for new chapters, and a swipe sideways changes the shelf.
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-internal fun LibraryScreen(state: LibraryState, calls: LibraryCalls) {
+internal fun LibraryScreen(
+    state: LibraryState,
+    calls: LibraryCalls,
+    showLive: Boolean,
+    picks: List<LibraryPick> = emptyList(),
+) {
     val gestures = LocalAppGestures.current
     var window by remember { mutableStateOf(Window.None) }
     val prefs = state.prefs
@@ -101,6 +111,12 @@ internal fun LibraryScreen(state: LibraryState, calls: LibraryCalls) {
     // The grid of covers, whose place the covers past the screen are loaded from.
     val gridState = rememberLazyGridState()
     val flight = LocalCoverFlight.current
+    // The live tab shows the favorite channels here in place of the covers.
+    var liveOpen by rememberSaveable { mutableStateOf(false) }
+    val onTab: (LibraryTab) -> Unit = { tab ->
+        liveOpen = tab == LibraryTab.Live
+        if (!liveOpen) calls.onTab(tab)
+    }
     // With the search tucked into the bar, whether its field is showing under it.
     var searchOpen by remember { mutableStateOf(false) }
     val showSearch = !prefs.collapsibleSearch || searchOpen || state.query.isNotEmpty()
@@ -185,32 +201,61 @@ internal fun LibraryScreen(state: LibraryState, calls: LibraryCalls) {
         PullRefresh(state.progress != null, { if (!state.selecting) calls.onUpdate() }, Modifier.weight(1f)) {
             Box(
                 Modifier.fillMaxSize().swipeShelves(
-                    state.shelfOrder(),
-                    prefs.category,
-                    !state.selecting,
-                    calls::onShelf,
+                    state.swipeOrder(),
+                    state.activeTab(),
+                    !state.selecting && !liveOpen,
+                    onTab,
                 ),
             ) {
                 PreloadCovers(gridState, state.titles)
                 val rows = !prefs.style.isGrid
+                val favorites = if (liveOpen) rememberLiveFavorites() else null
                 PageGrid(
                     maxCell = if (rows) RowWidth else prefs.cellWidth.dp,
                     state = gridState,
                     gap = if (rows) RowGap else prefs.gridGap.dp,
                 ) {
                     fullSpan {
-                        LibraryHeader(state, calls, showSearch, onSort = { window = Window.Sort }, onFailures = {
+                        LibraryHeader(state, calls, showSearch, showLive, liveOpen, onTab, onSort = {
+                            window = Window.Sort
+                        }, onFailures = {
                             window =
                                 Window.Failures
                         })
                     }
+                    if (liveOpen) {
+                        liveFavorites(favorites, calls.onPlayLive, calls.onOpenLive)
+                        return@PageGrid
+                    }
+                    // The recommendations show on the tab of every title only, and not while titles are picked.
+                    val picksHere = picks
+                        .takeIf { !state.selecting && prefs.category == null && state.kind == null }
+                        .orEmpty()
                     // The heading over the covers is only needed when other parts stand above them.
                     val partsAbove = prefs.sectionOrder.takeWhile { it != LibrarySection.Library }.any {
-                        partItems(state, it) !=
-                            null
+                        partItems(state, it) != null || (it == LibrarySection.Picks && picksHere.isNotEmpty())
                     }
                     // The covers are a part like the others, so they stand where the person put them.
                     for (section in prefs.sectionOrder) {
+                        if (section == LibrarySection.Picks) {
+                            picksHere.forEachIndexed { index, pick ->
+                                fullSpan {
+                                    LibraryPicksRow(
+                                        pick,
+                                        calls.onOpenPick,
+                                        calls.onOpenPickGenre,
+                                        if (index ==
+                                            0
+                                        ) {
+                                            ({ hidePart(LibrarySection.Picks) })
+                                        } else {
+                                            null
+                                        },
+                                    )
+                                }
+                            }
+                            continue
+                        }
                         if (section != LibrarySection.Library) {
                             partItems(
                                 state,

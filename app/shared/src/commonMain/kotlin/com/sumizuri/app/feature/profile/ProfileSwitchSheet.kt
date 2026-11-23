@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.outlined.DeleteOutline
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.PersonAdd
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -36,7 +37,9 @@ import com.sumizuri.app.shared.resources.profile_new
 import com.sumizuri.app.shared.resources.profile_not_found
 import com.sumizuri.app.shared.resources.profile_search_hint
 import com.sumizuri.app.shared.resources.profile_switch
+import com.sumizuri.app.shared.resources.suki_trash_row
 import com.sumizuri.app.ui.kit.card.AppListRow
+import com.sumizuri.app.ui.kit.card.ListChevron
 import com.sumizuri.app.ui.kit.input.AppSearchBar
 import com.sumizuri.app.ui.kit.page.AppSheet
 import org.jetbrains.compose.resources.stringResource
@@ -50,6 +53,8 @@ internal fun ProfileSwitchSheet(
     onSwitch: (Long) -> Unit,
     onEdit: (Profile) -> Unit,
     onNew: () -> Unit,
+    trashCount: Int,
+    onTrash: () -> Unit,
     onDismiss: () -> Unit,
 ) {
     var query by remember { mutableStateOf("") }
@@ -75,6 +80,20 @@ internal fun ProfileSwitchSheet(
             leading = { Icon(Icons.Outlined.PersonAdd, null, tint = MaterialTheme.colorScheme.primary) },
             onClick = onNew,
         )
+        if (trashCount > 0) {
+            AppListRow(
+                stringResource(Res.string.suki_trash_row, trashCount),
+                leading = {
+                    Icon(
+                        Icons.Outlined.DeleteOutline,
+                        null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                },
+                trailing = { ListChevron() },
+                onClick = onTrash,
+            )
+        }
     }
 }
 

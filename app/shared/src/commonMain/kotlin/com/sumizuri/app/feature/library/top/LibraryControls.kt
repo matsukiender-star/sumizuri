@@ -9,13 +9,11 @@ import com.sumizuri.app.shared.resources.Res
 import com.sumizuri.app.shared.resources.library_sort
 import com.sumizuri.app.ui.kit.chips.ChipRow
 import com.sumizuri.app.ui.kit.chips.ChipSeparator
-import com.sumizuri.app.ui.kit.chips.KindChips
 import com.sumizuri.app.ui.kit.chips.SortChip
 import com.sumizuri.app.ui.kit.chips.ToggleChip
-import com.sumizuri.app.ui.kit.chips.hasKindChoice
 import org.jetbrains.compose.resources.stringResource
 
-// One row of chips under the shelves: the order, the kinds when the library has more than one, and the quick filters, each one tap away.
+// One row of chips under the category bar: the order and the quick filters, each one tap away.
 @Composable
 internal fun LibraryControls(
     state: LibraryState,
@@ -31,10 +29,6 @@ internal fun LibraryControls(
             onSort,
             stringResource(Res.string.library_sort),
         )
-        if (hasKindChoice(state.kinds, state.kind)) {
-            ChipSeparator()
-            KindChips(state.kind, state.kinds, calls.onKind)
-        }
         ChipSeparator()
         for (filter in QuickFilter.entries.filter { prefs.favoritesEnabled || it != QuickFilter.Favorite }) {
             val on = filter in prefs.filters

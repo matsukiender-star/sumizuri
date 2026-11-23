@@ -40,6 +40,8 @@ data class LibraryPrefs(
     val continueCount: Int = 8,
     val updatesCount: Int = 0,
     val historyCount: Int = 0,
+    // How many rows of recommendations the library shows, with 0 for none.
+    val picksRows: Int = DefaultPickRows,
     // The titles to go on with are low cards, so the part takes little of the page above the covers.
     val continueStyle: ShelfStyle = ShelfStyle.Row,
     val updatesStyle: ShelfStyle = ShelfStyle.Row,
@@ -63,13 +65,20 @@ data class LibraryPrefs(
         LibrarySection.Continue -> continueCount
         LibrarySection.Updates -> updatesCount
         LibrarySection.History -> historyCount
+        LibrarySection.Picks -> picksRows
         LibrarySection.Library -> 0
     }
 
     fun withCount(section: LibrarySection, count: Int): LibraryPrefs = when (section) {
         LibrarySection.Continue -> copy(continueCount = count)
+
         LibrarySection.Updates -> copy(updatesCount = count)
+
         LibrarySection.History -> copy(historyCount = count)
+
+        // Turned on from the list of parts it takes the usual number of rows, as a count of titles would be too many.
+        LibrarySection.Picks -> copy(picksRows = if (count > MaxPickRows) DefaultPickRows else count)
+
         LibrarySection.Library -> this
     }
 
@@ -77,14 +86,14 @@ data class LibraryPrefs(
         LibrarySection.Continue -> copy(continueStyle = style)
         LibrarySection.Updates -> copy(updatesStyle = style)
         LibrarySection.History -> copy(historyStyle = style)
-        LibrarySection.Library -> this
+        LibrarySection.Picks, LibrarySection.Library -> this
     }
 
     fun styleOf(section: LibrarySection): ShelfStyle = when (section) {
         LibrarySection.Continue -> continueStyle
         LibrarySection.Updates -> updatesStyle
         LibrarySection.History -> historyStyle
-        LibrarySection.Library -> ShelfStyle.Row
+        LibrarySection.Picks, LibrarySection.Library -> ShelfStyle.Row
     }
 
     companion object {
@@ -99,6 +108,10 @@ data class LibraryPrefs(
         const val DefaultHomeCover = 108
         val HomeCoverRange = 70f..200f
         val NameScaleRange = 0.8f..1.5f
+
+        // The rows of recommendations the library can show.
+        const val DefaultPickRows = 3
+        const val MaxPickRows = 5
         val Counts = listOf(0, 3, 5, 8, 10, 15, 20)
 
         // What a part shows when it is switched on again.

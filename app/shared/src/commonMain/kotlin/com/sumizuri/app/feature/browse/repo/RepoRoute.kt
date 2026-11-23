@@ -26,6 +26,9 @@ fun RepoRoute(repo: Repo, onBack: () -> Unit) {
         onLanguage = viewModel::onLanguage,
         onShowNsfw = viewModel::onShowNsfw,
         onUpdateAll = viewModel::onUpdateAll,
+        onInstallAllVisible = viewModel::onInstallAllVisible,
+        onCancelBatchInstall = viewModel::onCancelBatchInstall,
+        onDismissBatchResult = viewModel::onDismissBatchResult,
         onCopyAddress = { copy(repo.url) },
         onBack = onBack,
     )
