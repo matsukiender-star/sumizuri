@@ -10,6 +10,7 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Computer
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.Insights
 import androidx.compose.material.icons.outlined.Palette
@@ -42,6 +43,9 @@ import com.sumizuri.app.feature.theme.rememberThemeModel
 import com.sumizuri.app.feature.tv.onboarding.firstFocus
 import com.sumizuri.app.feature.tv.onboarding.qualityLabel
 import com.sumizuri.app.shared.resources.Res
+import com.sumizuri.app.shared.resources.suki_tv_home
+import com.sumizuri.app.shared.resources.suki_tv_home_linked
+import com.sumizuri.app.shared.resources.suki_tv_home_value
 import com.sumizuri.app.shared.resources.trackers_title
 import com.sumizuri.app.shared.resources.tv_off
 import com.sumizuri.app.shared.resources.tv_profile_all
@@ -104,6 +108,23 @@ internal fun ProfileTiles(
             TvPanel.Sync,
         ) {
             onOpen(TvPanel.Sync)
+        },
+        // The computer this TV syncs with at home, joined through a phone that already syncs with it, by the same code as Phone.
+        Tile(
+            Icons.Outlined.Computer,
+            stringResource(Res.string.suki_tv_home),
+            stringResource(
+                if (account?.fingerprint !=
+                    null
+                ) {
+                    Res.string.suki_tv_home_linked
+                } else {
+                    Res.string.suki_tv_home_value
+                },
+            ),
+            TvPanel.Home,
+        ) {
+            onOpen(TvPanel.Home)
         },
         Tile(
             Icons.Outlined.PhoneAndroid,

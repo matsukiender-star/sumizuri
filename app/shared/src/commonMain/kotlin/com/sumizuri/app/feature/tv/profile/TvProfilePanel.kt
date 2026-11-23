@@ -48,7 +48,7 @@ import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
 
 // What opens over the profile page of a TV.
-internal enum class TvPanel { Look, Watching, Name, New, Sync, Phone }
+internal enum class TvPanel { Look, Watching, Name, New, Sync, Phone, Home }
 
 // One part of the profile over the whole page, sliding in from the side. Back closes it, and so does Done.
 @Composable
@@ -91,7 +91,7 @@ internal fun TvProfilePanel(panel: TvPanel, onClose: () -> Unit, onOpenPage: (Se
 
                 TvPanel.New -> TvProfileEditor(null, onClose)
 
-                TvPanel.Phone -> TvPhonePair { onClose() }
+                TvPanel.Phone, TvPanel.Home -> TvPhonePair { onClose() }
 
                 TvPanel.Sync -> Box(Modifier.padding(horizontal = 48.dp, vertical = 24.dp)) {
                     SyncRoute(onBack = onClose, onOpen = onOpenPage)

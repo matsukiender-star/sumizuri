@@ -13,4 +13,7 @@
     <string name="suki_tv_page_sending">Sending…</string>
     <string name="suki_tv_page_done">Done. The photo is on the TV.</string>
     <string name="suki_tv_page_failed">It could not be sent. Try again.</string>
+    <string name="suki_tv_home">Home computer</string>
+    <string name="suki_tv_home_value">Scan with your phone</string>
+    <string name="suki_tv_home_linked">Linked</string>
 </resources>

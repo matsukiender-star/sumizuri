@@ -13,4 +13,7 @@
     <string name="suki_tv_page_sending">Mandando…</string>
     <string name="suki_tv_page_done">Listo. La foto ya está en la TV.</string>
     <string name="suki_tv_page_failed">No se pudo mandar. Inténtalo de nuevo.</string>
+    <string name="suki_tv_home">PC de casa</string>
+    <string name="suki_tv_home_value">Escanea con tu celular</string>
+    <string name="suki_tv_home_linked">Vinculada</string>
 </resources>
