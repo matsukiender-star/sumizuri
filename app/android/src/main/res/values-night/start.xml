@@ -2,4 +2,6 @@
 <resources>
     <color name="start_background">@color/start_dark</color>
     <drawable name="start_mark">@drawable/splash_mark_dark</drawable>
+    <color name="start_tv_background">@color/start_tv_dark</color>
+    <drawable name="start_tv_mark">@drawable/splash_mark_dark</drawable>
 </resources>

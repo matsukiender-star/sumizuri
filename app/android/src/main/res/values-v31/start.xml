@@ -15,4 +15,18 @@
         <item name="android:windowSplashScreenBackground">@color/start_dark</item>
         <item name="android:windowSplashScreenAnimatedIcon">@drawable/splash_mark_dark</item>
     </style>
+    <!-- The same for the TV app, on pure white or pure black. -->
+    <style name="Theme.Sumizuri.Start.Tv" parent="Theme.Sumizuri.Tv">
+        <item name="android:windowSplashScreenBackground">@color/start_tv_background</item>
+        <item name="android:windowSplashScreenAnimatedIcon">@drawable/start_tv_mark</item>
+        <item name="postSplashScreenTheme">@style/Theme.Sumizuri.Tv</item>
+    </style>
+    <style name="Theme.Sumizuri.Start.Tv.Light">
+        <item name="android:windowSplashScreenBackground">@color/start_tv_light</item>
+        <item name="android:windowSplashScreenAnimatedIcon">@drawable/splash_mark_light</item>
+    </style>
+    <style name="Theme.Sumizuri.Start.Tv.Dark">
+        <item name="android:windowSplashScreenBackground">@color/start_tv_dark</item>
+        <item name="android:windowSplashScreenAnimatedIcon">@drawable/splash_mark_dark</item>
+    </style>
 </resources>

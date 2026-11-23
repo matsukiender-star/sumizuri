@@ -25,4 +25,26 @@
         <item name="windowSplashScreenBackground">@color/start_dark</item>
         <item name="windowSplashScreenAnimatedIcon">@drawable/splash_mark_dark</item>
     </style>
+
+    <!-- The TV app opens on pure white or pure black with the same medallion, the one of the last theme used when the TV draws its own splash. -->
+    <color name="start_tv_light">#FFFFFF</color>
+    <color name="start_tv_dark">#000000</color>
+    <color name="start_tv_background">@color/start_tv_light</color>
+    <drawable name="start_tv_mark">@drawable/splash_mark_light</drawable>
+    <style name="Theme.Sumizuri.Tv" parent="Theme.Sumizuri">
+        <item name="android:windowBackground">@color/start_tv_background</item>
+    </style>
+    <style name="Theme.Sumizuri.Start.Tv" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">@color/start_tv_background</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/start_tv_mark</item>
+        <item name="postSplashScreenTheme">@style/Theme.Sumizuri.Tv</item>
+    </style>
+    <style name="Theme.Sumizuri.Start.Tv.Light">
+        <item name="windowSplashScreenBackground">@color/start_tv_light</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/splash_mark_light</item>
+    </style>
+    <style name="Theme.Sumizuri.Start.Tv.Dark">
+        <item name="windowSplashScreenBackground">@color/start_tv_dark</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/splash_mark_dark</item>
+    </style>
 </resources>

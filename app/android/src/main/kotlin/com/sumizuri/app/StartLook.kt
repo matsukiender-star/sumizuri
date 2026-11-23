@@ -36,6 +36,13 @@ internal object StartLook {
         }
     }
 
+    // The splash of the TV app for the last theme used: black after a dark one, white after a light one, and null on a phone or before any theme was kept.
+    fun tvSplash(activity: Activity): Int? {
+        if (!AndroidApp.tvApp) return null
+        val saved = prefs(activity).getInt(Key, 0).takeIf { it != 0 } ?: return null
+        return if (Color.luminance(saved) < 0.5f) R.style.Theme_Sumizuri_Start_Tv_Dark else R.style.Theme_Sumizuri_Start_Tv_Light
+    }
+
     // Android 13 and newer keep a splash screen for the next start, which is dark or light like the app when that differs from the system.
     private fun splashFor(activity: Activity, argb: Int) {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return
@@ -44,6 +51,7 @@ internal object StartLook {
             (activity.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) ==
                 Configuration.UI_MODE_NIGHT_YES
         val theme = when {
+            AndroidApp.tvApp -> if (dark) R.style.Theme_Sumizuri_Start_Tv_Dark else R.style.Theme_Sumizuri_Start_Tv_Light
             dark == systemDark -> 0
             dark -> R.style.Theme_Sumizuri_Start_Dark
             else -> R.style.Theme_Sumizuri_Start_Light
