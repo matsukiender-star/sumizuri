@@ -160,6 +160,7 @@ class LibraryRepository(private val db: AppDatabase, private val scope: Coroutin
 
     suspend fun setFavorite(ids: Collection<Long>, favorite: Boolean) {
         for (part in ids.chunked(BulkChunk)) db.titles().setFavoriteMany(part, favorite)
+        onChanged?.invoke()
     }
 
     // Takes the titles out of the library. Their chapters and marks stay until the title is removed from the app.
@@ -167,7 +168,11 @@ class LibraryRepository(private val db: AppDatabase, private val scope: Coroutin
         val now = nowMillis()
         for (part in ids.chunked(BulkChunk)) db.titles().setInLibraryMany(part, false, now)
         onRemoved?.invoke(ids.toList())
+        onChanged?.invoke()
     }
+
+    // Told when something that syncs changed here: the library, favorites, read marks or bookmarks, so sync can send it soon.
+    var onChanged: (() -> Unit)? = null
 
     // Told when titles leave the library, so the trackers can ask about their entries.
     var onRemoved: ((List<Long>) -> Unit)? = null
@@ -263,7 +268,10 @@ class LibraryRepository(private val db: AppDatabase, private val scope: Coroutin
         )
         if (existing != null && inLibrary) db.titles().setInLibrary(id, true, now)
         addChapters(id, chapters)
-        if (inLibrary && !wasIn) onAdded?.invoke(listOf(id))
+        if (inLibrary && !wasIn) {
+            onAdded?.invoke(listOf(id))
+            onChanged?.invoke()
+        }
         return id
     }
 
@@ -321,11 +329,18 @@ class LibraryRepository(private val db: AppDatabase, private val scope: Coroutin
     suspend fun setInLibrary(id: Long, inLibrary: Boolean) {
         db.titles().setInLibrary(id, inLibrary, nowMillis())
         if (!inLibrary) onRemoved?.invoke(listOf(id)) else onAdded?.invoke(listOf(id))
+        onChanged?.invoke()
     }
 
-    suspend fun setBookmarked(chapterId: Long, bookmarked: Boolean) = db.chapters().setBookmarked(chapterId, bookmarked)
+    suspend fun setBookmarked(chapterId: Long, bookmarked: Boolean) {
+        db.chapters().setBookmarked(chapterId, bookmarked)
+        onChanged?.invoke()
+    }
 
-    suspend fun setBookmarkedMany(chapterIds: Collection<Long>, bookmarked: Boolean) = chapterIds.chunked(BulkChunk).forEach { db.chapters().setBookmarkedMany(it, bookmarked) }
+    suspend fun setBookmarkedMany(chapterIds: Collection<Long>, bookmarked: Boolean) {
+        chapterIds.chunked(BulkChunk).forEach { db.chapters().setBookmarkedMany(it, bookmarked) }
+        onChanged?.invoke()
+    }
 
     // Marks many chapters read or unread at once. Unread forgets the place in the chapter too.
     suspend fun setReadMany(titleId: Long, chapterIds: Collection<Long>, read: Boolean) {
@@ -337,6 +352,7 @@ class LibraryRepository(private val db: AppDatabase, private val scope: Coroutin
                 db.progress().clearMany(part)
             }
         }
+        onChanged?.invoke()
     }
 
     // Marks every chapter with a lower number than this one as read.
@@ -350,6 +366,7 @@ class LibraryRepository(private val db: AppDatabase, private val scope: Coroutin
         } else {
             db.progress().clear(chapterId)
         }
+        onChanged?.invoke()
     }
 
     private fun <T> Flow<T>.shareHere(): Flow<T> = shareIn(scope, SharingStarted.WhileSubscribed(ShareKeepMs), replay = 1)

@@ -194,6 +194,9 @@ class AppContainer(
         }
         library.onRemoved = trackerSync::removedFromLibrary
         library.onAdded = trackerSync.linker::addedToLibrary
+        // A change here goes to the other devices a few seconds later.
+        library.onChanged = librarySync::changedSoon
+        categories.onChanged = librarySync::changedSoon
     }
 
     private val sweeper = CoroutineScope(SupervisorJob() + Dispatchers.Main)

@@ -15,6 +15,7 @@ import com.sumizuri.app.data.text.nowMillis
 import com.sumizuri.app.data.work.BusyHandle
 import com.sumizuri.app.data.work.BusyKind
 import com.sumizuri.app.data.work.BusyWork
+import com.sumizuri.app.feature.sync.account.DefaultSyncMinutes
 import com.sumizuri.sync.core.ErrorCodes
 import com.sumizuri.sync.core.LibraryKeys
 import com.sumizuri.sync.core.Snapshot
@@ -41,6 +42,7 @@ import kotlinx.serialization.json.Json
 import okio.Buffer
 import okio.FileSystem
 import okio.Path.Companion.toPath
+import kotlin.concurrent.Volatile
 
 // A copy that another device sent in between is merged again, this many times at most.
 private const val MostTries = 3
@@ -50,6 +52,9 @@ private const val ConflictsKept = 20
 
 // A sync asked for after reading waits this long, so a few chapters in a row make one sync.
 private const val AfterReadingMs = 30_000L
+
+// A sync asked for after a change in the library waits this long, so a few changes in a row make one sync.
+private const val AfterChangeMs = 5_000L
 
 // A sync that runs longer than this keeps the app awake in the background.
 private const val BusyAfterMs = 3_000L
@@ -104,6 +109,11 @@ class LibrarySyncer(
     // How far the sync that runs now is, for the sync page and the notice.
     val progress: StateFlow<SyncProgress?> = mutableProgress
     private var soon: Job? = null
+    private var afterChange: Job? = null
+
+    // True while a sync writes what it fetched here, which is not a change to send back.
+    @Volatile
+    private var writingHere = false
     private val json = Json { ignoreUnknownKeys = true }
 
     // Whether this profile is signed in and linked to a profile on the server.
@@ -143,6 +153,16 @@ class LibrarySyncer(
         soon = scope.launch {
             delay(AfterReadingMs)
             if (settings.flag(SettingKey.SyncAfterReading, true).first()) syncAuto()
+        }
+    }
+
+    // Asks for a sync a few seconds after something changed in the library here, while syncing by itself is on. What a sync writes here is not a change to send back.
+    fun changedSoon() {
+        if (writingHere) return
+        afterChange?.cancel()
+        afterChange = scope.launch {
+            delay(AfterChangeMs)
+            if (settings.number(SettingKey.SyncEveryMinutes, DefaultSyncMinutes).first() > 0) syncAuto()
         }
     }
 
@@ -264,12 +284,21 @@ class LibrarySyncer(
                 conflicts +=
                     SyncConflict(names[key] ?: key, kind)
             }
-            val changed = applier.apply(merged, localState, insertFrom)
-            // Sources and repos this device lacks are added. The settings came with the merge.
-            if (withSources) {
-                insertFrom?.extras?.let {
-                    restorer.restoreExtras(BackupExtras(repos = it.repos, values = it.values), withSettings = false)
+            writingHere = true
+            val changed = try {
+                applier.apply(merged, localState, insertFrom).also {
+                    // Sources and repos this device lacks are added. The settings came with the merge.
+                    if (withSources) {
+                        insertFrom?.extras?.let {
+                            restorer.restoreExtras(
+                                BackupExtras(repos = it.repos, values = it.values),
+                                withSettings = false,
+                            )
+                        }
+                    }
                 }
+            } finally {
+                writingHere = false
             }
             val afterText = pack(withSources, withSettings)
             val after = stateOf(readSumizuriBackup(afterText))
