@@ -23,6 +23,7 @@ import com.sumizuri.app.shared.resources.suki_browse_picks_watched
 import com.sumizuri.app.ui.kit.card.AppSectionLabel
 import com.sumizuri.app.ui.kit.card.ListChevron
 import com.sumizuri.app.ui.kit.cover.CoverTile
+import com.sumizuri.app.ui.kit.scroll.ArrowRow
 import com.sumizuri.app.ui.kit.scroll.mouseDragScroll
 import org.jetbrains.compose.resources.stringResource
 
@@ -48,20 +49,22 @@ internal fun SourcePicksRow(picks: SourcePicks, state: SourceBrowseState, action
             AppSectionLabel(stringResource(because, picks.base, picks.genre), Modifier.weight(1f))
             ListChevron()
         }
-        LazyRow(
-            Modifier.mouseDragScroll(row, horizontal = true),
-            state = row,
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            items(picks.entries, key = { it.url }) { entry ->
-                val saved = entry.url in state.inLibrary || entry.url in state.adding
-                CoverTile(
-                    entry.asTitle(state.source.kind, state.source.id),
-                    onClick = { actions.onOpenEntry(entry) },
-                    modifier = Modifier.width(PickWidth),
-                    saved = saved,
-                    onLongClick = if (saved) null else ({ actions.onQuickAdd(entry) }),
-                )
+        ArrowRow(row) {
+            LazyRow(
+                Modifier.mouseDragScroll(row, horizontal = true),
+                state = row,
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                items(picks.entries, key = { it.url }) { entry ->
+                    val saved = entry.url in state.inLibrary || entry.url in state.adding
+                    CoverTile(
+                        entry.asTitle(state.source.kind, state.source.id),
+                        onClick = { actions.onOpenEntry(entry) },
+                        modifier = Modifier.width(PickWidth),
+                        saved = saved,
+                        onLongClick = if (saved) null else ({ actions.onQuickAdd(entry) }),
+                    )
+                }
             }
         }
         AppSectionLabel(Res.string.listing_popular)
