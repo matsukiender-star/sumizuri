@@ -49,6 +49,7 @@ internal fun AppTab(tab: Destination, tabs: List<Destination>, navigation: Navig
             onSearchSources = { navigation.push(Page.GlobalSearch(it)) },
             showLive = Destination.Live in tabs,
             onOpenLive = { navigation.select(Destination.Live) },
+            onPlayLive = { list, channel -> navigation.push(Page.LivePlayer(list, channel)) },
             onOpenSync = {
                 PairRequest.ask()
                 navigation.push(Page.SettingsPage(SettingsTarget.Sync))

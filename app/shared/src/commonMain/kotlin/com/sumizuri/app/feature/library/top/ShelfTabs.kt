@@ -92,7 +92,13 @@ internal fun LibraryPrefs.settled(categories: List<Category>): LibraryPrefs {
 
 // Unified library category bar: All (optional), Video, Manga, Novels, shelves, and Live (when visible).
 @Composable
-internal fun ShelfTabs(state: LibraryState, showLive: Boolean, onSelect: (LibraryTab) -> Unit, onEdit: () -> Unit) {
+internal fun ShelfTabs(
+    state: LibraryState,
+    showLive: Boolean,
+    liveOpen: Boolean,
+    onSelect: (LibraryTab) -> Unit,
+    onEdit: () -> Unit,
+) {
     val all = stringResource(Res.string.all)
     val none = stringResource(Res.string.shelf_none)
     val liveLabel = stringResource(Res.string.suki_live_tab)
@@ -110,7 +116,7 @@ internal fun ShelfTabs(state: LibraryState, showLive: Boolean, onSelect: (Librar
     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         FilterTabs(
             items = items,
-            selected = state.activeTab(),
+            selected = if (liveOpen) LibraryTab.Live else state.activeTab(),
             onSelect = onSelect,
             modifier = Modifier.weight(1f),
             onLongPress = { onEdit() },

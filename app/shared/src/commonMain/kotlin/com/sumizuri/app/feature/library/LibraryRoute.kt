@@ -11,12 +11,12 @@ import com.sumizuri.app.data.model.library.LibrarySection
 import kotlinx.coroutines.launch
 
 @Composable
-fun LibraryRoute(onOpenTitle: (Long) -> Unit, onOpenChapter: (Long) -> Unit, onOpenShelves: () -> Unit, onMove: (Long) -> Unit, onMigrate: (List<Long>) -> Unit, onSeeAll: (LibrarySection) -> Unit, onOpenMissing: () -> Unit, onOpenDownloads: () -> Unit, onSearchSources: (String) -> Unit, showLive: Boolean = false, onOpenLive: () -> Unit = {}, onOpenSync: () -> Unit = {}) {
+fun LibraryRoute(onOpenTitle: (Long) -> Unit, onOpenChapter: (Long) -> Unit, onOpenShelves: () -> Unit, onMove: (Long) -> Unit, onMigrate: (List<Long>) -> Unit, onSeeAll: (LibrarySection) -> Unit, onOpenMissing: () -> Unit, onOpenDownloads: () -> Unit, onSearchSources: (String) -> Unit, showLive: Boolean = false, onOpenLive: () -> Unit = {}, onOpenSync: () -> Unit = {}, onPlayLive: (String, String) -> Unit = { _, _ -> }) {
     val container = LocalAppContainer.current
     val viewModel = viewModel { LibraryViewModel(container.library, container.session, container.libraryPrefs, container.categories, container.sources, container.sync) }
     val state by viewModel.state.collectAsStateWithLifecycle()
     val scope = rememberCoroutineScope()
-    val calls = remember(viewModel, onOpenTitle, onOpenChapter, onOpenShelves, onMove, onMigrate, onSeeAll, onOpenMissing, onOpenDownloads, onSearchSources, onOpenLive, onOpenSync) {
+    val calls = remember(viewModel, onOpenTitle, onOpenChapter, onOpenShelves, onMove, onMigrate, onSeeAll, onOpenMissing, onOpenDownloads, onSearchSources, onOpenLive, onOpenSync, onPlayLive) {
         LibraryCalls(
             onQuery = viewModel::onQuery,
             onKind = viewModel::onKind,
@@ -49,6 +49,7 @@ fun LibraryRoute(onOpenTitle: (Long) -> Unit, onOpenChapter: (Long) -> Unit, onO
             onSelectShelf = viewModel::onSelectShelf,
             onOpenLive = onOpenLive,
             onOpenSync = onOpenSync,
+            onPlayLive = onPlayLive,
         )
     }
     LibraryScreen(state, calls, showLive)

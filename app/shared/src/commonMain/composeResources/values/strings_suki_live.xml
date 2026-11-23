@@ -45,4 +45,6 @@
     <string name="suki_live_group_button">Category: %1$s</string>
     <string name="suki_live_groups">Categories</string>
     <string name="suki_live_group_search">Search categories…</string>
+    <string name="suki_library_live_empty">No favorite channels yet. Mark them with the star in Live.</string>
+    <string name="suki_library_live_go">Go to Live</string>
 </resources>

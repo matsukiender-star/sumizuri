@@ -45,4 +45,6 @@
     <string name="suki_live_group_button">Categoría: %1$s</string>
     <string name="suki_live_groups">Categorías</string>
     <string name="suki_live_group_search">Buscar categoría…</string>
+    <string name="suki_library_live_empty">Todavía no tienes canales favoritos. Márcalos con la estrella en En vivo.</string>
+    <string name="suki_library_live_go">Ir a En vivo</string>
 </resources>

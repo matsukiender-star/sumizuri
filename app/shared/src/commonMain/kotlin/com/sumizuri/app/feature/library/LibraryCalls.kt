@@ -45,6 +45,8 @@ internal class LibraryCalls(
     val onContinue: (Long) -> Unit,
     val onSelectShelf: (Long?) -> Unit,
     val onOpenLive: () -> Unit,
+    // Plays a favorite channel from the live tab of the library.
+    val onPlayLive: (playlistId: String, channelId: String) -> Unit = { _, _ -> },
     // Opens syncing with the code ready to scan, from the button at the top of the library.
     val onOpenSync: () -> Unit = {},
 ) {

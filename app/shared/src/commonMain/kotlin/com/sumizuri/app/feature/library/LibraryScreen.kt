@@ -35,6 +35,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -62,6 +63,7 @@ import com.sumizuri.app.feature.library.top.LibraryControls
 import com.sumizuri.app.feature.library.top.LibraryPickBottom
 import com.sumizuri.app.feature.library.top.LibraryPickTop
 import com.sumizuri.app.feature.library.top.LibrarySearchRow
+import com.sumizuri.app.feature.library.top.LibraryTab
 import com.sumizuri.app.feature.library.top.LibraryTopBar
 import com.sumizuri.app.feature.library.top.MissingSourcesNotice
 import com.sumizuri.app.feature.library.top.NoticeAction
@@ -121,6 +123,12 @@ internal fun LibraryScreen(state: LibraryState, calls: LibraryCalls, showLive: B
     // The grid of covers, whose place the covers past the screen are loaded from.
     val gridState = rememberLazyGridState()
     val flight = LocalCoverFlight.current
+    // The live tab shows the favorite channels here in place of the covers.
+    var liveOpen by rememberSaveable { mutableStateOf(false) }
+    val onTab: (LibraryTab) -> Unit = { tab ->
+        liveOpen = tab == LibraryTab.Live
+        if (!liveOpen) calls.onTab(tab)
+    }
     // With the search tucked into the bar, whether its field is showing under it.
     var searchOpen by remember { mutableStateOf(false) }
     val showSearch = !prefs.collapsibleSearch || searchOpen || state.query.isNotEmpty()
@@ -216,20 +224,25 @@ internal fun LibraryScreen(state: LibraryState, calls: LibraryCalls, showLive: B
                 Modifier.fillMaxSize().swipeShelves(
                     state.swipeOrder(),
                     state.activeTab(),
-                    !state.selecting,
-                    calls::onTab,
+                    !state.selecting && !liveOpen,
+                    onTab,
                 ),
             ) {
                 PreloadCovers(gridState, state.titles)
+                val favorites = if (liveOpen) rememberLiveFavorites() else null
                 PageGrid(maxCell = prefs.cellWidth.dp, state = gridState, gap = prefs.gridGap.dp) {
                     val rows = !prefs.style.isGrid
                     fullSpan {
-                        LibraryHeader(state, calls, showSearch, showLive, onSort = {
+                        LibraryHeader(state, calls, showSearch, showLive, liveOpen, onTab, onSort = {
                             window = Window.Sort
                         }, onFailures = {
                             window =
                                 Window.Failures
                         })
+                    }
+                    if (liveOpen) {
+                        liveFavorites(favorites, calls.onPlayLive, calls.onOpenLive)
+                        return@PageGrid
                     }
                     // The heading over the covers is only needed when other parts stand above them.
                     val partsAbove = prefs.sectionOrder.takeWhile { it != LibrarySection.Library }.any {
