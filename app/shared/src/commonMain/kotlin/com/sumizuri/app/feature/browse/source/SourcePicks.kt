@@ -23,6 +23,20 @@ import kotlinx.coroutines.launch
 // Whether Popular shows more of the genre of the last title seen in that source.
 const val PicksKey = "layout.sukiPicks"
 
+// A genre asked for from outside the page of a source, such as from a row of the library, which the page of that source opens with once.
+object GenreRequest {
+    private var pending: Pair<String, Map<String, Any?>>? = null
+
+    fun ask(sourceId: String, filters: Map<String, Any?>) {
+        pending = sourceId to filters
+    }
+
+    fun take(sourceId: String): Map<String, Any?>? = pending?.takeIf { it.first == sourceId }?.second?.also {
+        pending =
+            null
+    }
+}
+
 // The settings every title starts from, which hold incognito.
 private const val AnyTitle = 0L
 
@@ -37,7 +51,7 @@ data class SourcePicks(
     val entries: List<SourceEntry>,
 )
 
-private data class PickBase(val name: String, val genres: List<String>)
+internal data class PickBase(val name: String, val genres: List<String>)
 
 // The recommendations of one source, read apart from its lists so a failure here never shows on them.
 class SourcePicksViewModel(
@@ -81,7 +95,7 @@ class SourcePicksViewModel(
     }
 }
 
-private suspend fun picksFor(source: Source, base: PickBase, seen: Set<String>): SourcePicks? {
+internal suspend fun picksFor(source: Source, base: PickBase, seen: Set<String>): SourcePicks? {
     val tags = source
         .filters()
         .valueOrNull()

@@ -50,6 +50,8 @@ import com.sumizuri.app.data.model.library.LibrarySection
 import com.sumizuri.app.feature.library.display.LibraryDisplaySheet
 import com.sumizuri.app.feature.library.display.LibrarySortSheet
 import com.sumizuri.app.feature.library.part.LibraryPartOf
+import com.sumizuri.app.feature.library.part.LibraryPick
+import com.sumizuri.app.feature.library.part.LibraryPicksRow
 import com.sumizuri.app.feature.library.part.partItems
 import com.sumizuri.app.feature.library.tile.CoverDrag
 import com.sumizuri.app.feature.library.tile.CoverDragLayer
@@ -114,7 +116,12 @@ private enum class Window { None, Sort, Display, Failures, Shelves, Remove }
 // The library. A bar on top, which becomes the bar of the picked titles. Under it the notes about titles that cannot be reached, the search, the shelves as tabs, a row of chips for the order, the kinds and the filters, the titles read last, and the covers. Pulling the page down checks the library for new chapters, and a swipe sideways changes the shelf.
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-internal fun LibraryScreen(state: LibraryState, calls: LibraryCalls, showLive: Boolean) {
+internal fun LibraryScreen(
+    state: LibraryState,
+    calls: LibraryCalls,
+    showLive: Boolean,
+    picks: List<LibraryPick> = emptyList(),
+) {
     val gestures = LocalAppGestures.current
     var window by remember { mutableStateOf(Window.None) }
     val prefs = state.prefs
@@ -244,13 +251,35 @@ internal fun LibraryScreen(state: LibraryState, calls: LibraryCalls, showLive: B
                         liveFavorites(favorites, calls.onPlayLive, calls.onOpenLive)
                         return@PageGrid
                     }
+                    // The recommendations show on the tab of every title only, and not while titles are picked.
+                    val picksHere = picks
+                        .takeIf { !state.selecting && prefs.category == null && state.kind == null }
+                        .orEmpty()
                     // The heading over the covers is only needed when other parts stand above them.
                     val partsAbove = prefs.sectionOrder.takeWhile { it != LibrarySection.Library }.any {
-                        partItems(state, it) !=
-                            null
+                        partItems(state, it) != null || (it == LibrarySection.Picks && picksHere.isNotEmpty())
                     }
                     // The covers are a part like the others, so they stand where the person put them.
                     for (section in prefs.sectionOrder) {
+                        if (section == LibrarySection.Picks) {
+                            picksHere.forEachIndexed { index, pick ->
+                                fullSpan {
+                                    LibraryPicksRow(
+                                        pick,
+                                        calls.onOpenPick,
+                                        calls.onOpenPickGenre,
+                                        if (index ==
+                                            0
+                                        ) {
+                                            ({ hidePart(LibrarySection.Picks) })
+                                        } else {
+                                            null
+                                        },
+                                    )
+                                }
+                            }
+                            continue
+                        }
                         if (section != LibrarySection.Library) {
                             partItems(
                                 state,

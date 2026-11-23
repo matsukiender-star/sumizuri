@@ -6,6 +6,8 @@ import com.sumizuri.app.data.model.library.LibraryPrefs
 import com.sumizuri.app.data.model.library.LibrarySection
 import com.sumizuri.app.data.model.library.SortRule
 import com.sumizuri.app.feature.library.top.LibraryTab
+import com.sumizuri.app.source.model.SourceEntry
+import com.sumizuri.app.source.repo.InstalledSource
 
 // Everything the library page can ask for, so the page is given one thing and not twenty.
 internal class LibraryCalls(
@@ -47,6 +49,9 @@ internal class LibraryCalls(
     val onOpenLive: () -> Unit,
     // Plays a favorite channel from the live tab of the library.
     val onPlayLive: (playlistId: String, channelId: String) -> Unit = { _, _ -> },
+    // Opens a recommended title, and the source of a row of recommendations with its genre chosen.
+    val onOpenPick: (InstalledSource, SourceEntry) -> Unit = { _, _ -> },
+    val onOpenPickGenre: (InstalledSource, Map<String, Any?>) -> Unit = { _, _ -> },
     // Opens syncing with the code ready to scan, from the button at the top of the library.
     val onOpenSync: () -> Unit = {},
 ) {

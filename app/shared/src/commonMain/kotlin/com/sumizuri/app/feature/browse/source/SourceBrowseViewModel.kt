@@ -42,6 +42,8 @@ class SourceBrowseViewModel(
     private val manager: SourceManager,
     private val session: SessionRepository,
     private val solver: ChallengeSolver,
+    // A genre asked for from outside, such as a row of the library, which the first list shows in place of the last one seen.
+    private val startFilters: Map<String, Any?>? = null,
 ) : ViewModel() {
     private val mutableState = MutableStateFlow(
         SourceBrowseState(
@@ -90,7 +92,11 @@ class SourceBrowseViewModel(
             val known =
                 last == TabPopular || last == TabLatest ||
                     mutableState.value.catalogs.any { last == CatalogMark + it.id }
-            if (known && last != null) mutableState.update { it.copy(tab = last) }
+            if (startFilters != null) {
+                mutableState.update { it.copy(filters = startFilters, tab = TabSearch) }
+            } else if (known && last != null) {
+                mutableState.update { it.copy(tab = last) }
+            }
             load(1)
         }
         // A source that changes while its page is open, by an update or in the editor, is used as it is now, and the list is loaded again with it.

@@ -61,6 +61,7 @@ enum class SettingsTarget {
     TrackerKitsu,
     TrackerMangaBaka,
     TrackerRules,
+    Picks,
 }
 
 // The groups the pages of the settings are listed in.
@@ -87,4 +88,4 @@ internal class SettingsPage(
 )
 
 // The pages that are new in this version. The home marks each until it is opened once.
-internal val NewPages = setOf(SettingsTarget.AppUpdate, SettingsTarget.ChapterList)
+internal val NewPages = setOf(SettingsTarget.AppUpdate, SettingsTarget.ChapterList, SettingsTarget.Picks)

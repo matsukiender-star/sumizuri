@@ -26,7 +26,11 @@ fun SourceBrowseRoute(
     onEditCode: () -> Unit,
 ) {
     val container = LocalAppContainer.current
+    // Opened from a row of recommendations, the page shows that genre. A model made now starts with it, and one kept from before is told.
+    val asked = remember(source.id) { GenreRequest.take(source.id) }
+    var made = false
     val viewModel = viewModel(key = "browse_${source.id}") {
+        made = true
         SourceBrowseViewModel(
             source,
             container.library,
@@ -35,8 +39,10 @@ fun SourceBrowseRoute(
             container.manager,
             container.session,
             container.solver,
+            asked,
         )
     }
+    LaunchedEffect(asked) { if (asked != null && !made) viewModel.onOpenGenre(asked) }
     val state by viewModel.state.collectAsStateWithLifecycle()
     val picksModel = viewModel(key = "picks_${source.id}") {
         SourcePicksViewModel(source.id, container.database.titles(), container.settings, container.reading) {

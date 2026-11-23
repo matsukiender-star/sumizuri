@@ -50,6 +50,8 @@ internal fun AppTab(tab: Destination, tabs: List<Destination>, navigation: Navig
             showLive = Destination.Live in tabs,
             onOpenLive = { navigation.select(Destination.Live) },
             onPlayLive = { list, channel -> navigation.push(Page.LivePlayer(list, channel)) },
+            onOpenPreview = { source, entry -> navigation.push(Page.Preview(source, entry)) },
+            onOpenSource = { navigation.push(Page.Source(it)) },
             onOpenSync = {
                 PairRequest.ask()
                 navigation.push(Page.SettingsPage(SettingsTarget.Sync))

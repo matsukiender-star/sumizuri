@@ -1,5 +1,6 @@
 package com.sumizuri.app.feature.settings
 
+import com.sumizuri.app.feature.settings.library.PicksRoute
 import androidx.compose.runtime.Composable
 import com.sumizuri.app.feature.appupdate.AppUpdateRoute
 import com.sumizuri.app.feature.downloads.DownloadsRoute
@@ -86,6 +87,7 @@ fun SettingsTargetRoute(target: SettingsTarget, onBack: () -> Unit, onOpen: (Set
         SettingsTarget.Privacy -> PrivacyRoute(onBack)
         SettingsTarget.AppUpdate -> AppUpdateRoute(onBack)
         SettingsTarget.ChapterList -> ChapterListRoute(onBack)
+        SettingsTarget.Picks -> PicksRoute(onBack)
         SettingsTarget.Trackers -> TrackersRoute(onBack, onOpen)
 
         SettingsTarget.TrackerDetails -> TrackerDetailsRoute(onBack)

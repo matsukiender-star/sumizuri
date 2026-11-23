@@ -55,6 +55,8 @@ class LibraryPrefsRepository(private val db: AppDatabase) {
             continueCount = count("continueCount", usual.continueCount),
             updatesCount = count("updatesCount", usual.updatesCount),
             historyCount = count("historyCount", usual.historyCount),
+            picksRows =
+            saved["picksRows"]?.toIntOrNull()?.takeIf { it in 0..LibraryPrefs.MaxPickRows } ?: usual.picksRows,
             continueStyle = saved.choice("continueStyle", usual.continueStyle),
             updatesStyle = saved.choice("updatesStyle", usual.updatesStyle),
             historyStyle = saved.choice("historyStyle", usual.historyStyle),
@@ -71,7 +73,10 @@ class LibraryPrefsRepository(private val db: AppDatabase) {
             .split(",")
             .mapNotNull { name -> enumNamed<LibrarySection>(name) }
             .distinct()
-        return saved + LibrarySection.entries.filter { it !in saved }
+        // A part new since the order was saved goes just above the covers, where a new part is first seen.
+        val missing = LibrarySection.entries.filter { it !in saved }
+        val covers = saved.indexOf(LibrarySection.Library).takeIf { it >= 0 } ?: saved.size
+        return saved.take(covers) + missing + saved.drop(covers)
     }
 
     // Applies a change to the choices as they are now, and saves what the change made different.
@@ -117,6 +122,7 @@ class LibraryPrefsRepository(private val db: AppDatabase) {
         if (after.continueCount != before.continueCount) put("continueCount", after.continueCount.toString())
         if (after.updatesCount != before.updatesCount) put("updatesCount", after.updatesCount.toString())
         if (after.historyCount != before.historyCount) put("historyCount", after.historyCount.toString())
+        if (after.picksRows != before.picksRows) put("picksRows", after.picksRows.toString())
         if (after.continueStyle != before.continueStyle) put("continueStyle", after.continueStyle.name)
         if (after.updatesStyle != before.updatesStyle) put("updatesStyle", after.updatesStyle.name)
         if (after.historyStyle != before.historyStyle) put("historyStyle", after.historyStyle.name)
