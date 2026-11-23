@@ -51,6 +51,8 @@ data class ReaderSettings(
     val cropBorders: Boolean = false,
     val grayscale: Boolean = false,
     val invertColors: Boolean = false,
+    // Suki: the pages of a PDF are darkened by their light only, so white paper turns dark and black letters light while the pictures keep their colors.
+    val pdfDark: Boolean = false,
     // How much of an old paper brown the pages take, from 0 to 1, and how strong their contrast is, from half to twice.
     val sepia: Float = 0f,
     val contrast: Float = 1f,
