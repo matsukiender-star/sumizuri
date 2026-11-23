@@ -236,28 +236,6 @@ class SourceBrowseViewModel(
     // Fetches details for a single hovered or long-pressed entry on demand.
     suspend fun fetchDetails(entry: SourceEntry): SourceEntry? = opened()?.details(entry)?.valueOrNull()
 
-    // Adds an entry to the library from its cover, with its details and chapters when the source gives them, without opening it. One that is saved or being added already is left alone.
-    fun onQuickAdd(entry: SourceEntry) {
-        val now = mutableState.value
-        if (entry.url in now.inLibrary || entry.url in now.adding) return
-        mutableState.update { it.copy(adding = it.adding + entry.url) }
-        viewModelScope.launch {
-            val reading = opened()
-            val details = reading?.details(entry)?.valueOrNull()
-            val full =
-                details?.copy(
-                    url = entry.url,
-                    title = details.title.ifBlank { entry.title },
-                    coverUrl =
-                    details.coverUrl ?: entry.coverUrl,
-                )
-                    ?: entry
-            val chapters = reading?.chapters(full)?.valueOrNull().orEmpty()
-            library.addFromSource(now.source.id, now.source.kind, full, chapters)
-            mutableState.update { it.copy(adding = it.adding - entry.url) }
-        }
-    }
-
     // A source that saved titles came from is only removed after a yes that says what happens to them.
     fun onRemove() {
         val now = mutableState.value

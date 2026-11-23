@@ -20,8 +20,10 @@ import com.sumizuri.app.shared.resources.Res
 import com.sumizuri.app.shared.resources.listing_popular
 import com.sumizuri.app.shared.resources.suki_browse_picks_read
 import com.sumizuri.app.shared.resources.suki_browse_picks_watched
+import com.sumizuri.app.source.model.SourceEntry
 import com.sumizuri.app.ui.kit.card.AppSectionLabel
 import com.sumizuri.app.ui.kit.card.ListChevron
+import com.sumizuri.app.ui.kit.cover.CoverPick
 import com.sumizuri.app.ui.kit.cover.CoverTile
 import com.sumizuri.app.ui.kit.scroll.ArrowRow
 import com.sumizuri.app.ui.kit.scroll.mouseDragScroll
@@ -31,7 +33,15 @@ private val PickWidth = 116.dp
 
 // More of the genre of the last title seen here, with a heading that opens all of that genre, over the popular list.
 @Composable
-internal fun SourcePicksRow(picks: SourcePicks, state: SourceBrowseState, actions: SourceBrowseActions) {
+internal fun SourcePicksRow(
+    picks: SourcePicks,
+    state: SourceBrowseState,
+    actions: SourceBrowseActions,
+    // The covers picked on the page, which a long press here adds to as well.
+    picked: Set<String>,
+    saving: Set<String>,
+    onPick: (SourceEntry) -> Unit,
+) {
     val because = if (state.source.kind ==
         Kind.Anime
     ) {
@@ -56,13 +66,14 @@ internal fun SourcePicksRow(picks: SourcePicks, state: SourceBrowseState, action
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 items(picks.entries, key = { it.url }) { entry ->
-                    val saved = entry.url in state.inLibrary || entry.url in state.adding
+                    val saved = entry.url in state.inLibrary || entry.url in saving
                     CoverTile(
                         entry.asTitle(state.source.kind, state.source.id),
-                        onClick = { actions.onOpenEntry(entry) },
+                        onClick = { if (picked.isEmpty()) actions.onOpenEntry(entry) else onPick(entry) },
                         modifier = Modifier.width(PickWidth),
                         saved = saved,
-                        onLongClick = if (saved) null else ({ actions.onQuickAdd(entry) }),
+                        pick = CoverPick(picked.isNotEmpty(), entry.url in picked),
+                        onLongClick = { onPick(entry) },
                     )
                 }
             }

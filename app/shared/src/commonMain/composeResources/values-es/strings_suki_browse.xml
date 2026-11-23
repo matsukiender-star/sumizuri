@@ -17,4 +17,6 @@
     <string name="suki_picks_from">De qué extensiones</string>
     <string name="suki_picks_from_recent">Fijadas y recientes</string>
     <string name="suki_picks_from_pinned">Solo fijadas</string>
+    <string name="suki_pick_add">Agregar</string>
+    <string name="suki_pick_cover">Portada</string>
 </resources>

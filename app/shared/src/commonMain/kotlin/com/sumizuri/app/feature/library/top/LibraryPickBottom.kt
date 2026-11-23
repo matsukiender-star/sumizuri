@@ -47,18 +47,18 @@ internal fun LibraryPickBottom(count: Int, favorite: Boolean?, calls: LibraryPic
         shadowElevation = 6.dp,
     ) {
         Row(Modifier.padding(vertical = 6.dp), horizontalArrangement = Arrangement.SpaceEvenly) {
-            Action(
+            PickAction(
                 Icons.Outlined.DoneAll,
                 Res.string.selection_mark_read,
                 Modifier.weight(1f),
             ) { calls.onMarkRead(true) }
-            Action(
+            PickAction(
                 Icons.Outlined.RemoveDone,
                 Res.string.selection_mark_unread,
                 Modifier.weight(1f),
             ) { calls.onMarkRead(false) }
             if (favorite != null) {
-                Action(
+                PickAction(
                     if (favorite) Icons.Outlined.StarBorder else Icons.Outlined.Star,
                     if (favorite) Res.string.library_favorite else Res.string.library_unfavorite,
                     Modifier.weight(1f),
@@ -66,21 +66,27 @@ internal fun LibraryPickBottom(count: Int, favorite: Boolean?, calls: LibraryPic
                     calls.onFavorite(favorite)
                 }
             }
-            Action(Icons.AutoMirrored.Outlined.Label, Res.string.library_shelves, Modifier.weight(1f), calls.onShelves)
+            PickAction(
+                Icons.AutoMirrored.Outlined.Label,
+                Res.string.library_shelves,
+                Modifier.weight(1f),
+                calls.onShelves,
+            )
             if (count ==
                 1
             ) {
-                Action(Icons.Outlined.SwapHoriz, Res.string.title_action_move, Modifier.weight(1f), calls.onMove)
+                PickAction(Icons.Outlined.SwapHoriz, Res.string.title_action_move, Modifier.weight(1f), calls.onMove)
             } else {
-                Action(Icons.Outlined.SwapHoriz, Res.string.pick_migrate, Modifier.weight(1f), calls.onMigrate)
+                PickAction(Icons.Outlined.SwapHoriz, Res.string.pick_migrate, Modifier.weight(1f), calls.onMigrate)
             }
-            Action(Icons.Outlined.PlaylistRemove, Res.string.remove, Modifier.weight(1f), calls.onRemove)
+            PickAction(Icons.Outlined.PlaylistRemove, Res.string.remove, Modifier.weight(1f), calls.onRemove)
         }
     }
 }
 
+// One action of a bar of picked titles: its icon with its name under it. The page of a source uses it too.
 @Composable
-private fun Action(
+internal fun PickAction(
     icon: ImageVector,
     label: org.jetbrains.compose.resources.StringResource,
     modifier: Modifier,

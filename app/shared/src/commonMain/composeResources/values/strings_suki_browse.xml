@@ -17,4 +17,6 @@
     <string name="suki_picks_from">From which sources</string>
     <string name="suki_picks_from_recent">Pinned and used lately</string>
     <string name="suki_picks_from_pinned">Only pinned</string>
+    <string name="suki_pick_add">Add</string>
+    <string name="suki_pick_cover">Cover</string>
 </resources>
