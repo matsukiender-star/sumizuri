@@ -117,7 +117,7 @@ jobs:
             echo "ANDROID_KEYSTORE_PATH=$RUNNER_TEMP/sumizuri-release.jks" >> "$GITHUB_ENV"
           fi
       - name: Build Android APKs
-        run: ./gradlew :app:android:assembleRelease :app:android:assembleDebug ${{ needs.start.outputs.args }}
+        run: ./gradlew :app:android:assembleRelease :app:android:assembleDebug :app:tv:assembleRelease ${{ needs.start.outputs.args }}
         env:
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
@@ -136,6 +136,11 @@ jobs:
           for apk in app/android/build/outputs/apk/debug/android-*-debug.apk; do
             kind=$(basename "$apk" -debug.apk)
             cp "$apk" "Sumizuri-$VERSION-debug-${kind#android-}.apk"
+          done
+          # The app for TVs has TV in its names, which is how each app updates only to its own files.
+          for apk in app/tv/build/outputs/apk/release/tv-*-release.apk; do
+            kind=$(basename "$apk" -release.apk)
+            cp "$apk" "Sumizuri-TV-$VERSION-${kind#tv-}.apk"
           done
           ls -lh Sumizuri-*
       - name: Put the APKs on the release
