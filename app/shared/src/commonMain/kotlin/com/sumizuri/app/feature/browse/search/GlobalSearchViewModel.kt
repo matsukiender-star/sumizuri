@@ -5,8 +5,10 @@ import androidx.lifecycle.viewModelScope
 import com.sumizuri.app.data.library.LibraryRepository
 import com.sumizuri.app.data.model.Kind
 import com.sumizuri.app.data.sources.SourceRepository
+import com.sumizuri.app.source.SourceError
 import com.sumizuri.app.source.SourceManager
 import com.sumizuri.app.source.SourceResult
+import com.sumizuri.app.source.browser.ChallengeSolver
 import com.sumizuri.app.source.model.SourceEntry
 import com.sumizuri.app.source.repo.InstalledSource
 import kotlinx.coroutines.Job
@@ -34,11 +36,14 @@ class GlobalSearchViewModel(
     private val sources: SourceRepository,
     private val manager: SourceManager,
     private val library: LibraryRepository,
+    private val solver: ChallengeSolver,
 ) : ViewModel() {
     private val mutable = MutableStateFlow(GlobalSearchState(query = initial))
     val state: StateFlow<GlobalSearchState> = mutable
 
     private var job: Job? = null
+    private val retryJobs = mutableMapOf<String, Job>()
+    private val gate = Semaphore(AtOnce)
     private var installed: List<InstalledSource> = emptyList()
 
     init {
@@ -62,11 +67,33 @@ class GlobalSearchViewModel(
         restart(0)
     }
 
+    // Retries a single failed source without clearing other results or raising AtOnce.
+    fun onRetrySource(sourceId: String) {
+        val query = mutable.value.query.trim()
+        if (query.isEmpty()) return
+        val source = installed.firstOrNull { it.id == sourceId } ?: return
+        retryJobs.remove(sourceId)?.cancel()
+        settle(SourceResults(source, loading = true))
+        retryJobs[sourceId] = viewModelScope.launch {
+            val result = gate.withPermit { searchOne(source, query) }
+            if (mutable.value.query.trim() == query) settle(result)
+        }
+    }
+
+    fun onSolveSource(sourceId: String, url: String) {
+        viewModelScope.launch {
+            solver.solve(url)
+            onRetrySource(sourceId)
+        }
+    }
+
     // The id of the title saved from this entry, so a saved one opens as itself and not as a preview.
     suspend fun savedId(source: InstalledSource, entry: SourceEntry): Long? = library.savedId(source.id, entry)
 
     private fun restart(delayMs: Long) {
         job?.cancel()
+        retryJobs.values.forEach { it.cancel() }
+        retryJobs.clear()
         job = viewModelScope.launch {
             delay(delayMs)
             val now = mutable.value
@@ -80,7 +107,6 @@ class GlobalSearchViewModel(
                 return@launch
             }
             mutable.update { it.copy(results = wanted.map { source -> SourceResults(source) }) }
-            val gate = Semaphore(AtOnce)
             coroutineScope {
                 wanted.map { source -> async { gate.withPermit { settle(searchOne(source, query)) } } }.awaitAll()
             }
@@ -89,11 +115,22 @@ class GlobalSearchViewModel(
 
     private suspend fun searchOne(source: InstalledSource, query: String): SourceResults {
         val opened = when (val result = manager.open(source)) {
-            is SourceResult.Err -> return SourceResults(source, loading = false, error = result.error.message)
+            is SourceResult.Err -> return SourceResults(
+                source,
+                loading = false,
+                error = result.error.message,
+                challengeUrl = (result.error as? SourceError.Challenge)?.url,
+            )
+
             is SourceResult.Ok -> result.value
         }
         return when (val found = opened.search(query, 1)) {
-            is SourceResult.Err -> SourceResults(source, loading = false, error = found.error.message)
+            is SourceResult.Err -> SourceResults(
+                source,
+                loading = false,
+                error = found.error.message,
+                challengeUrl = (found.error as? SourceError.Challenge)?.url,
+            )
 
             is SourceResult.Ok -> {
                 val entries = found.value.take(PerSource)

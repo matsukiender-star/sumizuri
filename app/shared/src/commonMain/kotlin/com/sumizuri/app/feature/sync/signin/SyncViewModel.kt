@@ -65,7 +65,7 @@ class SyncViewModel(
         MutableStateFlow(SyncUi(store.account.value?.let { SyncStep.Connected(it) } ?: SyncStep.Address))
     val ui: StateFlow<SyncUi> = mutable
 
-    // Signing out, here or by the server, takes the page back to the address.
+    // Signing out, here or by the server, takes the page back to the address, and pairing by a code takes it to the account.
     init {
         viewModelScope.launch {
             store.account.collect { account ->
@@ -73,6 +73,8 @@ class SyncViewModel(
                     mutable.value.step is SyncStep.Connected
                 ) {
                     mutable.value = SyncUi(SyncStep.Address)
+                } else if (account != null && mutable.value.step == SyncStep.Address) {
+                    mutable.value = SyncUi(SyncStep.Connected(account))
                 }
             }
         }

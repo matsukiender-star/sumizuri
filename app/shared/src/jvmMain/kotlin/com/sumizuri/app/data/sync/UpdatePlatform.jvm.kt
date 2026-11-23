@@ -32,6 +32,12 @@ actual object UpdatePlatform {
 
 // Shows a notice with an icon put in the tray of the system for a short while, since that is how Java shows one. A click brings the window to the front after doing what it is given.
 internal suspend fun showTrayNotice(head: String, text: String, onClick: () -> Unit = {}) {
+    // Linux shows the notice through the desktop, never the plain balloon of Java.
+    if (isLinux) {
+        if (showLinuxNotice(head, text, onClick)) return
+        LinuxNotice.show(head, text, onClick)
+        return
+    }
     if (!SystemTray.isSupported()) return
     val image =
         runCatching { ImageIO.read(Res.readBytes("drawable/app_icon.png").inputStream()) }.getOrNull()

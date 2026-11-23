@@ -6,11 +6,13 @@ import android.graphics.Bitmap
 import android.webkit.CookieManager
 import android.webkit.WebResourceError
 import android.webkit.WebResourceRequest
+import android.webkit.WebResourceResponse
 import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.webkit.WebViewCompat
 import androidx.webkit.WebViewFeature
+import com.sumizuri.app.data.net.refusedPlainPage
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.suspendCancellableCoroutine
@@ -27,6 +29,8 @@ class AndroidRenderPage private constructor(private val webView: WebView) : Rend
     private var lateEarly: String? = null
 
     private val client = object : WebViewClient() {
+        override fun shouldInterceptRequest(view: WebView, request: WebResourceRequest): WebResourceResponse? =
+            refusedPlainPage(request)
         override fun onPageStarted(view: WebView, url: String, favicon: Bitmap?) {
             if (url.contains("__cf_chl_")) sawChallenge = true
             lateEarly?.let { view.evaluateJavascript(it, null) }

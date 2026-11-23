@@ -1,5 +1,6 @@
 package com.sumizuri.app.feature.browse.source
 
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -82,9 +83,16 @@ internal fun BrowseLine(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     onLongClick: (() -> Unit)? = null,
+    // Picked among others, which rings the card.
+    picked: Boolean = false,
 ) {
     Row(
-        modifier.fillMaxWidth().softPress(onClick, onLongClick).padding(horizontal = 10.dp, vertical = 8.dp),
+        modifier
+            .fillMaxWidth()
+            .pickedRing(
+                picked,
+            ).softPress(onClick, onLongClick)
+            .padding(horizontal = 10.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
@@ -110,9 +118,15 @@ internal fun BrowseCard(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     onLongClick: (() -> Unit)? = null,
+    // Picked among others, which rings the card.
+    picked: Boolean = false,
 ) {
     Row(
-        modifier.fillMaxWidth().softPress(onClick, onLongClick).padding(10.dp),
+        modifier
+            .fillMaxWidth()
+            .pickedRing(picked)
+            .softPress(onClick, onLongClick)
+            .padding(10.dp),
         horizontalArrangement = Arrangement.spacedBy(14.dp),
     ) {
         EntryCover(title, saved, 96.dp, letterSize = 24)
@@ -171,3 +185,8 @@ private fun EntryFacts(title: Title) {
         )
     }
 }
+
+// A ring in the accent colour around a card that is picked.
+@Composable
+private fun Modifier.pickedRing(picked: Boolean): Modifier =
+    if (picked) border(2.dp, MaterialTheme.colorScheme.primary, MaterialTheme.shapes.medium) else this

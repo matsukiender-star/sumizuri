@@ -12,6 +12,7 @@ import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.SearchOff
 import androidx.compose.material.icons.outlined.Shuffle
+import androidx.compose.material.icons.outlined.Sync
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.Icon
@@ -39,6 +40,7 @@ import com.sumizuri.app.shared.resources.library_title
 import com.sumizuri.app.shared.resources.library_update
 import com.sumizuri.app.shared.resources.library_update_shelf
 import com.sumizuri.app.shared.resources.library_updating
+import com.sumizuri.app.shared.resources.suki_pair_from_library
 import com.sumizuri.app.shared.resources.titles_count
 import com.sumizuri.app.ui.kit.menu.AppMenu
 import com.sumizuri.app.ui.kit.menu.AppMenuItem
@@ -97,6 +99,7 @@ internal fun LibraryTopBar(
                 )
             }
         }
+        IconButton(calls.onOpenSync) { Icon(Icons.Outlined.Sync, stringResource(Res.string.suki_pair_from_library)) }
         IconButton(onDisplay) { Icon(Icons.Outlined.GridView, stringResource(Res.string.library_display)) }
         MoreMenu(state.prefs.category != null, progress == null, calls)
     }

@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="suki_appupdate_recommended">Recomendado</string>
+    <string name="suki_appupdate_no_hash">Este archivo no trae hash en el release, así que no se guardó.</string>
+    <string name="suki_appupdate_bad_hash">El archivo no coincidió con el hash del release, así que se borró.</string>
+    <string name="suki_appupdate_restart">La versión nueva ya está puesta. Cierra Sumizuri y ábrela otra vez.</string>
+</resources>

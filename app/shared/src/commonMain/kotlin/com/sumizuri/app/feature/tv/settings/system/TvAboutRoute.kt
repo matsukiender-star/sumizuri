@@ -132,7 +132,7 @@ private fun UpdateRow() {
     val available = state as? UpdateState.Available
     val saving = download
     val line = note ?: when {
-        saving?.error != null -> stringResource(Res.string.appupdate_download_failed)
+        saving?.problem != null -> stringResource(Res.string.appupdate_download_failed)
 
         saving != null && !saving.finished -> stringResource(
             Res.string.tv_about_saving,
@@ -156,7 +156,7 @@ private fun UpdateRow() {
     }
     val action = when {
         saving != null && saving.finished -> Res.string.appupdate_install
-        saving != null && saving.error == null -> Res.string.appupdate_cancel_download
+        saving != null && saving.problem == null -> Res.string.appupdate_cancel_download
         available?.asset != null -> Res.string.appupdate_download
         available != null -> null
         else -> Res.string.appupdate_check_now
@@ -172,8 +172,13 @@ private fun UpdateRow() {
                 Res.string.appupdate_install -> scope.launch {
                     note = when (updater.install()) {
                         InstallResult.Started -> null
+
                         InstallResult.NeedsPermission -> permission
+
                         InstallResult.Failed -> failed
+
+                        // Only a computer replaces the app itself, never a TV.
+                        InstallResult.Restart -> null
                     }
                 }
 

@@ -41,6 +41,12 @@ object AppLinks {
                 true
             }
 
+            // The code a computer shows to link a phone to it at home, which asks before it does anything. A TV shows a pair link of its own.
+            "homepair" -> {
+                homePairing.value = link.trim()
+                true
+            }
+
             "updates" -> {
                 updates.value = true
                 true
@@ -88,6 +94,15 @@ object AppLinks {
 
     fun trackTaken() {
         track.value = null
+    }
+
+    private val homePairing = MutableStateFlow<String?>(null)
+
+    // A code to link with a computer, until the person said yes or no. It holds a secret, so it is never logged.
+    val homePair: StateFlow<String?> = homePairing
+
+    fun homePairTaken() {
+        homePairing.value = null
     }
 
     private val updates = MutableStateFlow(false)

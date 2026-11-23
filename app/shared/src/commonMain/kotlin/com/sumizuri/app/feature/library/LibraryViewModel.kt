@@ -29,6 +29,7 @@ import com.sumizuri.app.data.sync.TitleSync
 import com.sumizuri.app.data.sync.UpdateFailure
 import com.sumizuri.app.data.sync.UpdateProgress
 import com.sumizuri.app.data.text.nowMillis
+import com.sumizuri.app.feature.library.top.effectiveLibraryKind
 import com.sumizuri.app.feature.library.top.settled
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -219,12 +220,14 @@ class LibraryViewModel(
     }
 
     private fun build(now: Shown, besides: Around, typed: Look): LibraryState {
-        // Only the shelves made for the open kind show, with the ones for every kind.
-        val categories = now.categories.forKind(typed.kind)
+        // Keep all shelves visible in the unified bar so switching from a kind tab to any shelf works directly.
+        val categories = now.categories
         val prefs = now.prefs.settled(categories)
+        val kind = effectiveLibraryKind(prefs, typed.kind)
+        val effectiveTyped = if (kind == typed.kind) typed else typed.copy(kind = kind)
         val entries = now.entries
-        val rule = effectiveRule(prefs, typed.kind, categories.firstOrNull { it.id == prefs.category })
-        val list = listingFor(now, besides, typed, categories, prefs, rule)
+        val rule = effectiveRule(prefs, kind, categories.firstOrNull { it.id == prefs.category })
+        val list = listingFor(now, besides, effectiveTyped, categories, prefs, rule)
         val here = list.here
         val picked = if (typed.selected.isEmpty()) emptyList() else entries.filter { it.title.id in typed.selected }
         // The shelves the picked titles can all go on: the ones for their kind, or for every kind when they are of several kinds.
@@ -233,7 +236,7 @@ class LibraryViewModel(
         return LibraryState(
             loaded = true,
             query = typed.query,
-            kind = typed.kind,
+            kind = kind,
             titles = list.titles,
             rule = rule,
             total = entries.size,
@@ -282,9 +285,16 @@ class LibraryViewModel(
         look.update { it.copy(kind = value) }
         viewModelScope.launch {
             session.setLibraryKind(value?.code)
-            // A shelf of another kind that was open falls back to one this kind has.
-            val visible = shelves.categories.first().forKind(value)
-            prefsRepository.update { it.settled(visible) }
+            prefsRepository.update { it.copy(category = null) }
+        }
+    }
+
+    // Selecting a shelf clears the kind filter so the shelf shows all titles matching its rules.
+    fun onSelectShelf(id: Long?) {
+        look.update { it.copy(kind = null) }
+        viewModelScope.launch {
+            session.setLibraryKind(null)
+            prefsRepository.update { it.copy(category = id) }
         }
     }
 

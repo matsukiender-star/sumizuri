@@ -47,6 +47,7 @@ class ProfileViewModel(
                 }.take(RecentCount),
             unreachable.sumOf { it.count },
             shown,
+            registry.trash,
         )
     }.flowOn(Dispatchers.Default).stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), ProfileState())
 
@@ -68,6 +69,10 @@ class ProfileViewModel(
     }
 
     suspend fun onDelete(id: Long): Boolean = host.delete(id)
+
+    fun onRestore(id: Long) = host.restore(id)
+
+    fun onDeleteNow(id: Long) = host.deleteNow(id)
 
     // Writes the picture to the avatars folder and gives its path, or null when it is no picture.
     private suspend fun keep(picture: ByteArray): String? = withContext(Dispatchers.IO) {

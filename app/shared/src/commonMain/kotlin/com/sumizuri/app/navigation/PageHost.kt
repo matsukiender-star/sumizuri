@@ -16,6 +16,7 @@ import com.sumizuri.app.feature.history.HistoryRoute
 import com.sumizuri.app.feature.library.display.LibraryDisplayRoute
 import com.sumizuri.app.feature.library.shelves.EditShelfRoute
 import com.sumizuri.app.feature.library.shelves.ShelvesRoute
+import com.sumizuri.app.feature.live.LivePlayerRoute
 import com.sumizuri.app.feature.logs.LogsRoute
 import com.sumizuri.app.feature.migration.MigrationRoute
 import com.sumizuri.app.feature.migration.single.MigrateRoute
@@ -56,6 +57,7 @@ fun PageHost(page: Page, navigation: NavigationViewModel) {
                 onOpenSaved = { navigation.push(Page.Saved(it)) },
                 onOpenPreview = { source, entry -> navigation.push(Page.Preview(source, entry)) },
                 onEditCode = { navigation.push(Page.ExtensionEditor(page.source.id)) },
+                onEditTitle = { navigation.push(Page.EditTitle(it)) },
             )
         }
 
@@ -209,6 +211,8 @@ fun PageHost(page: Page, navigation: NavigationViewModel) {
                 onOpenComments = { navigation.push(Page.Comments(it)) },
             )
         }
+
+        is Page.LivePlayer -> LivePlayerRoute(page.playlistId, page.channelId, onBack = navigation::pop)
     }
 }
 

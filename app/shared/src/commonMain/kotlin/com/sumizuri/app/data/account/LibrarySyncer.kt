@@ -15,6 +15,7 @@ import com.sumizuri.app.data.text.nowMillis
 import com.sumizuri.app.data.work.BusyHandle
 import com.sumizuri.app.data.work.BusyKind
 import com.sumizuri.app.data.work.BusyWork
+import com.sumizuri.app.feature.sync.account.DefaultSyncMinutes
 import com.sumizuri.sync.core.ErrorCodes
 import com.sumizuri.sync.core.LibraryKeys
 import com.sumizuri.sync.core.Snapshot
@@ -35,12 +36,12 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
-import kotlinx.serialization.Serializable
 import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.json.Json
 import okio.Buffer
 import okio.FileSystem
 import okio.Path.Companion.toPath
+import kotlin.concurrent.Volatile
 
 // A copy that another device sent in between is merged again, this many times at most.
 private const val MostTries = 3
@@ -51,34 +52,11 @@ private const val ConflictsKept = 20
 // A sync asked for after reading waits this long, so a few chapters in a row make one sync.
 private const val AfterReadingMs = 30_000L
 
+// A sync asked for after a change in the library waits this long, so a few changes in a row make one sync.
+private const val AfterChangeMs = 5_000L
+
 // A sync that runs longer than this keeps the app awake in the background.
 private const val BusyAfterMs = 3_000L
-
-// One sync as the details page lists it: when, whether it worked, how many titles changed here, whether and how much it sent, or why it failed.
-@Serializable
-data class SyncLogEntry(
-    val at: Long,
-    val ok: Boolean,
-    val changedHere: Int = 0,
-    val sent: Boolean = false,
-    val bytes: Long = 0,
-    val message: String = "",
-    val conflicts: List<SyncConflict> = emptyList(),
-)
-
-// How a sync of this profile went last, for the sync page.
-sealed interface SyncRun {
-    data object Idle : SyncRun
-    data object Running : SyncRun
-    data class Done(
-        val at: Long,
-        val changedHere: Int,
-        val sent: Boolean,
-        val bytes: Long = 0,
-        val conflicts: List<SyncConflict> = emptyList(),
-    ) : SyncRun
-    data class Failed(val problem: SyncProblem) : SyncRun
-}
 
 // Keeps the library of this profile the same as its rows on the server. It fetches the rows that changed since the last sync, merges them with this device by what each side changed since they last agreed, writes the result here, and sends only the rows that differ, in batches. The state they agreed on, with the number of the last change fetched, is kept in a file beside the profile.
 class LibrarySyncer(
@@ -104,6 +82,11 @@ class LibrarySyncer(
     // How far the sync that runs now is, for the sync page and the notice.
     val progress: StateFlow<SyncProgress?> = mutableProgress
     private var soon: Job? = null
+    private var afterChange: Job? = null
+
+    // True while a sync writes what it fetched here, which is not a change to send back.
+    @Volatile
+    private var writingHere = false
     private val json = Json { ignoreUnknownKeys = true }
 
     // Whether this profile is signed in and linked to a profile on the server.
@@ -143,6 +126,16 @@ class LibrarySyncer(
         soon = scope.launch {
             delay(AfterReadingMs)
             if (settings.flag(SettingKey.SyncAfterReading, true).first()) syncAuto()
+        }
+    }
+
+    // Asks for a sync a few seconds after something changed in the library here, while syncing by itself is on. What a sync writes here is not a change to send back.
+    fun changedSoon() {
+        if (writingHere) return
+        afterChange?.cancel()
+        afterChange = scope.launch {
+            delay(AfterChangeMs)
+            if (settings.number(SettingKey.SyncEveryMinutes, DefaultSyncMinutes).first() > 0) syncAuto()
         }
     }
 
@@ -264,7 +257,12 @@ class LibrarySyncer(
                 conflicts +=
                     SyncConflict(names[key] ?: key, kind)
             }
-            val changed = applier.apply(merged, localState, insertFrom)
+            writingHere = true
+            val changed = try {
+                applier.apply(merged, localState, insertFrom)
+            } finally {
+                writingHere = false
+            }
             // Sources and repos this device lacks are added. The settings came with the merge.
             if (withSources) {
                 insertFrom?.extras?.let {

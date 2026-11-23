@@ -4,10 +4,13 @@ import android.annotation.SuppressLint
 import android.os.Bundle
 import android.view.ViewGroup
 import android.webkit.CookieManager
+import android.webkit.WebResourceRequest
+import android.webkit.WebResourceResponse
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.activity.ComponentActivity
 import androidx.activity.OnBackPressedCallback
+import com.sumizuri.app.data.net.refusedPlainPage
 import kotlinx.coroutines.CompletableDeferred
 
 // A screen with the site in a WebView, so a person can pass a bot check the hidden browser could not. Its cookies are the ones the hidden browser uses, so the clearance counts for it. Back goes back in the page first and leaves when there is nowhere to go.
@@ -24,7 +27,11 @@ class ChallengeActivity : ComponentActivity() {
             setAcceptCookie(true)
             setAcceptThirdPartyCookies(web, true)
         }
-        web.webViewClient = WebViewClient()
+        web.webViewClient = object : WebViewClient() {
+            // Only Live may use plain http, so a site asking for it here gets nothing.
+            override fun shouldInterceptRequest(view: WebView, request: WebResourceRequest): WebResourceResponse? =
+                refusedPlainPage(request)
+        }
         setContentView(web)
         onBackPressedDispatcher.addCallback(
             this,

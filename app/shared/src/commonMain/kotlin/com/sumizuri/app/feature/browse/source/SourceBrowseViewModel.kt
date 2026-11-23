@@ -42,6 +42,8 @@ class SourceBrowseViewModel(
     private val manager: SourceManager,
     private val session: SessionRepository,
     private val solver: ChallengeSolver,
+    // A genre asked for from outside, such as a row of the library, which the first list shows in place of the last one seen.
+    private val startFilters: Map<String, Any?>? = null,
 ) : ViewModel() {
     private val mutableState = MutableStateFlow(
         SourceBrowseState(
@@ -90,7 +92,11 @@ class SourceBrowseViewModel(
             val known =
                 last == TabPopular || last == TabLatest ||
                     mutableState.value.catalogs.any { last == CatalogMark + it.id }
-            if (known && last != null) mutableState.update { it.copy(tab = last) }
+            if (startFilters != null) {
+                mutableState.update { it.copy(filters = startFilters, tab = TabSearch) }
+            } else if (known && last != null) {
+                mutableState.update { it.copy(tab = last) }
+            }
             load(1)
         }
         // A source that changes while its page is open, by an update or in the editor, is used as it is now, and the list is loaded again with it.
@@ -153,6 +159,11 @@ class SourceBrowseViewModel(
     fun onFilters(filters: Map<String, Any?>) {
         mutableState.update { it.copy(filters = filters, tab = TabSearch) }
         reload()
+    }
+
+    fun onOpenGenre(filters: Map<String, Any?>) {
+        mutableState.update { it.copy(query = "", activeQuery = null) }
+        onFilters(filters)
     }
 
     // Keeps the search and the filters that are showing as a tab of their own.
@@ -222,27 +233,8 @@ class SourceBrowseViewModel(
 
     fun onRetry() = reload()
 
-    // Adds an entry to the library from its cover, with its details and chapters when the source gives them, without opening it. One that is saved or being added already is left alone.
-    fun onQuickAdd(entry: SourceEntry) {
-        val now = mutableState.value
-        if (entry.url in now.inLibrary || entry.url in now.adding) return
-        mutableState.update { it.copy(adding = it.adding + entry.url) }
-        viewModelScope.launch {
-            val reading = opened()
-            val details = reading?.details(entry)?.valueOrNull()
-            val full =
-                details?.copy(
-                    url = entry.url,
-                    title = details.title.ifBlank { entry.title },
-                    coverUrl =
-                    details.coverUrl ?: entry.coverUrl,
-                )
-                    ?: entry
-            val chapters = reading?.chapters(full)?.valueOrNull().orEmpty()
-            library.addFromSource(now.source.id, now.source.kind, full, chapters)
-            mutableState.update { it.copy(adding = it.adding - entry.url) }
-        }
-    }
+    // Fetches details for a single hovered or long-pressed entry on demand.
+    suspend fun fetchDetails(entry: SourceEntry): SourceEntry? = opened()?.details(entry)?.valueOrNull()
 
     // A source that saved titles came from is only removed after a yes that says what happens to them.
     fun onRemove() {

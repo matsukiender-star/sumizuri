@@ -10,6 +10,7 @@ import com.sumizuri.app.shared.resources.shelf_style_grid
 import com.sumizuri.app.shared.resources.shelf_style_list
 import com.sumizuri.app.shared.resources.shelf_style_pages
 import com.sumizuri.app.shared.resources.shelf_style_row
+import com.sumizuri.app.shared.resources.suki_library_picks_row
 import org.jetbrains.compose.resources.StringResource
 
 // A part of the top of the library page, above the covers.
@@ -17,6 +18,9 @@ enum class LibrarySection(val label: StringResource) {
     Continue(Res.string.display_continue_row),
     Updates(Res.string.display_updates_row),
     History(Res.string.display_history_row),
+
+    // Rows of more of the genre of what was seen last in the pinned sources and those used lately.
+    Picks(Res.string.suki_library_picks_row),
 
     // The covers of the library, which can stand above or below the other parts.
     Library(Res.string.library_title),

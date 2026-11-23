@@ -12,9 +12,11 @@ import com.sumizuri.sync.server.admin.adminRoutes
 import com.sumizuri.sync.server.admin.serverSettingsRoutes
 import com.sumizuri.sync.server.admin.userManagementRoutes
 import com.sumizuri.sync.server.auth.Accounts
+import com.sumizuri.sync.server.auth.PairOffers
 import com.sumizuri.sync.server.auth.Sessions
 import com.sumizuri.sync.server.auth.TryLimiter
 import com.sumizuri.sync.server.auth.authRoutes
+import com.sumizuri.sync.server.auth.pairRoutes
 import com.sumizuri.sync.server.db.DatabaseSetting
 import com.sumizuri.sync.server.db.ServerDatabase
 import io.ktor.http.HttpStatusCode
@@ -22,7 +24,9 @@ import io.ktor.serialization.kotlinx.json.json
 import io.ktor.server.application.Application
 import io.ktor.server.application.install
 import io.ktor.server.application.log
+import io.ktor.server.engine.connector
 import io.ktor.server.engine.embeddedServer
+import io.ktor.server.engine.sslConnector
 import io.ktor.server.netty.Netty
 import io.ktor.server.plugins.BadRequestException
 import io.ktor.server.plugins.calllogging.CallLogging
@@ -42,6 +46,7 @@ val StartedAt: Long = System.currentTimeMillis()
 val ServerVersion: String = Config::class.java.`package`?.implementationVersion ?: "dev"
 
 fun main() {
+    endWithParent()
     val config = try {
         Config.load()
     } catch (problem: ConfigException) {
@@ -75,9 +80,33 @@ fun main() {
     val accounts = Accounts(database.db, setup)
     val sessions = Sessions(database.db)
     val limiter = TryLimiter(setup.secret, maxTries = { live.number(ServerSettings.WrongTries) })
-    embeddedServer(Netty, port = config.port, host = config.host) {
+    val tls = config.tlsPort?.let { HomeTls.open(config.dataDir) }
+    tls?.let { println("TLS on port ${config.tlsPort}, fingerprint ${it.fingerprint}") }
+    embeddedServer(
+        Netty,
+        configure = {
+            connector {
+                port = config.port
+                host = config.host
+            }
+            if (tls != null) {
+                sslConnector(tls.store, HomeTls.Alias, { HomeTls.Password }, { HomeTls.Password }) {
+                    port = config.tlsPort
+                    // Plain http can stay on this machine while phones come in here.
+                    host = "0.0.0.0"
+                }
+            }
+        },
+    ) {
         sumizuri(config, live, setup, accounts, limiter, sessions)
     }.start(wait = true)
+}
+
+// A server the app started ends with the app, also when the app crashed and could not stop it.
+private fun endWithParent() {
+    val pid = System.getenv("SUMIZURI_PARENT_PID")?.toLongOrNull() ?: return
+    val parent = ProcessHandle.of(pid).orElse(null) ?: exitProcess(0)
+    parent.onExit().thenRun { Runtime.getRuntime().halt(0) }
 }
 
 // Everything the server answers, set up once at start.
@@ -137,6 +166,7 @@ fun Application.sumizuri(
             )
         }
         authRoutes(live, accounts, limiter)
+        pairRoutes(PairOffers(accounts), sessions, limiter)
         accountRoutes(accounts, sessions, limiter, live)
         adminRoutes(accounts.db, sessions)
         userManagementRoutes(accounts.db, sessions, config, live, StartedAt)
