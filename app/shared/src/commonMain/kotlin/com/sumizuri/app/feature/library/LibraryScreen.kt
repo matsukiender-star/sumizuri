@@ -233,11 +233,11 @@ internal fun LibraryScreen(
                         .orEmpty()
                     // The heading over the covers is only needed when other parts stand above them.
                     val partsAbove = prefs.sectionOrder.takeWhile { it != LibrarySection.Library }.any {
-                        partItems(state, it) != null || (it == LibrarySection.Picks && picksHere.isNotEmpty())
+                        partItems(state, it) != null || (it == LibrarySection.Recommendations && picksHere.isNotEmpty())
                     }
                     // The covers are a part like the others, so they stand where the person put them.
                     for (section in prefs.sectionOrder) {
-                        if (section == LibrarySection.Picks) {
+                        if (section == LibrarySection.Recommendations) {
                             picksHere.forEachIndexed { index, pick ->
                                 fullSpan {
                                     LibraryPicksRow(
@@ -247,7 +247,7 @@ internal fun LibraryScreen(
                                         if (index ==
                                             0
                                         ) {
-                                            ({ hidePart(LibrarySection.Picks) })
+                                            ({ hidePart(LibrarySection.Recommendations) })
                                         } else {
                                             null
                                         },

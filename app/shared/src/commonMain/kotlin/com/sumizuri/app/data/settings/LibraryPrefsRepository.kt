@@ -73,10 +73,12 @@ class LibraryPrefsRepository(private val db: AppDatabase) {
             .split(",")
             .mapNotNull { name -> enumNamed<LibrarySection>(name) }
             .distinct()
-        // A part new since the order was saved goes just above the covers, where a new part is first seen.
-        val missing = LibrarySection.entries.filter { it !in saved }
+        // A part new since the order was saved goes just above the covers, where a new part is first seen, and the recommendations at the very end.
+        val (last, missing) = LibrarySection.entries.filter { it !in saved }.partition {
+            it == LibrarySection.Recommendations
+        }
         val covers = saved.indexOf(LibrarySection.Library).takeIf { it >= 0 } ?: saved.size
-        return saved.take(covers) + missing + saved.drop(covers)
+        return saved.take(covers) + missing + saved.drop(covers) + last
     }
 
     // Applies a change to the choices as they are now, and saves what the change made different.

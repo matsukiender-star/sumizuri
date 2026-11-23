@@ -100,7 +100,7 @@ private fun PartCard(
     val shown = covers || count > 0
     val note = if (covers) {
         null
-    } else if (section == LibrarySection.Picks) {
+    } else if (section == LibrarySection.Recommendations) {
         if (count ==
             0
         ) {
@@ -167,7 +167,7 @@ private fun PartDialog(
     onChange: ((LibraryPrefs) -> LibraryPrefs) -> Unit,
     onDone: () -> Unit,
 ) {
-    val picks = section == LibrarySection.Picks
+    val picks = section == LibrarySection.Recommendations
     val counts = if (picks) (0..LibraryPrefs.MaxPickRows).toList() else LibraryPrefs.Counts
     AppDialog(
         onDismissRequest = onDone,
@@ -200,6 +200,6 @@ private fun iconOf(section: LibrarySection): ImageVector = when (section) {
     LibrarySection.Continue -> Icons.Outlined.PlayCircle
     LibrarySection.Updates -> Icons.Outlined.NewReleases
     LibrarySection.History -> Icons.Outlined.History
-    LibrarySection.Picks -> Icons.Outlined.AutoAwesome
+    LibrarySection.Recommendations -> Icons.Outlined.AutoAwesome
     LibrarySection.Library -> Icons.Outlined.CollectionsBookmark
 }

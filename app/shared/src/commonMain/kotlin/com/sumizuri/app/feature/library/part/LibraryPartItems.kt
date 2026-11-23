@@ -12,7 +12,7 @@ internal fun partItems(state: LibraryState, section: LibrarySection): List<FeedI
         LibrarySection.Continue -> state.recent
         LibrarySection.Updates -> state.updates
         LibrarySection.History -> state.history
-        LibrarySection.Picks, LibrarySection.Library -> return null
+        LibrarySection.Recommendations, LibrarySection.Library -> return null
     }
     return items.takeIf { it.isNotEmpty() || section != LibrarySection.Continue }
 }

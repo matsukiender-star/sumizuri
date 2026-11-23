@@ -65,7 +65,7 @@ data class LibraryPrefs(
         LibrarySection.Continue -> continueCount
         LibrarySection.Updates -> updatesCount
         LibrarySection.History -> historyCount
-        LibrarySection.Picks -> picksRows
+        LibrarySection.Recommendations -> picksRows
         LibrarySection.Library -> 0
     }
 
@@ -77,7 +77,7 @@ data class LibraryPrefs(
         LibrarySection.History -> copy(historyCount = count)
 
         // Turned on from the list of parts it takes the usual number of rows, as a count of titles would be too many.
-        LibrarySection.Picks -> copy(picksRows = if (count > MaxPickRows) DefaultPickRows else count)
+        LibrarySection.Recommendations -> copy(picksRows = if (count > MaxPickRows) DefaultPickRows else count)
 
         LibrarySection.Library -> this
     }
@@ -86,14 +86,14 @@ data class LibraryPrefs(
         LibrarySection.Continue -> copy(continueStyle = style)
         LibrarySection.Updates -> copy(updatesStyle = style)
         LibrarySection.History -> copy(historyStyle = style)
-        LibrarySection.Picks, LibrarySection.Library -> this
+        LibrarySection.Recommendations, LibrarySection.Library -> this
     }
 
     fun styleOf(section: LibrarySection): ShelfStyle = when (section) {
         LibrarySection.Continue -> continueStyle
         LibrarySection.Updates -> updatesStyle
         LibrarySection.History -> historyStyle
-        LibrarySection.Picks, LibrarySection.Library -> ShelfStyle.Row
+        LibrarySection.Recommendations, LibrarySection.Library -> ShelfStyle.Row
     }
 
     companion object {

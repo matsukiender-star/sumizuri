@@ -25,7 +25,7 @@ fun LibraryRoute(onOpenTitle: (Long) -> Unit, onOpenChapter: (Long) -> Unit, onO
         LibraryPicksModel(
             container.sources.installed,
             container.session.browsePinned(),
-            container.libraryPrefs.prefs.map { it.countOf(LibrarySection.Picks) },
+            container.libraryPrefs.prefs.map { it.countOf(LibrarySection.Recommendations) },
             container.database.titles(),
             container.settings,
             container.reading,

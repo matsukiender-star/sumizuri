@@ -41,7 +41,7 @@ fun PicksRoute(onBack: () -> Unit) {
     val scope = rememberCoroutineScope()
     val rows = prefs.picksRows
     fun setRows(n: Int) {
-        scope.launch { container.libraryPrefs.update { it.withCount(LibrarySection.Picks, n) } }
+        scope.launch { container.libraryPrefs.update { it.withCount(LibrarySection.Recommendations, n) } }
     }
     SettingsPageFrame(Res.string.suki_library_picks_row, onBack, subtitle = Res.string.suki_picks_hint) {
         SettingsSection(Res.string.suki_library_picks_row) {
