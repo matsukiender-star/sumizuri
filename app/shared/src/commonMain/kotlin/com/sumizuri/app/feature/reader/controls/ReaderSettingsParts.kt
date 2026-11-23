@@ -21,6 +21,7 @@ import com.sumizuri.app.shared.resources.reader_invert_colors
 import com.sumizuri.app.shared.resources.reader_invert_taps
 import com.sumizuri.app.shared.resources.reader_keep_on
 import com.sumizuri.app.shared.resources.reader_orientation
+import com.sumizuri.app.shared.resources.reader_menu_button
 import com.sumizuri.app.shared.resources.reader_page_number
 import com.sumizuri.app.shared.resources.reader_progress_bar
 import com.sumizuri.app.shared.resources.reader_sepia
@@ -102,6 +103,13 @@ internal fun ControlsPart(settings: ReaderSettings, onSettings: (ReaderSettings)
                 Res.string.reader_page_number,
                 settings.pageNumber,
                 { onSettings(settings.copy(pageNumber = it)) },
+            )
+        }
+        padded {
+            SwitchSetting(
+                Res.string.reader_menu_button,
+                settings.menuButton,
+                { onSettings(settings.copy(menuButton = it)) },
             )
         }
         padded {

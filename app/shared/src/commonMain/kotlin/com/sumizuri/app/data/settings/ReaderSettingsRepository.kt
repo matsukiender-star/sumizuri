@@ -105,6 +105,7 @@ class ReaderSettingsRepository(private val db: AppDatabase) {
         put("${Prefix}progressBar", settings.progressBar.name)
         put("${Prefix}controls", settings.controls.name)
         put("${Prefix}pageNumber", settings.pageNumber.toString())
+        put("${Prefix}menuButton", settings.menuButton.toString())
         put("${Prefix}controlShade", settings.controlShade.toString())
         put("${Prefix}lookup", settings.lookup.name)
         put("${Prefix}inlineNext", settings.inlineNext.toString())
@@ -157,6 +158,7 @@ class ReaderSettingsRepository(private val db: AppDatabase) {
             progressBar = enumNamed<ReaderProgressBar>(rows["${Prefix}progressBar"]) ?: usual.progressBar,
             controls = enumNamed<ReaderControls>(rows["${Prefix}controls"]) ?: usual.controls,
             pageNumber = rows["${Prefix}pageNumber"] != "false",
+            menuButton = rows["${Prefix}menuButton"] != "false",
             controlShade = rows["${Prefix}controlShade"]?.toFloatOrNull()?.coerceIn(0f, 1f) ?: usual.controlShade,
             lookup = enumNamed<ReaderLookup>(rows["${Prefix}lookup"]) ?: usual.lookup,
             inlineNext = rows["${Prefix}inlineNext"] != "false",
