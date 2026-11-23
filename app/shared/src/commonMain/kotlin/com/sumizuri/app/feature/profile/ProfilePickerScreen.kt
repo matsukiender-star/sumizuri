@@ -49,6 +49,7 @@ import com.sumizuri.app.ui.language.applyAppLanguage
 import com.sumizuri.app.ui.theme.SumizuriTheme
 import com.sumizuri.app.ui.theme.ThemeMode
 import com.sumizuri.app.ui.theme.spec.ThemePresets
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import org.jetbrains.compose.resources.stringResource
 
@@ -98,8 +99,13 @@ internal fun StartupProfileGate(
     val language by remember(container) {
         container.settings.text(SettingKey.Language).map { saved -> AppLanguage.fromSaved(saved) }
     }.collectAsStateWithLifecycle(initialValue = null)
+    // The look of that profile too, so a dark app never opens on a light picker.
+    val look by remember(container) {
+        combine(container.settings.themeMode, container.themes.active) { mode, theme -> mode to theme }
+    }.collectAsStateWithLifecycle(initialValue = null)
     val resolvedLanguage = language
-    if (resolvedLanguage == null) {
+    val resolvedLook = look
+    if (resolvedLanguage == null || resolvedLook == null) {
         StartBackdrop()
         return
     }
@@ -109,7 +115,7 @@ internal fun StartupProfileGate(
     }
 
     key(resolvedLanguage.code) {
-        SumizuriTheme(ThemeMode.System, ThemePresets.first(), oled = false, oledGlow = false) {
+        SumizuriTheme(resolvedLook.first, resolvedLook.second, oled = false, oledGlow = false) {
             StartShown(true)
             ProfilePickerScreen(
                 profiles = state.profiles,
