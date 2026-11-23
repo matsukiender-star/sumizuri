@@ -4,8 +4,6 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -59,10 +57,12 @@ import com.sumizuri.app.data.LocalAppContainer
 import com.sumizuri.app.data.live.LiveChannel
 import com.sumizuri.app.playback.AspectMode
 import com.sumizuri.app.playback.LocalFullscreen
+import com.sumizuri.app.playback.LocalMiniPlayer
 import com.sumizuri.app.playback.PlayerMedia
 import com.sumizuri.app.playback.PlayerSurface
 import com.sumizuri.app.playback.PlayerSystemUi
 import com.sumizuri.app.playback.PlayerWindow
+import com.sumizuri.app.playback.PlayingNow
 import com.sumizuri.app.playback.SubtitleStyle
 import com.sumizuri.app.playback.rememberPlayerEngine
 import com.sumizuri.app.shared.resources.Res
@@ -102,8 +102,24 @@ fun LivePlayerRoute(playlistId: String, initialChannelId: String, onBack: () -> 
     val engine = rememberPlayerEngine(SubtitleStyle())
     val playerState by engine.state.collectAsStateWithLifecycle()
 
+    // The small floating player: while it shows, only the picture is drawn.
+    val mini = LocalMiniPlayer.current
+    val small = mini?.active == true
+    val shape = if (playerState.videoWidth > 0 &&
+        playerState.videoHeight > 0
+    ) {
+        playerState.videoWidth.toFloat() / playerState.videoHeight
+    } else {
+        16f / 9f
+    }
+    // A phone goes to picture in picture by itself when the person leaves the app while a channel plays.
+    LaunchedEffect(playerState.playing, shape) { PlayingNow.aspect = shape.takeIf { playerState.playing } }
+
     DisposableEffect(engine) {
-        onDispose { engine.release() }
+        onDispose {
+            PlayingNow.aspect = null
+            engine.release()
+        }
     }
 
     LaunchedEffect(channel?.id, reloadNonce) {
@@ -146,10 +162,10 @@ fun LivePlayerRoute(playlistId: String, initialChannelId: String, onBack: () -> 
         Modifier
             .fillMaxSize()
             .background(Color.Black)
-            .clickable(
-                interactionSource = remember { MutableInteractionSource() },
-                indication = null,
-            ) { controlsShown = !controlsShown },
+            .wheelVolume(engine)
+            .liveTaps(small, mini, {
+                controlsShown = !controlsShown
+            }) { if (playerState.playing) engine.pause() else engine.play() },
     ) {
         PlayerSurface(engine, aspect, Modifier.fillMaxSize())
 
@@ -157,7 +173,7 @@ fun LivePlayerRoute(playlistId: String, initialChannelId: String, onBack: () -> 
             InkCircularProgressIndicator(Modifier.align(Alignment.Center))
         }
 
-        if (playerState.problem != null) {
+        if (playerState.problem != null && !small) {
             LiveErrorOverlay(
                 onRetry = { reloadNonce++ },
                 onNext = goNext,
@@ -166,7 +182,7 @@ fun LivePlayerRoute(playlistId: String, initialChannelId: String, onBack: () -> 
         }
 
         AnimatedVisibility(
-            visible = controlsShown && playerState.problem == null,
+            visible = controlsShown && playerState.problem == null && !small,
             enter = fadeIn(),
             exit = fadeOut(),
             modifier = Modifier.fillMaxSize(),
@@ -214,12 +230,14 @@ fun LivePlayerRoute(playlistId: String, initialChannelId: String, onBack: () -> 
                             )
                         }
                     }
+                    LiveVolume(playerState.volume, engine::setVolume)
                     IconButton(onClick = {
                         val entries = AspectMode.entries
                         aspect = entries[(entries.indexOf(aspect) + 1) % entries.size]
                     }) {
                         Icon(Icons.Outlined.AspectRatio, null, tint = Color.White)
                     }
+                    mini?.let { LiveMiniButton(it, shape) }
                     fullscreen?.let { fs ->
                         IconButton(onClick = fs.toggle) {
                             Icon(
