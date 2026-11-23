@@ -36,7 +36,6 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
-import kotlinx.serialization.Serializable
 import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.json.Json
 import okio.Buffer
@@ -58,32 +57,6 @@ private const val AfterChangeMs = 5_000L
 
 // A sync that runs longer than this keeps the app awake in the background.
 private const val BusyAfterMs = 3_000L
-
-// One sync as the details page lists it: when, whether it worked, how many titles changed here, whether and how much it sent, or why it failed.
-@Serializable
-data class SyncLogEntry(
-    val at: Long,
-    val ok: Boolean,
-    val changedHere: Int = 0,
-    val sent: Boolean = false,
-    val bytes: Long = 0,
-    val message: String = "",
-    val conflicts: List<SyncConflict> = emptyList(),
-)
-
-// How a sync of this profile went last, for the sync page.
-sealed interface SyncRun {
-    data object Idle : SyncRun
-    data object Running : SyncRun
-    data class Done(
-        val at: Long,
-        val changedHere: Int,
-        val sent: Boolean,
-        val bytes: Long = 0,
-        val conflicts: List<SyncConflict> = emptyList(),
-    ) : SyncRun
-    data class Failed(val problem: SyncProblem) : SyncRun
-}
 
 // Keeps the library of this profile the same as its rows on the server. It fetches the rows that changed since the last sync, merges them with this device by what each side changed since they last agreed, writes the result here, and sends only the rows that differ, in batches. The state they agreed on, with the number of the last change fetched, is kept in a file beside the profile.
 class LibrarySyncer(
@@ -286,19 +259,15 @@ class LibrarySyncer(
             }
             writingHere = true
             val changed = try {
-                applier.apply(merged, localState, insertFrom).also {
-                    // Sources and repos this device lacks are added. The settings came with the merge.
-                    if (withSources) {
-                        insertFrom?.extras?.let {
-                            restorer.restoreExtras(
-                                BackupExtras(repos = it.repos, values = it.values),
-                                withSettings = false,
-                            )
-                        }
-                    }
-                }
+                applier.apply(merged, localState, insertFrom)
             } finally {
                 writingHere = false
+            }
+            // Sources and repos this device lacks are added. The settings came with the merge.
+            if (withSources) {
+                insertFrom?.extras?.let {
+                    restorer.restoreExtras(BackupExtras(repos = it.repos, values = it.values), withSettings = false)
+                }
             }
             val afterText = pack(withSources, withSettings)
             val after = stateOf(readSumizuriBackup(afterText))

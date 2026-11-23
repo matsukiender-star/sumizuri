@@ -158,10 +158,7 @@ class LibraryRepository(private val db: AppDatabase, private val scope: Coroutin
         return manual + library.first().filter { title -> smart.any { it.matches(title, context) } }.map { it.id }
     }
 
-    suspend fun setFavorite(ids: Collection<Long>, favorite: Boolean) {
-        for (part in ids.chunked(BulkChunk)) db.titles().setFavoriteMany(part, favorite)
-        onChanged?.invoke()
-    }
+    suspend fun setFavorite(ids: Collection<Long>, favorite: Boolean) = ids.chunked(BulkChunk).forEach { db.titles().setFavoriteMany(it, favorite) }.also { onChanged?.invoke() }
 
     // Takes the titles out of the library. Their chapters and marks stay until the title is removed from the app.
     suspend fun removeFromLibrary(ids: Collection<Long>) {
@@ -332,15 +329,9 @@ class LibraryRepository(private val db: AppDatabase, private val scope: Coroutin
         onChanged?.invoke()
     }
 
-    suspend fun setBookmarked(chapterId: Long, bookmarked: Boolean) {
-        db.chapters().setBookmarked(chapterId, bookmarked)
-        onChanged?.invoke()
-    }
+    suspend fun setBookmarked(chapterId: Long, bookmarked: Boolean) = db.chapters().setBookmarked(chapterId, bookmarked).also { onChanged?.invoke() }
 
-    suspend fun setBookmarkedMany(chapterIds: Collection<Long>, bookmarked: Boolean) {
-        chapterIds.chunked(BulkChunk).forEach { db.chapters().setBookmarkedMany(it, bookmarked) }
-        onChanged?.invoke()
-    }
+    suspend fun setBookmarkedMany(chapterIds: Collection<Long>, bookmarked: Boolean) = chapterIds.chunked(BulkChunk).forEach { db.chapters().setBookmarkedMany(it, bookmarked) }.also { onChanged?.invoke() }
 
     // Marks many chapters read or unread at once. Unread forgets the place in the chapter too.
     suspend fun setReadMany(titleId: Long, chapterIds: Collection<Long>, read: Boolean) {
