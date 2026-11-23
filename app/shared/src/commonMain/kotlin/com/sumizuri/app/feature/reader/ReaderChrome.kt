@@ -200,4 +200,5 @@ internal fun BoxWithConstraintsScope.ReaderChrome(
             .align(if (bottom) Alignment.BottomCenter else Alignment.TopCenter)
             .onSizeChanged { islandRoom = with(density) { it.height.toDp() } },
     )
+    if (settings.menuButton && !controls && !bar.auto) ReaderMenuButton(calls.onShowControls)
 }
