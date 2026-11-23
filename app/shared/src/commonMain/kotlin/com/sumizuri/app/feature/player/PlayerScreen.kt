@@ -21,6 +21,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -40,6 +41,7 @@ import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalWindowInfo
+import androidx.compose.ui.text.intl.Locale
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigationevent.NavigationEventInfo
@@ -257,6 +259,21 @@ internal fun PlayerScreen(session: PlayerSession, engine: PlayerEngine, onClose:
         onMini = mini?.let { control -> { control.enter(shape) } },
         onVolume = if (touchPlayer) null else ::volumeTo,
     )
+    // Subtitles of the source can be put into the language of the app, the way a video site makes automatic ones. The picker stays open, so its line shows the work.
+    val language = Locale.current.language
+    val translatedName = translatedName(language)
+    val translateScope = rememberCoroutineScope()
+    val translate = if (SubtitleTranslate.offered(
+            state.current?.subtitles.orEmpty(),
+            player.subtitles,
+            language,
+            translatedName,
+        )
+    ) {
+        { SubtitleTranslate.start(session, engine, translateScope, language, translatedName) }
+    } else {
+        null
+    }
     val pickerCalls = PickerCalls(
         onClose = { picker = null },
         onOpen = { picker = it },
@@ -292,6 +309,7 @@ internal fun PlayerScreen(session: PlayerSession, engine: PlayerEngine, onClose:
             picker = null
             logShown = !logShown
         },
+        onTranslateSubtitles = translate,
     )
 
     Box(

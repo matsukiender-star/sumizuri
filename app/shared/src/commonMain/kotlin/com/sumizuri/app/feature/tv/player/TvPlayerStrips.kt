@@ -18,6 +18,7 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.intl.Locale
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -28,6 +29,7 @@ import com.sumizuri.app.feature.player.overlay.speedText
 import com.sumizuri.app.feature.player.picker.Picker
 import com.sumizuri.app.feature.player.picker.PickerSpeeds
 import com.sumizuri.app.feature.player.picker.trackName
+import com.sumizuri.app.feature.player.translateTitle
 import com.sumizuri.app.playback.PlayerState
 import com.sumizuri.app.shared.resources.Res
 import com.sumizuri.app.shared.resources.player_audio
@@ -60,6 +62,7 @@ internal class StripCalls(
     val onAudio: (String) -> Unit,
     val onVideo: (SourceVideo) -> Unit,
     val onSpeed: (Float) -> Unit,
+    val onTranslateSubtitles: (() -> Unit)? = null,
 )
 
 // A choice of the player as a row of cards low over the video, the way the episodes are: its name over the row, and the one in use in focus. OK takes a card.
@@ -171,7 +174,12 @@ private fun stripCards(picker: Picker, state: SessionState, player: PlayerState,
                 StripCard(track.id, trackName(track), null, player.subtitle == track.id) {
                     calls.onSubtitle(track.id)
                 }
-            }
+            } +
+            listOfNotNull(
+                calls.onTranslateSubtitles?.let { onTranslate ->
+                    StripCard("translate", translateTitle(Locale.current.language), null, false) { onTranslate() }
+                },
+            )
 
         Picker.Audio -> buildList {
             versions?.let { (subbed, dubbed) ->

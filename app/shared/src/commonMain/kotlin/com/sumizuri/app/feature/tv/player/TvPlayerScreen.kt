@@ -14,6 +14,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -26,6 +27,7 @@ import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
+import androidx.compose.ui.text.intl.Locale
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigationevent.NavigationEventInfo
 import androidx.navigationevent.compose.NavigationBackHandler
@@ -34,12 +36,14 @@ import com.sumizuri.app.data.text.nowMillis
 import com.sumizuri.app.feature.player.AmbientGlow
 import com.sumizuri.app.feature.player.PlayerPhase
 import com.sumizuri.app.feature.player.PlayerSession
+import com.sumizuri.app.feature.player.SubtitleTranslate
 import com.sumizuri.app.feature.player.overlay.ActiveMarker
 import com.sumizuri.app.feature.player.overlay.PlayerFailureView
 import com.sumizuri.app.feature.player.overlay.PlayerGestureMath
 import com.sumizuri.app.feature.player.overlay.PlayerLoading
 import com.sumizuri.app.feature.player.overlay.PlayerMarkers
 import com.sumizuri.app.feature.player.picker.Picker
+import com.sumizuri.app.feature.player.translatedName
 import com.sumizuri.app.playback.AspectMode
 import com.sumizuri.app.playback.PlayerEngine
 import com.sumizuri.app.playback.PlayerSurface
@@ -64,6 +68,21 @@ private const val HoldGapMs = 450L
 internal fun TvPlayerScreen(session: PlayerSession, engine: PlayerEngine, onClose: () -> Unit) {
     val state by session.state.collectAsStateWithLifecycle()
     val player by engine.state.collectAsStateWithLifecycle()
+    // Subtitles of the source put into the language of the app, from the row of subtitles. The row stays, so its card shows the work.
+    val language = Locale.current.language
+    val translatedName = translatedName(language)
+    val translateScope = rememberCoroutineScope()
+    val translate = if (SubtitleTranslate.offered(
+            state.current?.subtitles.orEmpty(),
+            player.subtitles,
+            language,
+            translatedName,
+        )
+    ) {
+        { SubtitleTranslate.start(session, engine, translateScope, language, translatedName) }
+    } else {
+        null
+    }
     val prefs = state.prefs
     var controls by remember { mutableStateOf(TvControls.Hidden) }
     // The choice open as a row of cards in place of the buttons.
@@ -250,6 +269,7 @@ internal fun TvPlayerScreen(session: PlayerSession, engine: PlayerEngine, onClos
                         strip = null
                         session.selectVideo(video)
                     },
+                    onTranslateSubtitles = translate,
                     onSpeed = { speed ->
                         strip = null
                         engine.setSpeed(speed)

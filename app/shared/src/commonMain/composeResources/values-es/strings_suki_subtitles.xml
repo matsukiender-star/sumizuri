@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="suki_player_translate_subs">Traducir a %1$s (automático)</string>
+    <string name="suki_player_translating">Traduciendo los subtítulos…</string>
+    <string name="suki_player_translate_failed">No se pudieron traducir los subtítulos. Vuelve a intentarlo</string>
+    <string name="suki_player_translated_name">%1$s (automático)</string>
+</resources>

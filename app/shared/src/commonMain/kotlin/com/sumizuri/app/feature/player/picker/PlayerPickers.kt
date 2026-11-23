@@ -17,6 +17,7 @@ import androidx.compose.material.icons.outlined.Speed
 import androidx.compose.material.icons.outlined.Subtitles
 import androidx.compose.material.icons.outlined.SubtitlesOff
 import androidx.compose.material.icons.outlined.Terminal
+import androidx.compose.material.icons.outlined.Translate
 import androidx.compose.material.icons.rounded.PlayCircle
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -26,11 +27,13 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.text.intl.Locale
 import com.sumizuri.app.data.library.seasonSlices
 import com.sumizuri.app.data.model.Kind
 import com.sumizuri.app.feature.player.SessionState
 import com.sumizuri.app.feature.player.VideoChoice
 import com.sumizuri.app.feature.player.overlay.speedText
+import com.sumizuri.app.feature.player.translateTitle
 import com.sumizuri.app.feature.title.chapter.seasonTitle
 import com.sumizuri.app.playback.AspectMode
 import com.sumizuri.app.playback.PlayerState
@@ -116,6 +119,7 @@ internal fun PlayerPicker(
         }
 
         Picker.Subtitles -> {
+            val translate = calls.onTranslateSubtitles?.let { it to translateTitle(Locale.current.language) }
             val lines = buildList {
                 add(
                     Line(
@@ -137,6 +141,7 @@ internal fun PlayerPicker(
                         ),
                     )
                 }
+                translate?.let { (onTranslate, title) -> add(Line(Icons.Outlined.Translate, title, onTranslate)) }
                 add(
                     Line(
                         Icons.Outlined.FileOpen,
