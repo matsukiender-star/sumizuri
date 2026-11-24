@@ -10,6 +10,7 @@ import androidx.compose.foundation.interaction.collectIsHoveredAsState
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.shape.CornerBasedShape
+import androidx.compose.foundation.shape.CornerSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
@@ -23,7 +24,11 @@ import com.sumizuri.app.ui.motion.feedbackScale
 
 // The corners of every card, the small ones of the theme like the soft cards, unless a theme of its own has others.
 val CardShape: CornerBasedShape
-    @Composable get() = MaterialTheme.shapes.small
+    @Composable get() = MaterialTheme.shapes.small.takeUnless { it.topStart == PillCorner }
+        ?: MaterialTheme.shapes.medium
+
+// A theme with buttons round at the ends gives them half the height as corners, which turns a tall card into an oval, so its cards take the corners it gives cards.
+private val PillCorner = CornerSize(50)
 
 // How long a card takes to brighten under the mouse, quick enough to follow a pointer moving down a list.
 private const val HoverMs = 120
