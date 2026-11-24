@@ -19,8 +19,10 @@ fun GlobalSearchRoute(
     onOpenPreview: (InstalledSource, SourceEntry) -> Unit,
 ) {
     val container = LocalAppContainer.current
-    val viewModel =
-        viewModel { GlobalSearchViewModel(initial, kind, container.sources, container.manager, container.library) }
+    // One model per search: without a key the app-wide store hands back the first one, still holding its old words.
+    val viewModel = viewModel(key = "global_search_${initial}_$kind") {
+        GlobalSearchViewModel(initial, kind, container.sources, container.manager, container.library)
+    }
     val state by viewModel.state.collectAsStateWithLifecycle()
     val scope = rememberCoroutineScope()
     GlobalSearchScreen(state, onBack, viewModel::onQuery, viewModel::onKind) { source, entry ->
