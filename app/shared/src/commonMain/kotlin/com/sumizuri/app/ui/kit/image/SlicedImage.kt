@@ -60,8 +60,8 @@ fun SlicedImage(
 val LocalPageFilter = compositionLocalOf<ColorFilter?> { null }
 
 // The filter for the choices of the reader, or null when none is on. Gray, old paper brown, a stronger or softer contrast and colors turned around can all be on together.
-fun pageFilterOf(gray: Boolean, invert: Boolean, sepia: Float = 0f, contrast: Float = 1f): ColorFilter? {
-    if (!gray && !invert && sepia <= 0f && contrast == 1f) return null
+fun pageFilterOf(gray: Boolean, invert: Boolean, sepia: Float = 0f, contrast: Float = 1f, lightInvert: Boolean = false): ColorFilter? {
+    if (!gray && !invert && sepia <= 0f && contrast == 1f && !lightInvert) return null
     val matrix = ColorMatrix()
     if (gray) matrix.setToSaturation(0f)
     if (sepia > 0f) matrix *= sepiaMatrix(sepia.coerceIn(0f, 1f))
@@ -76,8 +76,19 @@ fun pageFilterOf(gray: Boolean, invert: Boolean, sepia: Float = 0f, contrast: Fl
                 floatArrayOf(-1f, 0f, 0f, 0f, 255f, 0f, -1f, 0f, 0f, 255f, 0f, 0f, -1f, 0f, 255f, 0f, 0f, 0f, 1f, 0f),
             )
     }
+    // Suki: turns the light of each color around and keeps its hue, so white goes dark and black light while red stays red.
+    if (lightInvert) matrix *= LightInvert
     return ColorFilter.colorMatrix(matrix)
 }
+
+private val LightInvert = ColorMatrix(
+    floatArrayOf(
+        1f - 2f * 0.299f, -2f * 0.587f, -2f * 0.114f, 0f, 255f,
+        -2f * 0.299f, 1f - 2f * 0.587f, -2f * 0.114f, 0f, 255f,
+        -2f * 0.299f, -2f * 0.587f, 1f - 2f * 0.114f, 0f, 255f,
+        0f, 0f, 0f, 1f, 0f,
+    ),
+)
 
 // The pieces of a page in the part of it that is in view, with one more above and below so each is ready as it scrolls in. Null draws them all, and an empty range draws none.
 private fun slicesInView(
