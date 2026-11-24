@@ -43,6 +43,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -65,6 +66,7 @@ import com.sumizuri.app.playback.PlayerWindow
 import com.sumizuri.app.playback.PlayingNow
 import com.sumizuri.app.playback.SubtitleStyle
 import com.sumizuri.app.playback.rememberPlayerEngine
+import com.sumizuri.app.playback.touchPlayer
 import com.sumizuri.app.shared.resources.Res
 import com.sumizuri.app.shared.resources.suki_live_badge
 import com.sumizuri.app.shared.resources.suki_live_favorite
@@ -158,6 +160,14 @@ fun LivePlayerRoute(playlistId: String, initialChannelId: String, onBack: () -> 
     PlayerSystemUi(keepOn = playerState.playing && playerState.problem == null)
 
     val fullscreen = LocalFullscreen.current
+    // A double click on the computer goes in and out of full screen, through the latest control so the clicks are not lost while the video redraws.
+    val latestFullscreen by rememberUpdatedState(fullscreen)
+    val toggleFullscreen = remember {
+        {
+            latestFullscreen?.toggle?.invoke()
+            Unit
+        }
+    }
     Box(
         Modifier
             .fillMaxSize()
@@ -165,7 +175,9 @@ fun LivePlayerRoute(playlistId: String, initialChannelId: String, onBack: () -> 
             .wheelVolume(engine)
             .liveTaps(small, mini, {
                 controlsShown = !controlsShown
-            }) { if (playerState.playing) engine.pause() else engine.play() },
+            }, toggleFullscreen.takeIf { fullscreen != null && !touchPlayer }) {
+                if (playerState.playing) engine.pause() else engine.play()
+            },
     ) {
         PlayerSurface(engine, aspect, Modifier.fillMaxSize())
 

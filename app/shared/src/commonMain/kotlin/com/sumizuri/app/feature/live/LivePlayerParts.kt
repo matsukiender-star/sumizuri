@@ -39,16 +39,21 @@ internal fun Modifier.wheelVolume(engine: PlayerEngine): Modifier = pointerInput
     }
 }
 
-// Taps on a live channel: in the small player a tap plays or pauses and a double tap brings the player back, and in the full one a tap shows or hides the controls.
+// Taps on a live channel: in the small player a tap plays or pauses and a double tap brings the player back, and in the full one a tap shows or hides the controls and a double click on the computer goes in and out of full screen.
 internal fun Modifier.liveTaps(
     small: Boolean,
     mini: MiniPlayerControl?,
     onToggle: () -> Unit,
+    onFullscreen: (() -> Unit)?,
     onPlayPause: () -> Unit,
-): Modifier = pointerInput(small) {
+): Modifier = pointerInput(small, onFullscreen != null) {
     detectTapGestures(
         onTap = { if (small) onPlayPause() else onToggle() },
-        onDoubleTap = if (small && mini != null) ({ _ -> mini.exit() }) else null,
+        onDoubleTap = when {
+            small && mini != null -> ({ _ -> mini.exit() })
+            !small && onFullscreen != null -> ({ _ -> onFullscreen() })
+            else -> null
+        },
     )
 }
 
