@@ -361,6 +361,10 @@ class Accounts(val db: Database, private val setup: Setup) {
         return SignedIn(token, userId, username, role, deviceId, keyByPassword)
     }
 
+    // A device let in by one that is signed in already. The caller opens the transaction.
+    internal fun signInPaired(row: ResultRow, device: DeviceInfo): SignedIn =
+        signIn(row[Users.id], row[Users.username], roleOf(row), row[Users.keyByPassword], device)
+
     private fun findIn(key: String): ResultRow? = Users.selectAll().where { Users.usernameKey eq key }.singleOrNull()
 
     private fun roleOf(row: ResultRow): Role = Role.entries.first { it.name.equals(row[Users.role], ignoreCase = true) }

@@ -45,6 +45,8 @@ import com.sumizuri.app.shared.resources.player_size_large
 import com.sumizuri.app.shared.resources.player_size_medium
 import com.sumizuri.app.shared.resources.player_size_small
 import com.sumizuri.app.shared.resources.player_sub_preview
+import com.sumizuri.app.shared.resources.suki_player_translate_to
+import com.sumizuri.app.shared.resources.suki_player_translate_to_app
 import com.sumizuri.app.ui.kit.setting.ChoiceSetting
 import com.sumizuri.app.ui.kit.setting.SettingsSection
 import com.sumizuri.app.ui.kit.setting.SwitchSetting
@@ -66,7 +68,7 @@ private fun backgroundName(background: SubtitleBackground): StringResource = whe
     SubtitleBackground.Box -> Res.string.player_bg_box
 }
 
-// The group of the subtitles: a line that shows how they will look, then the size, color, style, weight and place of the letters, and which subtitle to turn on.
+// The group of the subtitles: a line that shows how they will look, then the size, color, style, weight and place of the letters, which subtitle to turn on, and the language automatic ones are made in.
 @Composable
 internal fun PlayerSubtitleSettings(prefs: PlayerPrefs, change: ((PlayerPrefs) -> PlayerPrefs) -> Unit) {
     SettingsSection(Res.string.player_group_subtitles) {
@@ -78,6 +80,7 @@ internal fun PlayerSubtitleSettings(prefs: PlayerPrefs, change: ((PlayerPrefs) -
         padded { ChoiceSetting(Res.string.player_set_sub_position, listOf(0, 1, 2), prefs.subtitleRaise, { stringResource(PositionNames[it]) }) { value -> change { it.copy(subtitleRaise = value) } } }
         padded { SwitchSetting(Res.string.player_set_show_subtitles, prefs.showSubtitles, { on -> change { it.copy(showSubtitles = on) } }) }
         padded { ChoiceSetting(Res.string.player_set_language, Languages, prefs.subtitleLanguage, { if (it.isEmpty()) stringResource(Res.string.player_set_language_none) else languageName(it) }) { language -> change { it.copy(subtitleLanguage = language) } } }
+        padded { ChoiceSetting(Res.string.suki_player_translate_to, Languages, prefs.translateLanguage, { if (it.isEmpty()) stringResource(Res.string.suki_player_translate_to_app) else languageName(it) }) { language -> change { it.copy(translateLanguage = language) } } }
     }
 }
 

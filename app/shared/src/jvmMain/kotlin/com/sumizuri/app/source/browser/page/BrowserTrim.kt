@@ -52,11 +52,16 @@ internal val TrimmedSwitches = listOf(
     "--renderer-process-limit=$PageProcesses",
 ) + systemSwitches()
 
-// Chromium locks its cookies with a key from the keyring of Linux or the keychain of a Mac, which can stop the start to ask for a password, so it keeps its own key in its folder instead. On Linux it also draws through X11, as the window of Java it draws into is always an X11 one, under Wayland too.
+// Chromium locks its cookies with a key from the keyring of Linux or the keychain of a Mac, which can stop the start to ask for a password, so it keeps its own key in its folder instead. On Linux it also draws through X11, as the window of Java it draws into is always an X11 one, under Wayland too, and draws without the graphics card: the app closed on its own a few minutes after the browser started on Hyprland, and its pages need nothing the processor cannot draw.
 private fun systemSwitches(): List<String> {
     val system = System.getProperty("os.name").orEmpty()
     return when {
-        system.startsWith("Linux") -> listOf("--password-store=basic", "--ozone-platform=x11")
+        system.startsWith("Linux") -> listOf(
+            "--password-store=basic",
+            "--ozone-platform=x11",
+            "--disable-gpu",
+            "--disable-gpu-compositing",
+        )
         system.startsWith("Mac") -> listOf("--use-mock-keychain")
         else -> emptyList()
     }

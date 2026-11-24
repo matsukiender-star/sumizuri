@@ -41,6 +41,7 @@ import com.sumizuri.app.shared.resources.display_see_all
 import com.sumizuri.app.ui.kit.card.AppCard
 import com.sumizuri.app.ui.kit.card.AppSectionLabel
 import com.sumizuri.app.ui.kit.cover.CoverArt
+import com.sumizuri.app.ui.kit.scroll.ArrowRow
 import com.sumizuri.app.ui.kit.scroll.mouseDragScroll
 import com.sumizuri.app.ui.motion.entrance
 import com.sumizuri.app.ui.motion.feedbackScale
@@ -102,13 +103,15 @@ private fun LibraryPart(
         when (style) {
             ShelfStyle.Row -> {
                 val row = rememberLazyListState()
-                LazyRow(
-                    Modifier.mouseDragScroll(row, horizontal = true),
-                    state = row,
-                    contentPadding = PaddingValues(0.dp),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                ) {
-                    items(items, key = { it.title.id }) { PartCell(it, cover, scale, onOpen) }
+                ArrowRow(row) {
+                    LazyRow(
+                        Modifier.mouseDragScroll(row, horizontal = true),
+                        state = row,
+                        contentPadding = PaddingValues(0.dp),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    ) {
+                        items(items, key = { it.title.id }) { PartCell(it, cover, scale, onOpen) }
+                    }
                 }
             }
 
@@ -125,25 +128,29 @@ private fun LibraryPart(
 
             ShelfStyle.Pages -> {
                 val row = rememberLazyListState()
-                LazyRow(
-                    Modifier.mouseDragScroll(row, horizontal = true),
-                    state = row,
-                    contentPadding = PaddingValues(0.dp),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                ) {
-                    items(items, key = { it.title.id }) { PageCard(it, scale, onOpen, onContinue) }
+                ArrowRow(row) {
+                    LazyRow(
+                        Modifier.mouseDragScroll(row, horizontal = true),
+                        state = row,
+                        contentPadding = PaddingValues(0.dp),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    ) {
+                        items(items, key = { it.title.id }) { PageCard(it, scale, onOpen, onContinue) }
+                    }
                 }
             }
 
             ShelfStyle.Cards -> {
                 val row = rememberLazyListState()
-                LazyRow(
-                    Modifier.mouseDragScroll(row, horizontal = true),
-                    state = row,
-                    contentPadding = PaddingValues(0.dp),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp),
-                ) {
-                    items(items, key = { it.title.id }) { PartCard(it, scale, onOpen) }
+                ArrowRow(row) {
+                    LazyRow(
+                        Modifier.mouseDragScroll(row, horizontal = true),
+                        state = row,
+                        contentPadding = PaddingValues(0.dp),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    ) {
+                        items(items, key = { it.title.id }) { PartCard(it, scale, onOpen) }
+                    }
                 }
             }
         }

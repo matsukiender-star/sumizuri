@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.relocation.BringIntoViewRequester
 import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.rememberScrollState
@@ -23,6 +24,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.sumizuri.app.ui.kit.art.StretchDot
 import com.sumizuri.app.ui.kit.scroll.mouseDragScroll
@@ -78,9 +80,12 @@ fun <T> FilterTabs(
                 )
                 Text(
                     label,
+                    modifier = Modifier.widthIn(max = 180.dp),
                     color = textColor,
                     fontWeight = if (chosen) FontWeight.Bold else FontWeight.Medium,
                     style = MaterialTheme.typography.bodyMedium,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
                 )
                 StretchDot(chosen, Modifier.padding(top = 5.dp), idle = 0.dp, wide = 22.dp, height = 4.dp)
             }

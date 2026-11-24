@@ -5,6 +5,9 @@ import com.sumizuri.app.data.model.Status
 import com.sumizuri.app.data.model.library.LibraryPrefs
 import com.sumizuri.app.data.model.library.LibrarySection
 import com.sumizuri.app.data.model.library.SortRule
+import com.sumizuri.app.feature.library.top.LibraryTab
+import com.sumizuri.app.source.model.SourceEntry
+import com.sumizuri.app.source.repo.InstalledSource
 
 // Everything the library page can ask for, so the page is given one thing and not twenty.
 internal class LibraryCalls(
@@ -42,9 +45,28 @@ internal class LibraryCalls(
     val onSearchSources: (String) -> Unit,
     // Opens the chapter a title goes on from, as its continue button would.
     val onContinue: (Long) -> Unit,
+    val onSelectShelf: (Long?) -> Unit,
+    val onOpenLive: () -> Unit,
+    // Plays a favorite channel from the live tab of the library.
+    val onPlayLive: (playlistId: String, channelId: String) -> Unit = { _, _ -> },
+    // Opens a recommended title, and the source of a row of recommendations with its genre chosen.
+    val onOpenPick: (InstalledSource, SourceEntry) -> Unit = { _, _ -> },
+    val onOpenPickGenre: (InstalledSource, Map<String, Any?>) -> Unit = { _, _ -> },
+    // Opens syncing with the code ready to scan, from the button at the top of the library.
+    val onOpenSync: () -> Unit = {},
 ) {
     // Opens one shelf, or all the titles for null.
-    fun onShelf(id: Long?) = onPrefs { it.copy(category = id) }
+    fun onShelf(id: Long?) = onSelectShelf(id)
+
+    fun onTab(tab: LibraryTab) {
+        when (tab) {
+            LibraryTab.All -> onSelectShelf(null)
+            is LibraryTab.ByKind -> onKind(tab.kind)
+            LibraryTab.Uncategorized -> onSelectShelf(UncategorizedShelf)
+            is LibraryTab.Shelf -> onSelectShelf(tab.id)
+            LibraryTab.Live -> onOpenLive()
+        }
+    }
 }
 
 // What can be done to the picked titles of the library.

@@ -4,8 +4,12 @@ import com.sumizuri.app.BuildInfo
 import com.sumizuri.app.core.log.AppLog
 import com.sumizuri.app.data.settings.SettingsRepository
 import com.sumizuri.app.data.text.nowMillis
+import dev.whyoleg.cryptography.CryptographyProvider
+import dev.whyoleg.cryptography.algorithms.SHA256
 import io.ktor.client.HttpClient
 import io.ktor.client.plugins.HttpTimeout
+import io.ktor.client.plugins.HttpTimeoutConfig
+import io.ktor.client.plugins.timeout
 import io.ktor.client.request.get
 import io.ktor.client.request.header
 import io.ktor.client.request.prepareGet
@@ -37,11 +41,12 @@ private const val Tag = "appupdate"
 
 // How long Install stays waiting after the setup opened, long enough for its window to show.
 private const val OpenedHoldMs = 15_000L
+// How long a download may go without a byte before it fails.
+private const val StallMs = 30_000L
 private const val Prefix = "appupdate."
 private const val AutoCheckKey = "appupdate.autoCheck"
 private const val PrereleaseKey = "appupdate.prerelease"
 private const val SkipKey = "appupdate.skip"
-private const val SourceKey = "appupdate.source"
 private const val LastCheckKey = "appupdate.lastCheck"
 private const val LastRunKey = "appupdate.lastRun"
 
@@ -56,8 +61,6 @@ data class UpdatePrefs(
     val prerelease: Boolean = false,
     // A version the person chose not to be told about.
     val skipped: String? = null,
-    // The repo the person set, which wins over the one the app was built with.
-    val source: String = "",
     val lastCheck: Long = 0,
 )
 
@@ -70,17 +73,29 @@ sealed interface UpdateState {
     data object NoSource : UpdateState
     data class UpToDate(val latest: AppRelease?) : UpdateState
 
-    // The versions newer than this one, the newest first, and the file of the newest that fits this device.
-    data class Available(val newer: List<AppRelease>, val asset: ReleaseAsset?) : UpdateState {
+    // The versions newer than this one, the newest first, and the files of the newest this system can use.
+    data class Available(val newer: List<AppRelease>, val files: List<UpdateFile>) : UpdateState {
         val latest: AppRelease get() = newer.first()
+
+        // The file this system likes best, or the first one it can use.
+        val asset: ReleaseAsset? get() = (files.firstOrNull { it.recommended } ?: files.firstOrNull())?.asset
     }
 
     // Not found means the repo is wrong or private, and limited means the site asked to wait a while.
     data class Failed(val message: String, val notFound: Boolean = false, val limited: Boolean = false) : UpdateState
 }
 
-// A file being saved: how much of it there is, and the file once it is all there, or why it failed.
-data class UpdateDownload(val asset: ReleaseAsset, val done: Long = 0, val total: Long? = null, val file: String? = null, val error: String? = null) {
+// Why a file was not kept.
+enum class DownloadProblem { Failed, NoHash, BadHash }
+
+// A file being saved: how much of it there is, and the file once it is all there, or why it was not kept.
+data class UpdateDownload(
+    val asset: ReleaseAsset,
+    val done: Long = 0,
+    val total: Long? = null,
+    val file: String? = null,
+    val problem: DownloadProblem? = null,
+) {
     val finished: Boolean get() = file != null
 }
 
@@ -94,7 +109,6 @@ class AppUpdater(private val settings: SettingsRepository, private val scope: Co
             autoCheck = saved[AutoCheckKey] != "false",
             prerelease = saved[PrereleaseKey] == "true",
             skipped = saved[SkipKey]?.takeIf { it.isNotBlank() },
-            source = saved[SourceKey].orEmpty(),
             lastCheck = saved[LastCheckKey]?.toLongOrNull() ?: 0L,
         )
     }
@@ -114,12 +128,12 @@ class AppUpdater(private val settings: SettingsRepository, private val scope: Co
     // Every release the last check read, to show the notes of this version too.
     private var known: List<AppRelease> = emptyList()
 
-    // The repo to check: the one the person set, or else the one the app was built with.
-    fun sourceOf(prefs: UpdatePrefs): UpdateSource? = UpdateSource.of(prefs.source.ifBlank { BuildInfo.UpdateRepo })
+    // The repo to check, which is the one the app was built with. What an older version saved as its own repo is ignored.
+    fun sourceOf(): UpdateSource? = UpdateSource.of(BuildInfo.UpdateRepo)
 
     suspend fun check(): UpdateState {
         val now = prefs.first()
-        val source = sourceOf(now) ?: return UpdateState.NoSource.also { mutableState.value = it }
+        val source = sourceOf() ?: return UpdateState.NoSource.also { mutableState.value = it }
         mutableState.value = UpdateState.Checking
         val result = try {
             val releases = releasesOf(source)
@@ -129,7 +143,8 @@ class AppUpdater(private val settings: SettingsRepository, private val scope: Co
             if (newer.isEmpty()) {
                 UpdateState.UpToDate(releases.filter { now.prerelease || !it.prerelease }.maxWithOrNull { a, b -> compareVersions(a.version, b.version) })
             } else {
-                UpdateState.Available(newer, UpdateInstaller.pick(newer.first().assets))
+                // Linux asks dpkg, so the files are looked at away from the screen.
+                UpdateState.Available(newer, withContext(Dispatchers.IO) { UpdateInstaller.files(newer.first().assets) })
             }
         } catch (error: CancellationException) {
             throw error
@@ -144,7 +159,7 @@ class AppUpdater(private val settings: SettingsRepository, private val scope: Co
     // The check when the app opens: only when the person wants it, a repo is set and the last check was a while ago. Gives the newest version when it is one the person was not told to skip.
     suspend fun checkIfDue(): AppRelease? {
         val now = prefs.first()
-        if (!now.autoCheck || sourceOf(now) == null || nowMillis() - now.lastCheck < CheckEveryMs) return null
+        if (!now.autoCheck || sourceOf() == null || nowMillis() - now.lastCheck < CheckEveryMs) return null
         val found = check() as? UpdateState.Available ?: return null
         return found.latest.takeIf { it.version != now.skipped }
     }
@@ -155,7 +170,7 @@ class AppUpdater(private val settings: SettingsRepository, private val scope: Co
         if (last == BuildInfo.Version) return null
         settings.setText(LastRunKey, BuildInfo.Version)
         if (last == null) return null
-        val source = sourceOf(prefs.first()) ?: return null
+        val source = sourceOf() ?: return null
         val releases = known.ifEmpty { runCatching { releasesOf(source) }.getOrDefault(emptyList()) }
         return releases.firstOrNull { compareVersions(it.version, BuildInfo.Version) == 0 }?.takeIf { it.notes.isNotBlank() }
     }
@@ -172,8 +187,6 @@ class AppUpdater(private val settings: SettingsRepository, private val scope: Co
 
     suspend fun setPrerelease(on: Boolean) = settings.setFlag(PrereleaseKey, on)
 
-    suspend fun setSource(address: String) = settings.setText(SourceKey, address.trim())
-
     // Saves the file to a folder of its own, telling how far it got. A new download takes the place of one under way.
     fun startDownload(asset: ReleaseAsset) {
         downloading?.cancel()
@@ -184,7 +197,16 @@ class AppUpdater(private val settings: SettingsRepository, private val scope: Co
                 FileSystem.SYSTEM.deleteRecursively(folder)
                 FileSystem.SYSTEM.createDirectories(folder)
                 val file = folder / asset.name.replace(Regex("[^A-Za-z0-9._-]"), "_")
-                http.prepareGet(asset.url).execute { response ->
+                // The sha256 is taken as the file is written, so a file the release does not give, or gives another hash for, is never kept.
+                val hash = CryptographyProvider.Default.get(SHA256).hasher().createHashFunction()
+                val request = http.prepareGet(asset.url) {
+                    // The 30 seconds are for a check. A file of 200 MB takes longer, so here only silence ends it.
+                    timeout {
+                        requestTimeoutMillis = HttpTimeoutConfig.INFINITE_TIMEOUT_MS
+                        socketTimeoutMillis = StallMs
+                    }
+                }
+                request.execute { response ->
                     if (!response.status.isSuccess()) error("The download answered ${response.status.value}")
                     val total = response.contentLength() ?: asset.size
                     val channel = response.bodyAsChannel()
@@ -197,6 +219,7 @@ class AppUpdater(private val settings: SettingsRepository, private val scope: Co
                             if (read == -1) break
                             if (read == 0) continue
                             sink.write(buffer, 0, read)
+                            hash.update(buffer, 0, read)
                             done += read
                             // Progress reaches the screen every quarter of a megabyte, not for every piece.
                             if (done - shown >= 256 * 1024) {
@@ -205,6 +228,20 @@ class AppUpdater(private val settings: SettingsRepository, private val scope: Co
                             }
                         }
                     }
+                    val found = hash.hashToByteArray().hexText()
+                    hash.close()
+                    val expected = asset.sha256Hex
+                    if (expected == null || found != expected) {
+                        FileSystem.SYSTEM.delete(file)
+                        AppLog.warn(Tag, "deleted ${asset.name}, its sha256 is $found and the release gives ${expected ?: "none"}")
+                        mutableDownload.value = UpdateDownload(
+                            asset,
+                            done,
+                            total,
+                            problem = if (expected == null) DownloadProblem.NoHash else DownloadProblem.BadHash,
+                        )
+                        return@execute
+                    }
                     mutableDownload.value = UpdateDownload(asset, done, total, file = file.toString())
                     AppLog.info(Tag, "downloaded ${asset.name}, ${done / 1024} KB")
                 }
@@ -212,7 +249,7 @@ class AppUpdater(private val settings: SettingsRepository, private val scope: Co
                 throw error
             } catch (error: Exception) {
                 AppLog.warn(Tag, "could not download ${asset.name}, ${error.message}")
-                mutableDownload.value = UpdateDownload(asset, error = error.message ?: error::class.simpleName.orEmpty())
+                mutableDownload.value = UpdateDownload(asset, problem = DownloadProblem.Failed)
             }
         }
     }
@@ -275,4 +312,17 @@ sealed class UpdateProblem(message: String) : Exception(message) {
 }
 
 // What happened when the file was handed to the system.
-enum class InstallResult { Started, NeedsPermission, Failed }
+enum class InstallResult {
+    Started,
+    NeedsPermission,
+    Failed,
+
+    // The app itself was replaced, so the new version shows once it is opened again.
+    Restart,
+}
+
+// The bytes of a hash as the letters of an address, which is how a release writes its sha256.
+private fun ByteArray.hexText(): String = joinToString("") { byte ->
+    val part = (byte.toInt() and 0xFF).toString(16)
+    if (part.length == 1) "0$part" else part
+}

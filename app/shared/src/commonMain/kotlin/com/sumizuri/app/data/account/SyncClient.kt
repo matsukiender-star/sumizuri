@@ -1,11 +1,14 @@
 package com.sumizuri.app.data.account
 
+import com.sumizuri.app.data.net.RefusePlainHttp
+import com.sumizuri.app.data.net.pinnedHttpClient
 import com.sumizuri.sync.core.AccountAnswer
 import com.sumizuri.sync.core.AccountDelete
 import com.sumizuri.sync.core.AdminOverview
 import com.sumizuri.sync.core.ApiError
 import com.sumizuri.sync.core.ApiVersion
 import com.sumizuri.sync.core.DeviceEntry
+import com.sumizuri.sync.core.DeviceInfo
 import com.sumizuri.sync.core.ErrorCodes
 import com.sumizuri.sync.core.InviteEntry
 import com.sumizuri.sync.core.InviteMade
@@ -13,6 +16,11 @@ import com.sumizuri.sync.core.LibraryEntry
 import com.sumizuri.sync.core.LogEntry
 import com.sumizuri.sync.core.NewInvite
 import com.sumizuri.sync.core.NewLibrary
+import com.sumizuri.sync.core.PairClaim
+import com.sumizuri.sync.core.PairJoined
+import com.sumizuri.sync.core.PairOffer
+import com.sumizuri.sync.core.PairOffered
+import com.sumizuri.sync.core.Pairing
 import com.sumizuri.sync.core.PasswordChange
 import com.sumizuri.sync.core.RecoverRequest
 import com.sumizuri.sync.core.RecoveryChange
@@ -31,6 +39,7 @@ import com.sumizuri.sync.core.SetupRequest
 import com.sumizuri.sync.core.SignedIn
 import com.sumizuri.sync.core.SigninRequest
 import com.sumizuri.sync.core.SignupRequest
+import com.sumizuri.sync.core.SyncCrypto
 import com.sumizuri.sync.core.TwoStepConfirm
 import com.sumizuri.sync.core.TwoStepOff
 import com.sumizuri.sync.core.TwoStepSecret
@@ -41,6 +50,7 @@ import com.sumizuri.sync.core.UserEntry
 import com.sumizuri.sync.core.UsernameChange
 import com.sumizuri.sync.core.V1
 import io.ktor.client.HttpClient
+import io.ktor.client.HttpClientConfig
 import io.ktor.client.plugins.HttpTimeout
 import io.ktor.client.request.HttpRequestBuilder
 import io.ktor.client.request.delete
@@ -84,24 +94,37 @@ class SyncClient {
         ignoreUnknownKeys = true
         encodeDefaults = true
     }
-    private val http = HttpClient {
+    private val setUp: HttpClientConfig<*>.() -> Unit = {
         expectSuccess = false
+        install(RefusePlainHttp)
         install(HttpTimeout) {
             connectTimeoutMillis = 10_000
             requestTimeoutMillis = 30_000
         }
     }
+    private val http = HttpClient(setUp)
 
-    // What the server says about itself, turned down when it speaks a newer version than this app knows.
-    suspend fun info(server: String): ServerInfo {
-        val info = read(ServerInfo.serializer()) { http.get(server + V1.Info) }
+    @kotlin.concurrent.Volatile
+    private var pinned: Pair<String, HttpClient>? = null
+
+    // An account made from a code only ever talks to the certificate of that code.
+    private fun web(account: SyncAccount): HttpClient = account.fingerprint?.let(::pinnedTo) ?: http
+
+    private fun pinnedTo(fingerprint: String): HttpClient = pinned?.takeIf { it.first == fingerprint }?.second
+        ?: pinnedHttpClient(fingerprint, setUp).also { pinned = fingerprint to it }
+
+    // What the server says about itself, turned down when it speaks a newer version than this app knows. A server paired by its code is only trusted by the certificate of that code.
+    suspend fun info(server: String, fingerprint: String? = null): ServerInfo {
+        val info = read(ServerInfo.serializer()) { (fingerprint?.let(::pinnedTo) ?: http).get(server + V1.Info) }
         if (info.apiVersion > ApiVersion) throw SyncProblem(SyncProblem.TooNew, "This server is newer than the app. Update the app to use it.")
         return info
     }
 
     suspend fun setup(server: String, request: SetupRequest): SignedIn = send(server + V1.Setup, request, SetupRequest.serializer())
 
-    suspend fun salt(server: String, username: String): SaltAnswer = read(SaltAnswer.serializer()) { http.get(server + V1.Salt) { parameter("username", username) } }
+    suspend fun salt(server: String, username: String, fingerprint: String? = null): SaltAnswer = read(SaltAnswer.serializer()) {
+        (fingerprint?.let(::pinnedTo) ?: http).get(server + V1.Salt) { parameter("username", username) }
+    }
 
     suspend fun signin(server: String, request: SigninRequest): SignedIn = send(server + V1.Signin, request, SigninRequest.serializer())
 
@@ -114,68 +137,68 @@ class SyncClient {
     suspend fun recover(server: String, request: RecoverRequest): SignedIn = send(server + V1.Recover, request, RecoverRequest.serializer())
 
     // The calls of a signed in device, each with its token.
-    suspend fun account(account: SyncAccount): AccountAnswer = read(AccountAnswer.serializer()) { http.get(account.server + V1.Account) { signed(account) } }
+    suspend fun account(account: SyncAccount): AccountAnswer = read(AccountAnswer.serializer()) { web(account).get(account.server + V1.Account) { signed(account) } }
 
-    suspend fun devices(account: SyncAccount): List<DeviceEntry> = read(ListSerializer(DeviceEntry.serializer())) { http.get(account.server + V1.Devices) { signed(account) } }
+    suspend fun devices(account: SyncAccount): List<DeviceEntry> = read(ListSerializer(DeviceEntry.serializer())) { web(account).get(account.server + V1.Devices) { signed(account) } }
 
-    suspend fun removeDevice(account: SyncAccount, id: Long) = done { http.delete("${account.server}${V1.Devices}/$id") { signed(account) } }
+    suspend fun removeDevice(account: SyncAccount, id: Long) = done { web(account).delete("${account.server}${V1.Devices}/$id") { signed(account) } }
 
-    suspend fun signout(account: SyncAccount) = done { http.post(account.server + V1.Signout) { signed(account) } }
+    suspend fun signout(account: SyncAccount) = done { web(account).post(account.server + V1.Signout) { signed(account) } }
 
-    suspend fun libraries(account: SyncAccount): List<LibraryEntry> = read(ListSerializer(LibraryEntry.serializer())) { http.get(account.server + V1.Libraries) { signed(account) } }
+    suspend fun libraries(account: SyncAccount): List<LibraryEntry> = read(ListSerializer(LibraryEntry.serializer())) { web(account).get(account.server + V1.Libraries) { signed(account) } }
 
     suspend fun newLibrary(account: SyncAccount, request: NewLibrary): LibraryEntry = read(LibraryEntry.serializer()) {
-        http.post(account.server + V1.Libraries) {
+        web(account).post(account.server + V1.Libraries) {
             signed(account)
             setBody(TextContent(json.encodeToString(NewLibrary.serializer(), request), ContentType.Application.Json))
         }
     }
 
-    suspend fun users(account: SyncAccount): List<UserEntry> = read(ListSerializer(UserEntry.serializer())) { http.get(account.server + V1.AdminUsers) { signed(account) } }
+    suspend fun users(account: SyncAccount): List<UserEntry> = read(ListSerializer(UserEntry.serializer())) { web(account).get(account.server + V1.AdminUsers) { signed(account) } }
 
-    suspend fun invites(account: SyncAccount): List<InviteEntry> = read(ListSerializer(InviteEntry.serializer())) { http.get(account.server + V1.AdminInvites) { signed(account) } }
+    suspend fun invites(account: SyncAccount): List<InviteEntry> = read(ListSerializer(InviteEntry.serializer())) { web(account).get(account.server + V1.AdminInvites) { signed(account) } }
 
     suspend fun newInvite(account: SyncAccount, days: Int?): InviteMade = read(InviteMade.serializer()) {
-        http.post(account.server + V1.AdminInvites) {
+        web(account).post(account.server + V1.AdminInvites) {
             signed(account)
             setBody(TextContent(json.encodeToString(NewInvite.serializer(), NewInvite(days)), ContentType.Application.Json))
         }
     }
 
-    suspend fun removeInvite(account: SyncAccount, id: String) = done { http.delete("${account.server}${V1.AdminInvites}/$id") { signed(account) } }
+    suspend fun removeInvite(account: SyncAccount, id: String) = done { web(account).delete("${account.server}${V1.AdminInvites}/$id") { signed(account) } }
 
-    suspend fun overview(account: SyncAccount): AdminOverview = read(AdminOverview.serializer()) { http.get(account.server + V1.AdminOverview) { signed(account) } }
+    suspend fun overview(account: SyncAccount): AdminOverview = read(AdminOverview.serializer()) { web(account).get(account.server + V1.AdminOverview) { signed(account) } }
 
-    suspend fun user(account: SyncAccount, id: Long): UserDetail = read(UserDetail.serializer()) { http.get(account.server + V1.adminUser(id)) { signed(account) } }
+    suspend fun user(account: SyncAccount, id: Long): UserDetail = read(UserDetail.serializer()) { web(account).get(account.server + V1.adminUser(id)) { signed(account) } }
 
     suspend fun changeUser(account: SyncAccount, id: Long, change: UserChange): UserEntry = read(UserEntry.serializer()) {
-        http.patch(account.server + V1.adminUser(id)) {
+        web(account).patch(account.server + V1.adminUser(id)) {
             signed(account)
             setBody(TextContent(json.encodeToString(UserChange.serializer(), change), ContentType.Application.Json))
         }
     }
 
-    suspend fun signOutUser(account: SyncAccount, id: Long) = done { http.post(account.server + V1.adminUserSignout(id)) { signed(account) } }
+    suspend fun signOutUser(account: SyncAccount, id: Long) = done { web(account).post(account.server + V1.adminUserSignout(id)) { signed(account) } }
 
-    suspend fun handOver(account: SyncAccount, id: Long) = done { http.post(account.server + V1.adminUserOwner(id)) { signed(account) } }
+    suspend fun handOver(account: SyncAccount, id: Long) = done { web(account).post(account.server + V1.adminUserOwner(id)) { signed(account) } }
 
-    suspend fun restoreUser(account: SyncAccount, id: Long) = done { http.post(account.server + V1.adminUserRestore(id)) { signed(account) } }
+    suspend fun restoreUser(account: SyncAccount, id: Long) = done { web(account).post(account.server + V1.adminUserRestore(id)) { signed(account) } }
 
-    suspend fun signOutOthers(account: SyncAccount) = done { http.post(account.server + V1.SignoutOthers) { signed(account) } }
+    suspend fun signOutOthers(account: SyncAccount) = done { web(account).post(account.server + V1.SignoutOthers) { signed(account) } }
 
-    suspend fun changeLog(account: SyncAccount): List<LogEntry> = read(ListSerializer(LogEntry.serializer())) { http.get(account.server + V1.AdminLog) { signed(account) } }
+    suspend fun changeLog(account: SyncAccount): List<LogEntry> = read(ListSerializer(LogEntry.serializer())) { web(account).get(account.server + V1.AdminLog) { signed(account) } }
 
-    suspend fun serverSettings(account: SyncAccount): List<ServerSettingEntry> = read(ListSerializer(ServerSettingEntry.serializer())) { http.get(account.server + V1.AdminSettings) { signed(account) } }
+    suspend fun serverSettings(account: SyncAccount): List<ServerSettingEntry> = read(ListSerializer(ServerSettingEntry.serializer())) { web(account).get(account.server + V1.AdminSettings) { signed(account) } }
 
     suspend fun changeSetting(account: SyncAccount, key: String, value: String): List<ServerSettingEntry> = read(ListSerializer(ServerSettingEntry.serializer())) {
-        http.patch(account.server + V1.AdminSettings) {
+        web(account).patch(account.server + V1.AdminSettings) {
             signed(account)
             setBody(TextContent(json.encodeToString(SettingChange.serializer(), SettingChange(key, value)), ContentType.Application.Json))
         }
     }
 
     suspend fun changePassword(account: SyncAccount, change: PasswordChange) = done {
-        http.post(account.server + V1.Password) {
+        web(account).post(account.server + V1.Password) {
             signed(account)
             setBody(TextContent(json.encodeToString(PasswordChange.serializer(), change), ContentType.Application.Json))
         }
@@ -188,7 +211,7 @@ class SyncClient {
     suspend fun changeRecovery(account: SyncAccount, change: RecoveryChange) = post(account, V1.Recovery, change, RecoveryChange.serializer())
 
     suspend fun startTwoStep(account: SyncAccount, change: TwoStepStart): TwoStepSecret = read(TwoStepSecret.serializer()) {
-        http.post(account.server + V1.TwoStepStart) {
+        web(account).post(account.server + V1.TwoStepStart) {
             signed(account)
             setBody(TextContent(json.encodeToString(TwoStepStart.serializer(), change), ContentType.Application.Json))
         }
@@ -198,17 +221,17 @@ class SyncClient {
 
     suspend fun turnOffTwoStep(account: SyncAccount, change: TwoStepOff) = post(account, V1.TwoStepOff, change, TwoStepOff.serializer())
 
-    suspend fun turnOffTwoStepFor(account: SyncAccount, id: Long) = done { http.post(account.server + V1.adminUserTwoStepOff(id)) { signed(account) } }
+    suspend fun turnOffTwoStepFor(account: SyncAccount, id: Long) = done { web(account).post(account.server + V1.adminUserTwoStepOff(id)) { signed(account) } }
 
     // A signed in call that sends a body and answers with nothing.
     private suspend fun <T> post(account: SyncAccount, path: String, body: T, serializer: KSerializer<T>) = done {
-        http.post(account.server + path) {
+        web(account).post(account.server + path) {
             signed(account)
             setBody(TextContent(json.encodeToString(serializer, body), ContentType.Application.Json))
         }
     }
 
-    suspend fun deleteUser(account: SyncAccount, id: Long) = done { http.delete(account.server + V1.adminUser(id)) { signed(account) } }
+    suspend fun deleteUser(account: SyncAccount, id: Long) = done { web(account).delete(account.server + V1.adminUser(id)) { signed(account) } }
 
     // The bytes of rows sent and fetched over the wire, packed, for the details page and the log.
     var rowBytesSent = 0L
@@ -219,7 +242,7 @@ class SyncClient {
     // A page of the row changes of a library after a number, oldest first. It comes packed with zlib, which is about a third smaller.
     suspend fun pullRows(account: SyncAccount, libraryId: Long, after: Long, limit: Int = RowLimits.PerBatch): RowPage {
         val response = reach {
-            http.get(account.server + V1.rows(libraryId)) {
+            web(account).get(account.server + V1.rows(libraryId)) {
                 signed(account)
                 parameter("after", after)
                 parameter("limit", limit)
@@ -235,7 +258,7 @@ class SyncClient {
 
     // Sends a batch of rows built on the changes up to its base, packed with zlib. The server turns it down with Changed when another device changed one of them since.
     suspend fun pushRows(account: SyncAccount, libraryId: Long, push: RowPush): RowPushed = read(RowPushed.serializer()) {
-        http.post(account.server + V1.rows(libraryId)) {
+        web(account).post(account.server + V1.rows(libraryId)) {
             signed(account)
             header(Rows.PackedHeader, "zlib")
             val packed = Rows.pack(json.encodeToString(RowPush.serializer(), push).encodeToByteArray())
@@ -246,11 +269,48 @@ class SyncClient {
 
     // The locked copy of a library with the time that names it, or nothing when no device has sent one yet.
     suspend fun fetchCopy(account: SyncAccount, libraryId: Long): LockedCopy? = try {
-        val response = reach { http.get(account.server + V1.snapshot(libraryId)) { signed(account) } }
+        val response = reach { web(account).get(account.server + V1.snapshot(libraryId)) { signed(account) } }
         if (!response.status.isSuccess()) failure(response)
         LockedCopy(response.readRawBytes(), response.headers["X-Snapshot-At"]?.toLongOrNull() ?: 0)
     } catch (problem: SyncProblem) {
         if (problem.code == ErrorCodes.NotFound) null else throw problem
+    }
+
+    // Shows a code to one new device: the secret goes in the code and never to the server.
+    suspend fun offerPairing(account: SyncAccount): ByteArray {
+        val secret = Pairing.newSecret()
+        val offer = Pairing.offer(secret, SyncCrypto.fromBase64(account.accountKey))
+        read(PairOffered.serializer()) {
+            web(account).post(account.server + V1.Pair) {
+                signed(account)
+                setBody(TextContent(json.encodeToString(PairOffer.serializer(), offer), ContentType.Application.Json))
+            }
+        }
+        return secret
+    }
+
+    // Takes a scanned code at the first of its addresses that answers with the right certificate.
+    suspend fun joinPairing(link: PairLink, device: DeviceInfo): SyncAccount {
+        var failed: SyncProblem? = null
+        for (address in link.addresses) {
+            val server = "https://$address"
+            val web = pinnedTo(link.fingerprint)
+            val info = try {
+                read(ServerInfo.serializer()) { web.get(server + V1.Info) }
+            } catch (problem: SyncProblem) {
+                failed = problem
+                continue
+            }
+            if (info.apiVersion > ApiVersion) throw SyncProblem(SyncProblem.TooNew, "This server is newer than the app. Update the app to use it.")
+            val claim = PairClaim(Pairing.idOf(link.secret), device)
+            val joined = read(PairJoined.serializer()) {
+                web.post(server + V1.PairClaim) { setBody(TextContent(json.encodeToString(PairClaim.serializer(), claim), ContentType.Application.Json)) }
+            }
+            val key = Pairing.open(link.secret, joined.sealedKey) ?: throw SyncProblem(SyncProblem.BadAnswer, "The key of the code could not be opened.")
+            val signed = joined.signed
+            return SyncAccount(server, info.name, signed.userId, signed.username, signed.role, signed.deviceId, signed.token, SyncCrypto.base64(key), link.fingerprint)
+        }
+        throw failed ?: SyncProblem(SyncProblem.BadAddress, "The code has no address.")
     }
 
     private fun HttpRequestBuilder.signed(account: SyncAccount) = header(HttpHeaders.Authorization, "Bearer ${account.token}")
@@ -309,6 +369,9 @@ class SyncClient {
             if (url.protocol.name == "http" && !isHome(url.host)) throw SyncProblem(SyncProblem.NeedsHttps, "Only a server on your home network can use http. Others need https.")
             return withScheme
         }
+
+        // Whether the address leads into the home network, which newer systems ask the person about first.
+        fun leadsHome(address: String): Boolean = runCatching { isHome(Url(addressOf(address)).host) }.getOrDefault(false)
 
         // This computer, or an address only reachable inside a home network.
         fun isHome(host: String): Boolean {

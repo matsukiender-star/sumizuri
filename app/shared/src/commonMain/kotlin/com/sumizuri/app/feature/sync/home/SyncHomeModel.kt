@@ -99,7 +99,7 @@ class SyncHomeModel(
         viewModelScope.launch {
             val status = try {
                 client
-                    .info(account.server)
+                    .info(account.server, account.fingerprint)
                     .also { info ->
                         mutable.update {
                             it.copy(info = info)

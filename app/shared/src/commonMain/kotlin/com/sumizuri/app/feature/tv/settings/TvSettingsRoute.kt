@@ -28,7 +28,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
@@ -38,12 +37,14 @@ import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.navigationevent.NavigationEventInfo
-import androidx.navigationevent.compose.NavigationBackHandler
-import androidx.navigationevent.compose.rememberNavigationEventState
 import com.sumizuri.app.feature.settings.SettingsTarget
 import com.sumizuri.app.feature.tv.onboarding.firstFocus
 import com.sumizuri.app.feature.tv.profile.TvPanel
@@ -57,8 +58,6 @@ import com.sumizuri.app.shared.resources.tv_profile_watching
 import com.sumizuri.app.shared.resources.tv_settings_account
 import com.sumizuri.app.ui.tv.TvRow
 import com.sumizuri.app.ui.tv.hiddenUnder
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
 
@@ -80,21 +79,6 @@ internal fun TvSettingsRoute(onOpen: (SettingsTarget) -> Unit) {
     val chosen = remember { FocusRequester() }
     val right = remember { FocusRequester() }
     val first = firstFocus()
-    // Back inside a part goes to the list first, and leaves the settings only from the list.
-    val scope = rememberCoroutineScope()
-    NavigationBackHandler(
-        rememberNavigationEventState(NavigationEventInfo.None),
-        isBackEnabled =
-        inside && panel == null,
-    ) {
-        // The focus is asked for once the back key has let go of it.
-        scope.launch {
-            repeat(3) {
-                delay(60)
-                runCatching { chosen.requestFocus() }
-            }
-        }
-    }
     Box(Modifier.fillMaxSize()) {
         Row(Modifier.fillMaxSize().hiddenUnder(panel != null).padding(top = 32.dp, bottom = 24.dp)) {
             Column(
@@ -136,6 +120,12 @@ internal fun TvSettingsRoute(onOpen: (SettingsTarget) -> Unit) {
                     .fillMaxHeight()
                     .padding(start = 8.dp, end = 40.dp)
                     .onFocusChanged { inside = it.hasFocus }
+                    // Back inside a part goes to the list in one press, and leaves the settings only from the list. It is caught here because Compose would spend it moving the focus out one group at a time.
+                    .onKeyEvent {
+                        if (it.key != Key.Back && it.key != Key.Escape) return@onKeyEvent false
+                        if (it.type == KeyEventType.KeyUp) runCatching { chosen.requestFocus() }
+                        true
+                    }
                     // Coming in from the list starts at the first setting of the part.
                     .focusProperties {
                         onEnter =

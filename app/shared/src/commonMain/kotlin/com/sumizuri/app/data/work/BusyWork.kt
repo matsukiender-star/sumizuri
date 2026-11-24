@@ -9,6 +9,8 @@ import com.sumizuri.app.shared.resources.busy_migration
 import com.sumizuri.app.shared.resources.busy_restore
 import com.sumizuri.app.shared.resources.busy_sources
 import com.sumizuri.app.shared.resources.busy_sync
+import com.sumizuri.app.shared.resources.suki_busy_moving_downloads
+import com.sumizuri.app.shared.resources.suki_busy_sources_install
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
@@ -23,6 +25,8 @@ enum class BusyKind(val label: StringResource) {
     Backup(Res.string.busy_backup),
     Restore(Res.string.busy_restore),
     Sources(Res.string.busy_sources),
+    SourcesInstall(Res.string.suki_busy_sources_install),
+    MovingDownloads(Res.string.suki_busy_moving_downloads),
     Sync(Res.string.busy_sync),
 }
 

@@ -2,10 +2,13 @@ package com.sumizuri.app.data.appupdate
 
 import okio.Path
 
-// What each system does with an update: which file of a release fits it, where the file is saved, and how it is installed.
+// A file of a release this system can use, and whether it is the one this system likes best.
+data class UpdateFile(val asset: ReleaseAsset, val recommended: Boolean = false)
+
+// What each system does with an update: which files of a release fit it, where the file is saved, and how it is installed.
 expect object UpdateInstaller {
-    // The file of a release for this device, or null when the release has none.
-    fun pick(assets: List<ReleaseAsset>): ReleaseAsset?
+    // The files of a release for this device, in the order they are shown, with the one this system likes best marked.
+    fun files(assets: List<ReleaseAsset>): List<UpdateFile>
 
     fun folder(): Path
 

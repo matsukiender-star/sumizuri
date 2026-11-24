@@ -21,6 +21,7 @@ import com.sumizuri.sync.core.SyncCrypto
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
+import com.sumizuri.app.data.account.PairLink as HomeLink
 
 // What came of a package: how many repos were added and sources installed, the name the TV signed in to sync as, how many trackers it signed in to, and what could not be done.
 class PairResult(val repos: Int, val sources: Int, val syncedAs: String?, val trackers: Int, val problems: List<String>)
@@ -70,10 +71,19 @@ suspend fun applyPair(pack: PairPackage, place: PairPlace): PairResult {
             }
         }
     }
-    val syncedAs = pack.sync?.takeIf { place.accounts.account.value == null }?.let { sync ->
-        runCatching { signIn(sync, place) }.getOrElse {
-            problems += it.message ?: sync.server
+    val syncedAs = when {
+        place.accounts.account.value != null -> null
+
+        pack.home != null -> runCatching { joinHome(pack.home, pack.homeLibraryId, place) }.getOrElse {
+            problems += it.message ?: "home"
             null
+        }
+
+        else -> pack.sync?.let { sync ->
+            runCatching { signIn(sync, place) }.getOrElse {
+                problems += it.message ?: sync.server
+                null
+            }
         }
     }
     val trackers = place.trackers.takeHanded(
@@ -86,6 +96,15 @@ suspend fun applyPair(pack: PairPackage, place: PairPlace): PairResult {
             }.toMap(),
     )
     return PairResult(repos, sources, syncedAs, trackers, problems)
+}
+
+// Joins the computer of the phone with the code it made for this TV, as a device of its own, the way a phone joins by scanning the code on the computer.
+private suspend fun joinHome(text: String, libraryId: Long?, place: PairPlace): String {
+    val link = HomeLink.parse(text) ?: error("The code of the computer is not right.")
+    val account = SyncClient().joinPairing(link, thisDevice())
+    place.accounts.save(account)
+    libraryId?.let { place.settings.setText(SettingKey.SyncLibraryId, it.toString()) }
+    return account.username
 }
 
 // Signs in the way the sync page does, with the password the phone sent, so this TV gets a session of its own and opens the account key itself.

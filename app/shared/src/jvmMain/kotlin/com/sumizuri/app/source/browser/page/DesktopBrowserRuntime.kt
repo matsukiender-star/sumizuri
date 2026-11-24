@@ -90,10 +90,9 @@ class DesktopBrowserRuntime(
                         if (!isMac) {
                             localesDirPath = File(installDir, "locales").absolutePath
                             resourcesDirPath = installDir.absolutePath
-                            listOf("jcef_helper.exe", "jcef_helper")
-                                .map { File(installDir, it) }
-                                .firstOrNull { it.exists() }
-                                ?.let { browserSubProcessPath = it.absolutePath }
+                            // These settings are read before the browser is downloaded, so the helper is named without looking for it. Left unnamed, the first start looked for it inside Java and took the app down.
+                            browserSubProcessPath =
+                                File(installDir, if (isWindows) "jcef_helper.exe" else "jcef_helper").absolutePath
                         }
                         // Kept on disk, so a bot check that was passed once stays passed.
                         cachePath = cacheDir.absolutePath
@@ -182,5 +181,6 @@ class DesktopBrowserRuntime(
     private companion object {
         const val TAG = "desktop-browser"
         val isMac = System.getProperty("os.name").orEmpty().startsWith("Mac")
+        val isWindows = System.getProperty("os.name").orEmpty().startsWith("Windows")
     }
 }

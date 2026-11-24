@@ -170,6 +170,26 @@ interface TitleDao {
     @Query("SELECT name FROM title WHERE id = :id")
     suspend fun nameOf(id: Long): String?
 
+    // The newest read of a source that has genres, which its recommendations start from.
+    @Query(
+        """
+        SELECT t.* FROM title t JOIN progress p ON p.titleId = t.id
+        WHERE t.sourceId = :sourceId AND t.genres != '' AND p.readAt IS NOT NULL
+        ORDER BY p.readAt DESC LIMIT 1
+        """,
+    )
+    fun observeLastSeen(sourceId: String): Flow<TitleEntity?>
+
+    // The addresses of a source that are in the library or the history, which are not recommended again.
+    @Query(
+        """
+        SELECT externalId FROM title t
+        WHERE sourceId = :sourceId
+        AND (inLibrary = 1 OR EXISTS (SELECT 1 FROM progress p WHERE p.titleId = t.id AND p.readAt IS NOT NULL))
+        """,
+    )
+    suspend fun seenKeys(sourceId: String): List<String>
+
     @Query("SELECT id FROM title WHERE sourceId = :sourceId AND externalId = :externalId")
     suspend fun findId(sourceId: String, externalId: String): Long?
 

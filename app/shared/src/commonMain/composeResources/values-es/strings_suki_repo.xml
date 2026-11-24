@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="suki_repo_install_all">Instalar todas</string>
+    <string name="suki_repo_install_all_notice">%1$d fuentes disponibles para instalar</string>
+    <string name="suki_repo_install_all_title">¿Instalar %1$d fuentes?</string>
+    <string name="suki_repo_install_all_message">Se instalarán una tras otra las %1$d fuentes que faltan con tus filtros actuales.</string>
+    <string name="suki_repo_installing_progress">Instalando %1$d de %2$d: %3$s</string>
+    <string name="suki_repo_install_done">Se instalaron %1$d de %2$d fuentes.</string>
+    <string name="suki_repo_install_done_failed">Se instalaron %1$d de %2$d (%3$d fallaron).</string>
+    <string name="suki_repo_install_cancelled">Cancelado tras %1$d de %2$d (%3$d fallaron).</string>
+    <string name="suki_repo_dismiss">Listo</string>
+    <string name="suki_repo_all_kinds">Todos los tipos</string>
+    <string name="suki_repo_all_languages">Todos los idiomas</string>
+    <string name="suki_busy_sources_install">Instalando fuentes</string>
+    <string name="suki_busy_moving_downloads">Moviendo descargas</string>
+</resources>

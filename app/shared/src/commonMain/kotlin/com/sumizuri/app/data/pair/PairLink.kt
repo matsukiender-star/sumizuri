@@ -50,6 +50,9 @@ data class PairPackage(
     val sync: PairSync? = null,
     // The tracker accounts of the phone, by the id of each tracker.
     val trackers: Map<String, TrackerAccount> = emptyMap(),
+    // A code of the computer the phone syncs with at home, made for this TV and good once, and the profile there the phone syncs with. It takes the place of the sign in, which a computer paired by code has no password for.
+    val home: String? = null,
+    val homeLibraryId: Long? = null,
 )
 
 // A source by the repo it is from and the id that repo gives it.

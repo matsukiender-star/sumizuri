@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.DragHandle
+import androidx.compose.material.icons.outlined.AutoAwesome
 import androidx.compose.material.icons.outlined.CollectionsBookmark
 import androidx.compose.material.icons.outlined.History
 import androidx.compose.material.icons.outlined.Lock
@@ -47,6 +48,7 @@ import com.sumizuri.app.shared.resources.display_part_count
 import com.sumizuri.app.shared.resources.display_show_row
 import com.sumizuri.app.shared.resources.display_style
 import com.sumizuri.app.shared.resources.ok
+import com.sumizuri.app.shared.resources.suki_library_picks_rows
 import com.sumizuri.app.ui.kit.art.InkButton
 import com.sumizuri.app.ui.kit.card.AppCard
 import com.sumizuri.app.ui.kit.dialog.AppDialog
@@ -98,6 +100,14 @@ private fun PartCard(
     val shown = covers || count > 0
     val note = if (covers) {
         null
+    } else if (section == LibrarySection.Recommendations) {
+        if (count ==
+            0
+        ) {
+            stringResource(Res.string.count_off)
+        } else {
+            stringResource(Res.string.suki_library_picks_rows, count)
+        }
     } else {
         listOf(
             stringResource(prefs.styleOf(section).label),
@@ -157,20 +167,25 @@ private fun PartDialog(
     onChange: ((LibraryPrefs) -> LibraryPrefs) -> Unit,
     onDone: () -> Unit,
 ) {
-    val counts = LibraryPrefs.Counts
+    val picks = section == LibrarySection.Recommendations
+    val counts = if (picks) (0..LibraryPrefs.MaxPickRows).toList() else LibraryPrefs.Counts
     AppDialog(
         onDismissRequest = onDone,
         title = { Text(stringResource(section.label)) },
         text = {
             Column {
-                ChoiceSetting(Res.string.display_style, ShelfStyle.entries, prefs.styleOf(section), {
-                    stringResource(it.label)
-                }) { style -> onChange { it.withStyle(section, style) } }
+                if (!picks) {
+                    ChoiceSetting(Res.string.display_style, ShelfStyle.entries, prefs.styleOf(section), {
+                        stringResource(it.label)
+                    }) { style -> onChange { it.withStyle(section, style) } }
+                }
                 ChoiceSetting(Res.string.display_part_count, counts, prefs.countOf(section), { n ->
                     if (n ==
                         0
                     ) {
                         stringResource(Res.string.count_off)
+                    } else if (picks) {
+                        stringResource(Res.string.suki_library_picks_rows, n)
                     } else {
                         stringResource(Res.string.count_titles, n)
                     }
@@ -185,5 +200,6 @@ private fun iconOf(section: LibrarySection): ImageVector = when (section) {
     LibrarySection.Continue -> Icons.Outlined.PlayCircle
     LibrarySection.Updates -> Icons.Outlined.NewReleases
     LibrarySection.History -> Icons.Outlined.History
+    LibrarySection.Recommendations -> Icons.Outlined.AutoAwesome
     LibrarySection.Library -> Icons.Outlined.CollectionsBookmark
 }

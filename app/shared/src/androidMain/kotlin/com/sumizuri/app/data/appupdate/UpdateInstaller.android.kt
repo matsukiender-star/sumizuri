@@ -12,13 +12,13 @@ import java.io.File
 
 actual object UpdateInstaller {
     // The APKs of this app only, as the TV app has its own with TV in the name, then the APK made for the processor of this phone, the one it likes best first, or else the one for every phone, or else any APK, matched by the processor at the end of the name so x86 is not mistaken for x86_64.
-    actual fun pick(assets: List<ReleaseAsset>): ReleaseAsset? {
+    actual fun files(assets: List<ReleaseAsset>): List<UpdateFile> {
         val apks = assets.filter {
             it.name.endsWith(".apk", ignoreCase = true) &&
                 it.name.contains(TvMark, ignoreCase = true) == AndroidApp.tvApp
         }
         val abis = Build.SUPPORTED_ABIS.orEmpty()
-        return abis.firstNotNullOfOrNull { abi ->
+        val chosen = abis.firstNotNullOfOrNull { abi ->
             apks.firstOrNull {
                 it.name.endsWith(
                     "-$abi.apk",
@@ -28,6 +28,7 @@ actual object UpdateInstaller {
         }
             ?: apks.firstOrNull { it.name.contains("universal", ignoreCase = true) }
             ?: apks.firstOrNull()
+        return listOfNotNull(chosen?.let { UpdateFile(it, true) })
     }
 
     actual fun folder(): Path = File(AndroidApp.context.cacheDir, "updates").toOkioPath()

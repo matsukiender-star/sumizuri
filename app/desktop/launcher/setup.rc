@@ -1,4 +1,7 @@
 // The icon and the version Windows shows for the setup file.
+#define STR1(x) #x
+#define STR(x) STR1(x)
+
 1 ICON "../icons/app-icon.ico"
 
 1 VERSIONINFO
@@ -13,9 +16,9 @@ BEGIN
     BEGIN
       VALUE "CompanyName", "Sumizuri"
       VALUE "FileDescription", "Sumizuri Setup"
-      VALUE "FileVersion", VERSION_TEXT
+      VALUE "FileVersion", STR(VERSION_TEXT)
       VALUE "ProductName", "Sumizuri"
-      VALUE "ProductVersion", VERSION_TEXT
+      VALUE "ProductVersion", STR(VERSION_TEXT)
       VALUE "OriginalFilename", "Sumizuri-setup.exe"
     END
   END

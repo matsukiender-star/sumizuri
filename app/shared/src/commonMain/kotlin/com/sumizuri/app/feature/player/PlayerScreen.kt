@@ -21,6 +21,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -40,6 +41,7 @@ import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalWindowInfo
+import androidx.compose.ui.text.intl.Locale
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigationevent.NavigationEventInfo
@@ -106,6 +108,8 @@ internal fun PlayerScreen(session: PlayerSession, engine: PlayerEngine, onClose:
     var tick by remember { mutableIntStateOf(0) }
     var scrubbing by remember { mutableStateOf(false) }
     var locked by remember { mutableStateOf(false) }
+    // Where the controls are, so a mouse parked in a corner hides them only when it is not over them.
+    val controlZones = remember { PlayerControlZones() }
     var unlockShown by remember { mutableStateOf(false) }
     var flash by remember { mutableStateOf<Pair<ImageVector, Alignment>?>(null) }
     var picker by remember { mutableStateOf<Picker?>(null) }
@@ -255,6 +259,21 @@ internal fun PlayerScreen(session: PlayerSession, engine: PlayerEngine, onClose:
         onMini = mini?.let { control -> { control.enter(shape) } },
         onVolume = if (touchPlayer) null else ::volumeTo,
     )
+    // Subtitles of the source can be put into the language of the app, the way a video site makes automatic ones. The picker stays open, so its line shows the work.
+    val language = state.prefs.translateLanguage.ifEmpty { Locale.current.language }
+    val translatedName = translatedName(language)
+    val translateScope = rememberCoroutineScope()
+    val translate = if (SubtitleTranslate.offered(
+            state.current?.subtitles.orEmpty(),
+            player.subtitles,
+            language,
+            translatedName,
+        )
+    ) {
+        { SubtitleTranslate.start(session, engine, translateScope, language, translatedName) }
+    } else {
+        null
+    }
     val pickerCalls = PickerCalls(
         onClose = { picker = null },
         onOpen = { picker = it },
@@ -290,6 +309,8 @@ internal fun PlayerScreen(session: PlayerSession, engine: PlayerEngine, onClose:
             picker = null
             logShown = !logShown
         },
+        onTranslateSubtitles = translate,
+        translateLanguage = language,
     )
 
     Box(
@@ -317,20 +338,16 @@ internal fun PlayerScreen(session: PlayerSession, engine: PlayerEngine, onClose:
                     else -> return@onPreviewKeyEvent false
                 }
                 true
-            }.pointerInput(touchPlayer) {
-                awaitPointerEventScope {
-                    while (true) {
-                        val event = awaitPointerEvent()
-                        if (touchPlayer) continue
-                        // The wheel sets the volume and a move of the mouse brings the controls back.
-                        val wheel = event.changes
-                            .first()
-                            .scrollDelta.y
-                        if (event.type == PointerEventType.Scroll && picker == null) volumeBy(if (wheel < 0) 5 else -5)
-                        if (event.type == PointerEventType.Move) show()
-                    }
-                }
-            },
+            }.playerMouseControls(
+                enabled = !touchPlayer,
+                canHide = player.playing && !scrubbing && picker == null,
+                controlsVisible = visible && !small && !failed && !locked,
+                controlZones = controlZones,
+                allowVolume = picker == null,
+                onVolumeBy = ::volumeBy,
+                onShow = ::show,
+                onHide = { visible = false },
+            ),
     ) {
         Box(Modifier.fillMaxSize()) {
             // The light around the video, only where bars are left around the picture.
@@ -375,6 +392,7 @@ internal fun PlayerScreen(session: PlayerSession, engine: PlayerEngine, onClose:
                             picker = picker,
                             pickerContent = { PlayerPicker(it, state, player, aspect, logShown, pickerCalls) },
                             onIslandRoom = { islandRoom = it },
+                            controlZones = controlZones,
                         )
                     }
                 }

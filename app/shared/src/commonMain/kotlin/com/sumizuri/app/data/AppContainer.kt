@@ -27,6 +27,7 @@ import com.sumizuri.app.data.library.LibraryRepository
 import com.sumizuri.app.data.library.SeasonCovers
 import com.sumizuri.app.data.library.StatisticsRepository
 import com.sumizuri.app.data.library.coverFolder
+import com.sumizuri.app.data.live.LiveRepository
 import com.sumizuri.app.data.local.localFolder
 import com.sumizuri.app.data.migration.MigrationPrefsRepository
 import com.sumizuri.app.data.migration.MigrationSession
@@ -131,7 +132,7 @@ class AppContainer(
             sources,
             manager,
             settings,
-            DownloadFiles(downloadFolder(databasePath)),
+            DownloadFiles({ downloadFolder(databasePath) }),
             work,
             PlayerPrefsRepository(database),
         )
@@ -161,6 +162,7 @@ class AppContainer(
     val migrations = MigrationSession(library, sources, manager, migration, migrationPrefs)
     val controls = ControlsRepository(database)
     val libraryPrefs = LibraryPrefsRepository(database)
+    val live = LiveRepository(settings, databasePath, shared)
     val statistics = StatisticsRepository(database, library)
     val blocks = ProfileBlocksRepository(settings)
     val storage = StorageRepository(database)
@@ -172,7 +174,7 @@ class AppContainer(
     val matcher = SourceMatcher(database, library, sources, manager, carry)
 
     // The backups the app makes by itself, in a folder beside the library.
-    val autoBackups = AutoBackups(backupWriter, settings, backupFolder(databasePath))
+    val autoBackups = AutoBackups(backupWriter, settings) { backupFolder(databasePath) }
 
     // Keeps this profile the same as its copy on the sync server, once the profile host gives it the account.
     val librarySync =
@@ -196,6 +198,9 @@ class AppContainer(
         }
         library.onRemoved = trackerSync::removedFromLibrary
         library.onAdded = trackerSync.linker::addedToLibrary
+        // A change here goes to the other devices a few seconds later.
+        library.onChanged = librarySync::changedSoon
+        categories.onChanged = librarySync::changedSoon
     }
 
     private val sweeper = CoroutineScope(SupervisorJob() + Dispatchers.Main)

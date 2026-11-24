@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The window the TV app opens in: pure black with the medallion and the name in the middle. -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:drawable="@color/start_tv_dark" />
+    <item android:drawable="@drawable/tv_splash_logo_dark" android:gravity="center" />
+</layer-list>
