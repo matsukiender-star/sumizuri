@@ -25,6 +25,7 @@ import coil3.compose.LocalPlatformContext
 import com.sumizuri.app.data.LocalAppContainer
 import com.sumizuri.app.data.storage.StorageUse
 import com.sumizuri.app.data.storage.freeBytes
+import com.sumizuri.app.data.storage.removablePlaces
 import com.sumizuri.app.feature.settings.SettingsPageFrame
 import com.sumizuri.app.feature.settings.SettingsTarget
 import com.sumizuri.app.feature.settings.SettingsViewModel
@@ -64,6 +65,7 @@ fun StorageRoute(onBack: () -> Unit, onOpen: (SettingsTarget) -> Unit) {
     val diskMb by settings.imageDiskMb.collectAsStateWithLifecycle()
     val pageMb by settings.pageMemoryMb.collectAsStateWithLifecycle()
     val scope = rememberCoroutineScope()
+    val places = remember { removablePlaces() }
     // Counted again after each clear.
     var round by remember { mutableIntStateOf(0) }
     val images = rememberImageBytes(round, diskMb)
@@ -167,6 +169,12 @@ fun StorageRoute(onBack: () -> Unit, onOpen: (SettingsTarget) -> Unit) {
                         round++
                     },
                 )
+            }
+        }
+        // Where downloads go, which a computer picks and a phone with a card chooses between. A device with one place has nothing to choose.
+        if (places == null || places.isNotEmpty()) {
+            SettingsSection {
+                if (places == null) row { DownloadPlaceRow(null) } else padded { DownloadPlaceRow(places) }
             }
         }
         LocationsFold(database, dataFolder, imageFolder)

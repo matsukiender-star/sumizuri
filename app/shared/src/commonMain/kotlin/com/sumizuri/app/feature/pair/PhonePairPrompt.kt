@@ -22,6 +22,8 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.sumizuri.app.data.LocalAppContainer
+import com.sumizuri.app.data.account.SyncAccount
+import com.sumizuri.app.data.account.SyncClient
 import com.sumizuri.app.data.model.Kind
 import com.sumizuri.app.data.pair.PairLink
 import com.sumizuri.app.data.pair.PairPackage
@@ -54,9 +56,11 @@ import com.sumizuri.app.ui.kit.dialog.AppDialog
 import com.sumizuri.app.ui.kit.dialog.CancelButton
 import com.sumizuri.app.ui.kit.input.AppTextField
 import com.sumizuri.app.ui.kit.input.CheckRow
+import io.ktor.http.Url
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
+import com.sumizuri.app.data.account.PairLink as HomeLink
 
 // How far sending to a TV has got.
 private enum class Sending { Ready, Busy, Sent, Failed }
@@ -91,27 +95,39 @@ private fun PhonePairDialog(link: PairLink, onClose: () -> Unit) {
     val home = isHomeAddress(link.address)
     val chosen = repos.map { it.url }.filter { it !in left }
     val videos = installed.filter { it.kind == Kind.Anime && it.repoUrl in chosen }
+    // A phone paired with a computer by its code has no password to send, so it asks the computer for a code of its own for the TV.
+    val atHome = account?.fingerprint != null
     val send: () -> Unit = {
-        stage = Sending.Busy
-        val sync = account
-            ?.takeIf {
-                withSync
-            }?.let { PairSync(it.server, it.username, password, code, libraryId?.toLongOrNull()) }
-        val pack = PairPackage(
-            repos = chosen,
-            sources = if (withSources) {
-                videos.mapNotNull { source ->
-                    source.repoUrl?.let {
-                        PairSource(it, source.originId)
-                    }
+        scope.launch {
+            stage = Sending.Busy
+            val sync = account
+                ?.takeIf {
+                    withSync && !atHome
+                }?.let { PairSync(it.server, it.username, password, code, libraryId?.toLongOrNull()) }
+            val home = account?.takeIf { withSync && atHome }?.let { mine ->
+                runCatching { homeCodeFor(mine) }.getOrElse {
+                    stage = Sending.Failed
+                    return@launch
                 }
-            } else {
-                emptyList()
-            },
-            sync = sync,
-            trackers = if (withTrackers) trackers.mapKeys { it.key.id } else emptyMap(),
-        )
-        scope.launch { stage = if (sendPair(link, pack.sealFor(link))) Sending.Sent else Sending.Failed }
+            }
+            val pack = PairPackage(
+                repos = chosen,
+                sources = if (withSources) {
+                    videos.mapNotNull { source ->
+                        source.repoUrl?.let {
+                            PairSource(it, source.originId)
+                        }
+                    }
+                } else {
+                    emptyList()
+                },
+                sync = sync,
+                trackers = if (withTrackers) trackers.mapKeys { it.key.id } else emptyMap(),
+                home = home,
+                homeLibraryId = libraryId?.toLongOrNull()?.takeIf { home != null },
+            )
+            stage = if (sendPair(link, pack.sealFor(link))) Sending.Sent else Sending.Failed
+        }
     }
     AppDialog(
         onDismissRequest = onClose,
@@ -158,7 +174,7 @@ private fun PhonePairDialog(link: PairLink, onClose: () -> Unit) {
                 }
                 account?.let { signedIn ->
                     CheckRow(stringResource(Res.string.pair_sync, signedIn.username), withSync, { withSync = it })
-                    if (withSync) {
+                    if (withSync && !atHome) {
                         AppTextField(
                             password,
                             { password = it },
@@ -205,10 +221,17 @@ private fun PhonePairDialog(link: PairLink, onClose: () -> Unit) {
                 val ready =
                     home && stage != Sending.Busy &&
                         (chosen.isNotEmpty() || withSync || (withTrackers && trackers.isNotEmpty())) &&
-                        (!withSync || account == null || password.isNotBlank())
+                        (!withSync || account == null || atHome || password.isNotBlank())
                 InkButton(send, enabled = ready) { Text(stringResource(Res.string.pair_send)) }
             }
         },
         dismissButton = { if (stage != Sending.Sent) CancelButton(onClose) },
     )
+}
+
+// A code of the computer this phone syncs with, made now and good once, for the TV to join it as a device of its own.
+private suspend fun homeCodeFor(account: SyncAccount): String {
+    val secret = SyncClient().offerPairing(account)
+    val server = Url(account.server)
+    return HomeLink(listOf("${server.host}:${server.port}"), account.fingerprint.orEmpty(), secret).text()
 }

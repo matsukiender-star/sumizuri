@@ -63,10 +63,11 @@ class SettingsViewModel(private val repository: SettingsRepository) : ViewModel(
         ).lookPart(4)
         .stateIn(viewModelScope, SharingStarted.Eagerly, false)
 
-    val navLabels: StateFlow<NavLabels> = repository
+    // The names of the tabs as the person chose them, or null when they never did, which leaves it to labelsFor.
+    val navLabels: StateFlow<NavLabels?> = repository
         .text(SettingKey.NavLabels)
-        .map { saved -> enumNamed<NavLabels>(saved) ?: NavLabels.Always }
-        .stateIn(viewModelScope, SharingStarted.Eagerly, NavLabels.Always)
+        .map { saved -> enumNamed<NavLabels>(saved) }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, null)
 
     val navSwipe: StateFlow<Boolean> = repository
         .flag(

@@ -85,7 +85,11 @@ sealed interface Page {
 
     // The editor of the script of one block of the profile.
     data class BlockScript(val blockId: String) : Page
+
+    // A live IPTV channel playing in its own screen without progress tracking.
+    data class LivePlayer(val playlistId: String, val channelId: String) : Page
 }
 
 // A page that draws to the edges of the screen, under the bars of the system, and keeps its own controls clear of them: the reader and the player fill the screen, and a title page has its cover behind the status bar. Every other page is kept clear of the bars as a whole.
-val Page.edgeToEdge: Boolean get() = this is Page.Reader || this is Page.Saved || this is Page.Preview
+val Page.edgeToEdge: Boolean get() = this is Page.Reader || this is Page.Saved || this is Page.Preview ||
+    this is Page.LivePlayer

@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="suki_profile_picker_title">Who\'s watching?</string>
+    <string name="suki_profile_picker_subtitle">Choose a profile to continue</string>
+</resources>

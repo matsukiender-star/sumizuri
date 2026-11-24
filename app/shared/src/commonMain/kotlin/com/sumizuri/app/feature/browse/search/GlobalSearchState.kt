@@ -23,4 +23,5 @@ data class SourceResults(
     val saved: Set<String> = emptySet(),
     val loading: Boolean = true,
     val error: String? = null,
+    val challengeUrl: String? = null,
 )

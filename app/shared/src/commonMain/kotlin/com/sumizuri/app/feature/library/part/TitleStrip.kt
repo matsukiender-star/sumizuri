@@ -11,6 +11,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.sumizuri.app.data.model.FeedItem
 import com.sumizuri.app.ui.kit.card.AppSectionLabel
+import com.sumizuri.app.ui.kit.scroll.ArrowRow
 import com.sumizuri.app.ui.kit.scroll.mouseDragScroll
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
@@ -22,13 +23,15 @@ internal fun TitleStrip(heading: StringResource, items: List<FeedItem>, onOpen: 
     Column {
         AppSectionLabel(stringResource(heading))
         val row = rememberLazyListState()
-        LazyRow(
-            Modifier.mouseDragScroll(row, horizontal = true),
-            state = row,
-            contentPadding = PaddingValues(0.dp),
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
-        ) {
-            items(items, key = { it.title.id }) { item -> PartCard(item, 1f, onOpen) }
+        ArrowRow(row) {
+            LazyRow(
+                Modifier.mouseDragScroll(row, horizontal = true),
+                state = row,
+                contentPadding = PaddingValues(0.dp),
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                items(items, key = { it.title.id }) { item -> PartCard(item, 1f, onOpen) }
+            }
         }
     }
 }

@@ -24,6 +24,8 @@ data class SyncAccount(
     val deviceId: Long,
     val token: String,
     val accountKey: String,
+    // The certificate of a server paired by a code. An account signed in by address has none.
+    val fingerprint: String? = null,
 )
 
 // The field of a sealed account file.

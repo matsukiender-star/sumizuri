@@ -64,6 +64,8 @@ import com.sumizuri.app.shared.resources.player_size_small
 import com.sumizuri.app.shared.resources.player_speed_value
 import com.sumizuri.app.shared.resources.player_unit_seconds
 import com.sumizuri.app.shared.resources.profile_name
+import com.sumizuri.app.shared.resources.suki_player_translate_to
+import com.sumizuri.app.shared.resources.suki_player_translate_to_app
 import com.sumizuri.app.shared.resources.tv_autoplay
 import com.sumizuri.app.shared.resources.tv_done_button
 import com.sumizuri.app.shared.resources.tv_done_text
@@ -272,6 +274,14 @@ internal fun WatchingRows(
                     )
                 }
             },
+        )
+        // The language automatic subtitles are made in, where the empty code follows the app.
+        TvChoiceRow(
+            stringResource(Res.string.suki_player_translate_to),
+            (listOf("") + SubtitleLanguages + listOfNotNull(prefs.translateLanguage.ifEmpty { null })).distinct(),
+            prefs.translateLanguage,
+            { if (it.isEmpty()) stringResource(Res.string.suki_player_translate_to_app) else languageName(it) },
+            { code -> change { it.copy(translateLanguage = code) } },
         )
         TvChoiceRow(
             stringResource(Res.string.player_set_sub_size),

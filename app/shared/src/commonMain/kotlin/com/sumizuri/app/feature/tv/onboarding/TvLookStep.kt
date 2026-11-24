@@ -38,16 +38,22 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.sumizuri.app.data.LocalAppContainer
+import com.sumizuri.app.feature.settings.SettingsViewModel
 import com.sumizuri.app.feature.theme.rememberThemeModel
 import com.sumizuri.app.shared.resources.Res
 import com.sumizuri.app.shared.resources.onboarding_next
+import com.sumizuri.app.shared.resources.settings_mode
 import com.sumizuri.app.shared.resources.tv_look_text
 import com.sumizuri.app.shared.resources.tv_look_title
+import com.sumizuri.app.ui.theme.ThemeMode
 import com.sumizuri.app.ui.theme.ThemeWipe
 import com.sumizuri.app.ui.theme.colorScheme
 import com.sumizuri.app.ui.theme.spec.AppThemeSpec
 import com.sumizuri.app.ui.theme.spec.ThemePresets
 import com.sumizuri.app.ui.tv.TvButton
+import com.sumizuri.app.ui.tv.TvChoiceRow
 import com.sumizuri.app.ui.tv.tvCard
 import kotlinx.coroutines.delay
 import org.jetbrains.compose.resources.stringResource
@@ -95,6 +101,7 @@ internal fun ThemeGrid() {
         }
     }
     Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+        ModeRow()
         for (row in ThemePresets.chunked(PerRow)) {
             Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                 for (theme in row) {
@@ -109,6 +116,17 @@ internal fun ThemeGrid() {
             }
         }
     }
+}
+
+// Light, dark or as the system, over the themes, so the look can go dark from the profile and the welcome too and not only from the settings.
+@Composable
+private fun ModeRow() {
+    val container = LocalAppContainer.current
+    val settings = viewModel { SettingsViewModel(container.settings) }
+    val mode by settings.themeMode.collectAsStateWithLifecycle()
+    TvChoiceRow(stringResource(Res.string.settings_mode), ThemeMode.entries, mode, {
+        stringResource(it.label)
+    }, settings::onThemeMode, Modifier.widthIn(max = 640.dp))
 }
 
 // One theme: a small page in its colors with a title line, a text line, a button and a chip, and its name under it.

@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="suki_trash_delete_message">It goes to the trash. You have %1$d days to bring it back. After that it is deleted for good, with its downloads and backups.</string>
+    <string name="suki_trash_title">Trash</string>
+    <string name="suki_trash_row">Trash (%1$d)</string>
+    <plurals name="suki_trash_days">
+        <item quantity="one">Deleted for good in %1$d day</item>
+        <item quantity="other">Deleted for good in %1$d days</item>
+    </plurals>
+    <string name="suki_trash_today">Deleted for good today</string>
+    <string name="suki_trash_deleting">Being deleted. If it does not finish, it is tried again.</string>
+    <string name="suki_trash_restore">Restore</string>
+    <string name="suki_trash_delete_now">Delete now</string>
+    <string name="suki_trash_delete_now_title">Delete %1$s for good?</string>
+    <string name="suki_trash_delete_now_message">Its library, downloads, backups and settings are deleted from this device. This cannot be undone.</string>
+</resources>

@@ -10,6 +10,7 @@ import com.sumizuri.app.feature.library.top.ConnectionLostNotice
 import com.sumizuri.app.feature.library.top.FailuresNotice
 import com.sumizuri.app.feature.library.top.LibraryControls
 import com.sumizuri.app.feature.library.top.LibrarySearchRow
+import com.sumizuri.app.feature.library.top.LibraryTab
 import com.sumizuri.app.feature.library.top.MissingSourcesNotice
 import com.sumizuri.app.feature.library.top.NoticeAction
 import com.sumizuri.app.feature.library.top.SearchSourcesRow
@@ -28,6 +29,10 @@ internal fun LibraryHeader(
     state: LibraryState,
     calls: LibraryCalls,
     showSearch: Boolean,
+    showLive: Boolean,
+    // Whether the live tab is open, which shows the favorite channels in place of the covers, with nothing to sort or filter.
+    liveOpen: Boolean,
+    onTab: (LibraryTab) -> Unit,
     onSort: () -> Unit,
     onFailures: () -> Unit,
 ) {
@@ -68,7 +73,7 @@ internal fun LibraryHeader(
         Unfold(showSearch && state.query.isNotBlank() && !state.selecting) {
             SearchSourcesRow(state.query) { calls.onSearchSources(state.query.trim()) }
         }
-        ShelfTabs(state, calls::onShelf, calls.onOpenShelves)
-        LibraryControls(state, calls, onSort)
+        ShelfTabs(state, showLive, liveOpen, onTab, calls.onOpenShelves)
+        if (!liveOpen) LibraryControls(state, calls, onSort)
     }
 }

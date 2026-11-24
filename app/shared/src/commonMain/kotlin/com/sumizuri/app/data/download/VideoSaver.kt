@@ -1,5 +1,6 @@
 package com.sumizuri.app.data.download
 
+import com.sumizuri.app.data.net.RefusePlainHttp
 import com.sumizuri.app.data.net.hostOf
 import com.sumizuri.app.playback.hls.HlsPlaylist
 import com.sumizuri.app.playback.hls.isHls
@@ -59,7 +60,12 @@ private class Meter {
 }
 
 // The client videos are saved with. A whole file may take minutes, so only a stalled connection gives up.
-private val http = lazy { HttpClient { install(HttpTimeout) { socketTimeoutMillis = 60_000 } } }
+private val http = lazy {
+    HttpClient {
+        install(RefusePlainHttp)
+        install(HttpTimeout) { socketTimeoutMillis = 60_000 }
+    }
+}
 
 // The address of a file on the device as the players take it, with the slashes of Windows turned around.
 internal fun fileAddress(path: String): String = "file:///" + path.replace('\\', '/').removePrefix("/")

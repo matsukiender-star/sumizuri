@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="suki_storage_downloads">Downloads folder</string>
+    <string name="suki_storage_change">Change</string>
+    <string name="suki_storage_reset">Reset</string>
+    <string name="suki_storage_internal">This device</string>
+    <string name="suki_storage_card">SD card %1$d</string>
+    <string name="suki_storage_moving">Moving %1$d of %2$d files…</string>
+    <string name="suki_storage_inside">Pick a folder outside the data folder of the app.</string>
+    <string name="suki_storage_busy">Wait until the downloads or the backup finish.</string>
+    <string name="suki_storage_not_empty">That folder already has Sumizuri downloads. Pick another one or empty it.</string>
+    <string name="suki_storage_failed">They could not be moved. Everything stayed where it was.</string>
+</resources>

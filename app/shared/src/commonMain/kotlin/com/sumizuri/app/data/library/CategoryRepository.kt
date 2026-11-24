@@ -51,10 +51,15 @@ class CategoryRepository(private val db: AppDatabase) {
         ) {
             return null
         }
-        return db.categories().insert(
-            CategoryEntity(name = clean, sortOrder = db.categories().lastOrder() + 1, kind = code),
-        )
+        return db
+            .categories()
+            .insert(
+                CategoryEntity(name = clean, sortOrder = db.categories().lastOrder() + 1, kind = code),
+            ).also { onChanged?.invoke() }
     }
+
+    // Told when shelves or what is on them changed here, so sync can send it soon.
+    var onChanged: (() -> Unit)? = null
 
     // Makes a shelf be for another kind of title, or for every kind with null. Nothing happens when a shelf of that kind has its name already.
     suspend fun setKind(id: Long, kind: Kind?) {
@@ -83,9 +88,13 @@ class CategoryRepository(private val db: AppDatabase) {
             return
         }
         db.categories().rename(id, clean)
+        onChanged?.invoke()
     }
 
-    suspend fun delete(id: Long) = db.categories().delete(id)
+    suspend fun delete(id: Long) {
+        db.categories().delete(id)
+        onChanged?.invoke()
+    }
 
     // What a shelf is ordered by and which status it shows, with null for the order of the library and for any status.
     suspend fun setRule(id: Long, rule: SortRule?, status: Status?) = db.categories().setRule(
@@ -120,5 +129,6 @@ class CategoryRepository(private val db: AppDatabase) {
                 )
             }
         }
+        onChanged?.invoke()
     }
 }

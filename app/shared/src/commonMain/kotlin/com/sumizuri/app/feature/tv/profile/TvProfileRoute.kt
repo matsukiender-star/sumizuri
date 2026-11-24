@@ -77,8 +77,6 @@ internal fun TvProfileRoute(
         container.library.history.map { items -> items.firstOrNull { it.title.kind == Kind.Anime }?.title }
     }.collectAsStateWithLifecycle(null)
     var panel by rememberSaveable { mutableStateOf<TvPanel?>(null) }
-    val scope = rememberCoroutineScope()
-    val newName = stringResource(Res.string.tv_profile_numbered, registry.profiles.size + 1)
     Box(Modifier.fillMaxSize()) {
         val covered = panel != null
         Box(Modifier.fillMaxSize().hiddenUnder(covered)) { last?.let { Art(it) } }
@@ -109,15 +107,7 @@ internal fun TvProfileRoute(
                             { profiles.switchTo(profile.id) },
                         ) { ProfileAvatar(profile.name, profile.avatar, SmallFace) }
                     }
-                    Face(stringResource(Res.string.profile_new), {
-                        scope.launch {
-                            if (profiles.create(newName, null) !=
-                                null
-                            ) {
-                                NewProfileName.ask.value = true
-                            }
-                        }
-                    }) {
+                    Face(stringResource(Res.string.profile_new), { panel = TvPanel.New }) {
                         Icon(Icons.Outlined.Add, null, Modifier.size(26.dp), tint = MaterialTheme.colorScheme.primary)
                     }
                 }

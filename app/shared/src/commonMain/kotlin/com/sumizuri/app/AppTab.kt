@@ -7,8 +7,10 @@ import com.sumizuri.app.data.model.library.LibrarySection
 import com.sumizuri.app.feature.browse.hub.BrowseHubRoute
 import com.sumizuri.app.feature.history.HistoryRoute
 import com.sumizuri.app.feature.library.LibraryRoute
+import com.sumizuri.app.feature.live.LiveRoute
 import com.sumizuri.app.feature.profile.ProfileRoute
 import com.sumizuri.app.feature.settings.SettingsTarget
+import com.sumizuri.app.feature.sync.pair.PairRequest
 import com.sumizuri.app.feature.tv.browse.TvBrowseRoute
 import com.sumizuri.app.feature.tv.feed.TvHistoryRoute
 import com.sumizuri.app.feature.tv.feed.TvUpdatesRoute
@@ -61,6 +63,15 @@ internal fun AppTab(tab: Destination, tabs: List<Destination>, navigation: Navig
                 onOpenMissing = { navigation.push(Page.SettingsPage(SettingsTarget.MissingSources)) },
                 onOpenDownloads = { navigation.push(Page.SettingsPage(SettingsTarget.Downloads)) },
                 onSearchSources = { navigation.push(Page.GlobalSearch(it)) },
+                showLive = Destination.Live in tabs,
+                onOpenLive = { navigation.select(Destination.Live) },
+                onPlayLive = { list, channel -> navigation.push(Page.LivePlayer(list, channel)) },
+                onOpenPreview = { source, entry -> navigation.push(Page.Preview(source, entry)) },
+                onOpenSource = { navigation.push(Page.Source(it)) },
+                onOpenSync = {
+                    PairRequest.ask()
+                    navigation.push(Page.SettingsPage(SettingsTarget.Sync))
+                },
             )
         }
 
@@ -93,6 +104,10 @@ internal fun AppTab(tab: Destination, tabs: List<Destination>, navigation: Navig
                 onEditSource = { navigation.push(Page.ExtensionEditor(it.id)) },
             )
         }
+
+        Destination.Live -> LiveRoute(
+            onPlay = { playlistId, channelId -> navigation.push(Page.LivePlayer(playlistId, channelId)) },
+        )
 
         // A TV has a profile of its own, with the profiles to switch between and what is set from the remote.
         Destination.Profile -> if (tv) {

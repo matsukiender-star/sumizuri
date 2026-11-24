@@ -98,7 +98,7 @@ class AccountChanges internal constructor(
     // The proof of the password, from the salt of the account's name as it is now, which may have changed since the page opened.
     private suspend fun proofOf(password: String): String {
         val name = store.account.value?.username ?: account.username
-        val salt = client.salt(account.server, name)
+        val salt = client.salt(account.server, name, account.fingerprint)
         return SyncCrypto.base64(withContext(Dispatchers.Default) { AccountKeys.signInKeys(password, salt).proof })
     }
 }

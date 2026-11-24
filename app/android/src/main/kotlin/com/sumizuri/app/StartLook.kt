@@ -44,6 +44,7 @@ internal object StartLook {
             (activity.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) ==
                 Configuration.UI_MODE_NIGHT_YES
         val theme = when {
+            AndroidApp.tvApp -> if (dark) R.style.Theme_Sumizuri_Start_Tv_Dark else R.style.Theme_Sumizuri_Start_Tv_Light
             dark == systemDark -> 0
             dark -> R.style.Theme_Sumizuri_Start_Dark
             else -> R.style.Theme_Sumizuri_Start_Light

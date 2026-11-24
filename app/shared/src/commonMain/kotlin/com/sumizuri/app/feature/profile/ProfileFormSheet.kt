@@ -28,6 +28,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -37,9 +38,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.sumizuri.app.data.profile.Profile
+import com.sumizuri.app.data.profile.TrashDays
 import com.sumizuri.app.data.text.monthYearText
 import com.sumizuri.app.shared.resources.Res
 import com.sumizuri.app.shared.resources.profile_change_photo
@@ -47,7 +51,6 @@ import com.sumizuri.app.shared.resources.profile_create
 import com.sumizuri.app.shared.resources.profile_create_failed
 import com.sumizuri.app.shared.resources.profile_created_on
 import com.sumizuri.app.shared.resources.profile_delete
-import com.sumizuri.app.shared.resources.profile_delete_message
 import com.sumizuri.app.shared.resources.profile_delete_switch_first
 import com.sumizuri.app.shared.resources.profile_delete_title
 import com.sumizuri.app.shared.resources.profile_deleting
@@ -59,6 +62,7 @@ import com.sumizuri.app.shared.resources.profile_new_hint
 import com.sumizuri.app.shared.resources.profile_photo_failed
 import com.sumizuri.app.shared.resources.profile_remove_photo
 import com.sumizuri.app.shared.resources.profile_save
+import com.sumizuri.app.shared.resources.suki_trash_delete_message
 import com.sumizuri.app.ui.kit.art.InkButton
 import com.sumizuri.app.ui.kit.art.InkCircularProgressIndicator
 import com.sumizuri.app.ui.kit.card.AppListRow
@@ -104,8 +108,15 @@ internal fun ProfileFormSheet(profile: Profile?, isActive: Boolean, calls: Profi
         }
     }
     val shownAvatar = if (removed) null else profile?.avatar
+    // On a computer the whole form shows at once, so the name field is never hidden under the fold. A phone keeps the half-open sheet.
+    val wide = with(LocalDensity.current) {
+        LocalWindowInfo.current.containerSize.width
+            .toDp()
+    } >= WideFrom
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = wide)
 
     ModalBottomSheet(
+        sheetState = sheetState,
         modifier = Modifier.windowInsetsPadding(
             WindowInsets.statusBars.only(WindowInsetsSides.Top),
         ),
@@ -254,7 +265,7 @@ internal fun ProfileFormSheet(profile: Profile?, isActive: Boolean, calls: Profi
         AppDialog(
             onDismissRequest = { confirming = false },
             title = { Text(stringResource(Res.string.profile_delete_title, profile.name)) },
-            text = { Text(stringResource(Res.string.profile_delete_message)) },
+            text = { Text(stringResource(Res.string.suki_trash_delete_message, TrashDays)) },
             confirmButton = {
                 InkButton({
                     confirming = false
@@ -278,3 +289,5 @@ private fun PhotoButtons(busy: Boolean, onChange: () -> Unit, hasPicture: Boolea
         if (hasPicture) TextButton(onRemove, enabled = !busy) { Text(stringResource(Res.string.profile_remove_photo)) }
     }
 }
+
+private val WideFrom = 600.dp

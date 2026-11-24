@@ -33,6 +33,10 @@ enum class NavLabels(val label: StringResource) {
     Never(Res.string.nav_labels_never),
 }
 
+// The names the tabs show: what the person chose, or when they never did, only the icons for six tabs on a narrow screen, where the names crowd, and the names otherwise.
+internal fun labelsFor(chosen: NavLabels?, tabs: Int, narrow: Boolean): NavLabels =
+    chosen ?: if (narrow && tabs > 5) NavLabels.Never else NavLabels.Always
+
 // The name and the picture of the open profile, which the tab of the profile shows in place of its icon.
 data class NavAvatar(val name: String, val avatar: String?)
 
