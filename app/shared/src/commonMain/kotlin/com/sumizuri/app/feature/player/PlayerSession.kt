@@ -134,7 +134,7 @@ internal class PlayerSession(
         extraSubtitles = extraSubtitles + track
         val before = engine.state.value
         log.add("Subtitle file: $name")
-        engine.open(mediaOf(current, extraSubtitles), before.positionMs, play = before.playing)
+        engine.open(mediaOf(current, extraSubtitles, mutable.value.playingName), before.positionMs, play = before.playing)
         scope.launch { engine.selectAddedSubtitle(before, name) }
     }
 
@@ -216,7 +216,7 @@ internal class PlayerSession(
         mutable.update { it.copy(current = choice) }
         log.add("Opening ${choice.quality ?: "video"}${startAt?.let { " at ${formatTime(it)}" } ?: ""}")
         val opened = nowMillis()
-        engine.open(mediaOf(choice, extraSubtitles), 0, play = false)
+        engine.open(mediaOf(choice, extraSubtitles, mutable.value.playingName), 0, play = false)
         val ready = withTimeoutOrNull(StartTimeoutMs) { engine.state.first { it.durationMs > 0 || it.problem != null } }
         if (mine != generation) return
         if (ready == null) {
