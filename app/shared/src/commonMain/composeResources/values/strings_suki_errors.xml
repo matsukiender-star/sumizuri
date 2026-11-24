@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="suki_err_challenge_title">Verification required</string>
+    <string name="suki_err_challenge_hint">This site asked for a security check. Open it to pass the check, then try again.</string>
+    <string name="suki_err_network_title">Connection problem</string>
+    <string name="suki_err_network_hint">Could not reach the site. Check your internet connection and try again.</string>
+    <string name="suki_err_timeout_title">Request timed out</string>
+    <string name="suki_err_timeout_hint">The site took too long to respond. Try again in a moment.</string>
+    <string name="suki_err_http_title">Site returned an error</string>
+    <string name="suki_err_http_hint">The server could not complete the request right now.</string>
+    <string name="suki_err_generic_title">Could not load</string>
+    <string name="suki_err_generic_hint">The source returned an unexpected error. You can try again or copy the technical details.</string>
+    <string name="suki_err_show_details">Show technical details</string>
+    <string name="suki_err_hide_details">Hide technical details</string>
+    <string name="suki_err_copy_details">Copy details</string>
+    <string name="suki_err_copied">Copied</string>
+</resources>

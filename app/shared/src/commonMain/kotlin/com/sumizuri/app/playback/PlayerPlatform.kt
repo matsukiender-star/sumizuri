@@ -3,6 +3,7 @@ package com.sumizuri.app.playback
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Modifier
+import com.sumizuri.app.data.net.RefusePlainHttp
 import io.ktor.client.HttpClient
 import io.ktor.client.plugins.HttpTimeout
 import io.ktor.client.request.get
@@ -47,7 +48,12 @@ expect fun rememberPlayerEngine(style: SubtitleStyle): PlayerEngine
 expect fun PlayerSurface(engine: PlayerEngine, aspect: AspectMode, modifier: Modifier)
 
 // The client playlists are read with, made the first time one is.
-private val playlists = lazy { HttpClient { install(HttpTimeout) { requestTimeoutMillis = 8_000 } } }
+private val playlists = lazy {
+    HttpClient {
+        install(RefusePlainHttp)
+        install(HttpTimeout) { requestTimeoutMillis = 8_000 }
+    }
+}
 
 // Reads a playlist as text from its address with the headers a site wants, or gives null when it cannot be read in a few seconds.
 suspend fun fetchPlaylist(url: String, headers: Map<String, String>): String? = runCatching {

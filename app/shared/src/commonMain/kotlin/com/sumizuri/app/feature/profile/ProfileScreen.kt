@@ -69,6 +69,7 @@ import org.jetbrains.compose.resources.stringResource
 private sealed interface Window {
     data object None : Window
     data object Switch : Window
+    data object Trash : Window
     data class Form(val profile: Profile?) : Window
 }
 
@@ -144,8 +145,12 @@ internal fun ProfileScreen(state: ProfileState, calls: ProfileCalls) {
             onSwitch = calls.onSwitch,
             onEdit = { window = Window.Form(it) },
             onNew = { window = Window.Form(null) },
+            trashCount = state.trash.size,
+            onTrash = { window = Window.Trash },
             onDismiss = close,
         )
+
+        Window.Trash -> ProfileTrashSheet(state.trash, calls.onRestore, calls.onDeleteNow, close)
 
         is Window.Form -> ProfileFormSheet(open.profile, open.profile?.id == active?.id, calls, close)
     }

@@ -47,9 +47,9 @@ internal fun sideNavWidth(style: NavStyle): Dp = when (style) {
     else -> 0.dp
 }
 
-// A page that takes the whole window, so the tabs at the side step away while it is open: the reader, the theme editor, a title, a site and the settings.
+// A page that takes the whole window, so the tabs at the side step away while it is open: the reader, the theme editor, a title, a site, a live channel and the settings.
 val Page.fullWindow: Boolean get() = this is Page.Reader || this is Page.ThemeEditor || this is Page.Saved ||
-    this is Page.Preview || this is Page.Web || settingsPart
+    this is Page.Preview || this is Page.Web || this is Page.LivePlayer || settingsPart
 
 // The settings and the pages opened from them.
 private val Page.settingsPart: Boolean get() = this is Page.Settings || this is Page.SettingsPage ||

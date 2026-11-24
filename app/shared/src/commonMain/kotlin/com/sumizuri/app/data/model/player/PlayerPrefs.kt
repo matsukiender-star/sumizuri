@@ -21,6 +21,8 @@ data class PlayerPrefs(
     // The subtitle language to turn on when a video has it, as a code such as en, or nothing for no choice.
     val subtitleLanguage: String = "",
     val showSubtitles: Boolean = true,
+    // The language automatic subtitles are made in, as a code such as es, or nothing for the language of the app.
+    val translateLanguage: String = "",
     // The size and the color are places in their lists, and the raise lifts the letters off the bottom edge.
     val subtitleSize: Int = 1,
     val subtitleColor: Int = 0,
@@ -54,7 +56,7 @@ data class PlayerPrefs(
     companion object {
         val DoubleTapSteps = listOf(5, 10, 15, 20, 30, 60)
         val SkipSteps = listOf(30, 60, 75, 85, 90, 120)
-        val HideSteps = listOf(0, 2, 3, 5, 8, 15)
+        val HideSteps = listOf(0, 1, 2, 3, 5, 8, 15)
         val Speeds = listOf(0.5f, 0.75f, 1f, 1.25f, 1.5f, 1.75f, 2f, 2.5f, 3f)
         val HoldSpeeds = listOf(1f, 1.5f, 2f, 3f)
         val WatchedAt = listOf(70, 80, 90, 95, 100)

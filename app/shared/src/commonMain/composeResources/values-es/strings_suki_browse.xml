@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="suki_preview_loading">Cargando detalles…</string>
+    <string name="suki_preview_no_summary">Sin resumen disponible.</string>
+    <string name="suki_browse_picks">Recomendaciones en Populares</string>
+    <string name="suki_browse_picks_hint">Más del género de lo último que viste o leíste en esa extensión. No salen en incógnito.</string>
+    <string name="suki_browse_picks_watched">Porque viste %1$s · %2$s</string>
+    <string name="suki_browse_picks_read">Porque leíste %1$s · %2$s</string>
+    <string name="suki_library_picks_row">Recomendaciones</string>
+    <string name="suki_library_picks_rows">%1$d filas</string>
+    <string name="suki_library_picks_watched">Porque viste %1$s en %2$s · %3$s</string>
+    <string name="suki_library_picks_read">Porque leíste %1$s en %2$s · %3$s</string>
+    <string name="suki_picks_hint">Dónde Sumizuri te sugiere más de lo que viste o leíste. Nunca salen en incógnito.</string>
+    <string name="suki_picks_in_library">En la Biblioteca</string>
+    <string name="suki_picks_in_library_hint">Filas en la pestaña Todos, de tus extensiones fijadas y las que usaste hace poco.</string>
+    <string name="suki_picks_rows_title">Filas en la Biblioteca</string>
+    <string name="suki_picks_from">De qué extensiones</string>
+    <string name="suki_picks_from_recent">Fijadas y recientes</string>
+    <string name="suki_picks_from_pinned">Solo fijadas</string>
+    <string name="suki_pick_add">Agregar</string>
+    <string name="suki_pick_cover">Portada</string>
+</resources>

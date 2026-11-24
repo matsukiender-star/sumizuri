@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="suki_storage_downloads">Carpeta de descargas</string>
+    <string name="suki_storage_change">Cambiar</string>
+    <string name="suki_storage_reset">Restablecer</string>
+    <string name="suki_storage_internal">Este dispositivo</string>
+    <string name="suki_storage_card">Tarjeta SD %1$d</string>
+    <string name="suki_storage_moving">Moviendo %1$d de %2$d archivos…</string>
+    <string name="suki_storage_inside">Escoge una carpeta fuera de la carpeta de datos de la app.</string>
+    <string name="suki_storage_busy">Espera a que terminen las descargas o el respaldo.</string>
+    <string name="suki_storage_not_empty">Esa carpeta ya tiene descargas de Sumizuri. Escoge otra o vacíala.</string>
+    <string name="suki_storage_failed">No se pudieron mover. Todo se quedó donde estaba.</string>
+</resources>

@@ -1,6 +1,7 @@
 package com.sumizuri.app.data.download
 
 import com.sumizuri.app.data.local.localFileAddress
+import com.sumizuri.app.data.storage.DownloadRoot
 import com.sumizuri.app.source.model.Descramble
 import com.sumizuri.app.source.model.SourcePage
 import com.sumizuri.app.source.model.SourceTrack
@@ -28,7 +29,10 @@ data class SavedTrack(val file: String, val label: String, val language: String?
 private val Format = Json { ignoreUnknownKeys = true }
 
 // Where saved chapters are kept: a folder for each title, and in it a folder for each chapter with its pictures and a list of its pages. A chapter is saved into a folder of its own first and moved to its place only when it is whole, so a save that stops never leaves half a chapter that looks saved.
-class DownloadFiles(private val root: Path, private val fs: FileSystem = FileSystem.SYSTEM) {
+class DownloadFiles(private val rootOf: () -> Path, private val fs: FileSystem = FileSystem.SYSTEM) {
+    // Read on each use, so a folder chosen while the app runs is used at once.
+    private val root: Path get() = rootOf()
+
     fun folderOf(titleId: Long, chapterId: Long): Path = root / titleId.toString() / chapterId.toString()
 
     private fun partOf(titleId: Long, chapterId: Long): Path = root / titleId.toString() / "$chapterId.part"
@@ -124,10 +128,11 @@ class DownloadFiles(private val root: Path, private val fs: FileSystem = FileSys
     }
 }
 
-// The folder of saved chapters of a profile: beside its database, named after it, or in the temporary folder when there is no database file.
-fun downloadFolder(databasePath: String): Path {
+// The folder of saved chapters of a profile, named after its database: in the place the person chose, or beside the database, or in the temporary folder when there is no database file.
+fun downloadFolder(databasePath: String, base: Path? = DownloadRoot.base()): Path {
     if (databasePath.isBlank()) return FileSystem.SYSTEM_TEMPORARY_DIRECTORY / "sumizuri-downloads"
     val database = databasePath.toPath()
+    if (base != null) return base / "downloads" / database.name.substringBeforeLast('.')
     val parent = database.parent ?: FileSystem.SYSTEM_TEMPORARY_DIRECTORY
     return parent / "downloads" / database.name.substringBeforeLast('.')
 }

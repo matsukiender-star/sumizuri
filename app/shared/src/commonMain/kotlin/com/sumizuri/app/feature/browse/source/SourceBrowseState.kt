@@ -38,8 +38,6 @@ data class SourceBrowseState(
     val repeated: Boolean = false,
     // The addresses of the entries of this source that are already in the library.
     val inLibrary: Set<String> = emptySet(),
-    // The entries being added to the library from a long press on their cover.
-    val adding: Set<String> = emptySet(),
     // Asks before removing a source that titles in the library came from, and turns true once it is removed so the page closes.
     val removing: RemovePrompt? = null,
     val removed: Boolean = false,
@@ -68,6 +66,8 @@ class SourceBrowseActions(
     val onOpenEntry: (SourceEntry) -> Unit,
     val onOpenFilters: () -> Unit,
     val onFilters: (Map<String, Any?>) -> Unit,
+    // Lists everything of the genre a recommendation came from, without the words of an older search.
+    val onOpenGenre: (Map<String, Any?>) -> Unit,
     val onSaveTab: (String) -> Unit,
     val onRenameTab: (String, String) -> Unit,
     val onDeleteTab: (String) -> Unit,
@@ -76,8 +76,8 @@ class SourceBrowseActions(
     val onClosePreferences: () -> Unit,
     // Opens the code of the source in the editor.
     val onEditCode: () -> Unit,
-    // Adds an entry to the library from a long press, without opening it.
-    val onQuickAdd: (SourceEntry) -> Unit,
+    // Fetches summary and genres for a single hovered or long-pressed entry on demand.
+    val onFetchDetails: suspend (SourceEntry) -> SourceEntry?,
     // Copies picked files into the folder of a source of files on the device.
     val onImport: (List<PickedFile>) -> Unit,
     // Lays the entries out another way, for every source.

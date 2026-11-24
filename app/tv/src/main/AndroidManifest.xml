@@ -8,6 +8,8 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <!-- Android 17 keeps the app off the home network, where the computer it syncs with can be, until the person allows it. -->
+    <uses-permission android:name="android.permission.ACCESS_LOCAL_NETWORK" />
     <!-- The lock of the app asks for the screen lock of the TV. -->
     <uses-permission android:name="android.permission.USE_BIOMETRIC" />
     <!-- The updater installs a new version it downloaded from the releases of the app. -->
@@ -31,7 +33,7 @@
                 android:exported="true"
                 android:launchMode="singleTop"
                 android:configChanges="orientation|screenSize|smallestScreenSize|screenLayout|keyboardHidden|keyboard|navigation"
-                android:theme="@style/Theme.Sumizuri.Start"
+                android:theme="@style/Theme.Sumizuri.Start.Tv"
                 android:name=".MainActivity">
             <!-- An Open in Sumizuri button on the page of a repo, which asks to add that repo. -->
             <intent-filter>

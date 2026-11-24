@@ -127,6 +127,22 @@ class NovelTranslator : AutoCloseable {
         status = if (failed > 0 && translations.isEmpty()) TranslateStatus.Failed else TranslateStatus.On
     }
 
+    // Translates short lines, such as those of a subtitle file, in the order given, in the same batches as the paragraphs of a novel. A line of a batch that failed comes back as it was, and null comes back when no batch did.
+    suspend fun translateLines(lines: List<String>, language: String): List<String>? {
+        val done = HashMap<String, String>()
+        for (batch in batchesOf(lines.filter { it.isNotBlank() }.distinct())) {
+            try {
+                val parts = ask(batch.joinToString(Gap), language).split(BlankLine).map { it.trim() }
+                if (parts.size == batch.size) batch.zip(parts).forEach { (line, translated) -> done[line] = translated }
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (_: Exception) {
+            }
+        }
+        if (done.isEmpty()) return null
+        return lines.map { done[it] ?: it }
+    }
+
     // The paragraphs in groups that each stay under the size of one call. A paragraph longer than that goes alone.
     private fun batchesOf(texts: List<String>): List<List<String>> {
         val batches = mutableListOf<MutableList<String>>()

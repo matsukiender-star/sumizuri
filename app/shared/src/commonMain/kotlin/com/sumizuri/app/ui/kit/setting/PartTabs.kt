@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.TextAutoSize
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -106,18 +107,25 @@ fun <T> PartTabs(
                     contentAlignment = Alignment.Center,
                 ) {
                     Row(
-                        Modifier.padding(horizontal = 8.dp),
+                        Modifier.padding(horizontal = 4.dp),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(6.dp),
                     ) {
                         if (icon != null) Icon(icon(part), null, Modifier.size(18.dp), tint = ink)
+                        // A word that does not fit on a phone gets smaller, so "Administración" reads whole.
+                        val style = MaterialTheme.typography.labelLarge
                         Text(
                             label(part),
                             color = ink,
-                            style = MaterialTheme.typography.labelLarge,
+                            style = style,
                             fontWeight = if (on) FontWeight.SemiBold else FontWeight.Medium,
                             maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
+                            // Dots would hide the overflow from the sizing, so the word is cut only past the smallest size.
+                            overflow = TextOverflow.Clip,
+                            autoSize = TextAutoSize.StepBased(
+                                minFontSize = style.fontSize * 0.7f,
+                                maxFontSize = style.fontSize,
+                            ),
                         )
                     }
                 }

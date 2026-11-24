@@ -1,5 +1,6 @@
 package com.sumizuri.app.data.profile
 
+import com.sumizuri.app.data.storage.DownloadRoot
 import com.sumizuri.app.data.text.nowMillis
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -14,6 +15,9 @@ private const val ProfilesFolder = "profiles"
 private const val AvatarsFolder = "avatars"
 private const val FirstName = "Profile 1"
 
+// The folders beside the profiles that keep one folder for each, called after its file.
+private val FoldersByName = listOf("backups", "downloads", "covers", "pages", LiveFolder)
+
 @Serializable
 private class Saved(val profiles: List<SavedProfile>, val active: Long)
 
@@ -24,6 +28,8 @@ private class SavedProfile(
     val avatar: String? = null,
     val createdAt: Long,
     val file: String? = null,
+    // In the same list as the others, so a version that does not know it shows the profile again and loses nothing.
+    val deletedAt: Long? = null,
 )
 
 // The list of profiles and which one is open, kept in one small file beside the files of the profiles. The first profile keeps the file the app had before profiles, so nothing is moved or copied for people who already have a library.
@@ -44,6 +50,9 @@ class ProfileRegistry(
     // The proxy the whole app goes through, which belongs to this device like the sync account.
     val networkFile: Path = folder / "network.json"
 
+    // Where this device keeps downloads, backups and updates, for every profile.
+    val downloadsFile: Path = folder / "downloads.json"
+
     private val mutable = MutableStateFlow(load())
     val state: StateFlow<RegistryState> = mutable
 
@@ -60,20 +69,38 @@ class ProfileRegistry(
         } else {
             null
         }
-        val profiles = saved?.profiles?.map { Profile(it.id, it.name, it.avatar, it.createdAt, it.file) }.orEmpty()
+        val all = saved
+            ?.profiles
+            ?.map {
+                Profile(
+                    it.id,
+                    it.name,
+                    it.avatar,
+                    it.createdAt,
+                    it.file,
+                    it.deletedAt,
+                )
+            }.orEmpty()
+        val alive = all.filter { it.deletedAt == null }
+        // With none left outside the trash those in it come back, and no new one is made over their files.
+        val profiles = alive.ifEmpty { all.map { it.copy(deletedAt = null) } }
+        val trash = if (alive.isEmpty()) emptyList() else all.filter { it.deletedAt != null }
         if (profiles.isEmpty()) {
             val since = system.metadataOrNull(legacyFile)?.createdAtMillis ?: nowMillis()
             return RegistryState(listOf(Profile(1, FirstName, null, since, null)), 1).also(::save)
         }
-        // Nothing is open yet, so every file can be given the name its profile asks for.
-        val settled = profiles.map { settleFile(it, profiles) }
-        val open = saved?.active?.takeIf { id -> settled.any { it.id == id } } ?: settled.first().id
-        return RegistryState(settled, open).also(::save)
+        val open = saved?.active?.takeIf { id -> profiles.any { it.id == id } } ?: profiles.first().id
+        return RegistryState(profiles, open, trash).also(::save)
     }
 
     private fun save(state: RegistryState) {
         val saved =
-            Saved(state.profiles.map { SavedProfile(it.id, it.name, it.avatar, it.createdAt, it.file) }, state.activeId)
+            Saved(
+                (state.profiles + state.trash).map {
+                    SavedProfile(it.id, it.name, it.avatar, it.createdAt, it.file, it.deletedAt)
+                },
+                state.activeId,
+            )
         val temporary = folder / "$RegistryName.tmp"
         system.write(temporary) { writeUtf8(json.encodeToString(Saved.serializer(), saved)) }
         system.atomicMove(temporary, registryFile)
@@ -82,15 +109,28 @@ class ProfileRegistry(
     // The file a profile keeps its library in.
     fun fileOf(profile: Profile): Path = profile.file?.let { profilesFolder / it } ?: legacyFile
 
-    // Gives a profile the file name its name asks for. The file of the profile that is open cannot be renamed, so that waits for the next start.
-    private fun settleFile(profile: Profile, all: List<Profile>): Profile {
-        val file = profile.file ?: return profile
-        val wanted = profileFileName(profile.name, all.filter { it.id != profile.id }.mapNotNull { it.file })
-        if (wanted == file || !system.exists(profilesFolder / file)) return profile
-        return runCatching {
-            system.atomicMove(profilesFolder / file, profilesFolder / wanted)
-            profile.copy(file = wanted)
-        }.getOrDefault(profile)
+    // The file names a new profile may not take: those in use, and those of deleted profiles that left something behind, which the new one would otherwise open as its own.
+    fun takenFiles(): List<String> {
+        val inFolders = FoldersByName
+            .flatMap { system.listOrNull(profilesFolder / it).orEmpty() }
+            .map { it.name + ProfileExtension }
+        val beside = system
+            .listOrNull(profilesFolder)
+            .orEmpty()
+            .map { it.name }
+            .filter { ProfileExtension in it }
+            .map { it.substringBeforeLast(ProfileExtension) + ProfileExtension }
+        // In a chosen place the first profile shares the folders with the others, so its name is kept free too.
+        val chosen = DownloadRoot
+            .base()
+            ?.let { base ->
+                listOf("downloads", "backups").flatMap { system.listOrNull(base / it).orEmpty() }.map {
+                    it.name +
+                        ProfileExtension
+                } +
+                    legacyFile.name
+            }.orEmpty()
+        return (mutable.value.profiles + mutable.value.trash).mapNotNull { it.file } + inFolders + beside + chosen
     }
 
     private fun change(edit: (RegistryState) -> RegistryState) {
@@ -101,14 +141,15 @@ class ProfileRegistry(
 
     // Puts a profile at the end of the list, with a file that already exists.
     fun add(name: String, avatar: String?, file: String): Profile {
-        val profile = Profile(mutable.value.profiles.maxOf { it.id } + 1, name, avatar, nowMillis(), file)
+        val profile =
+            Profile((mutable.value.profiles + mutable.value.trash).maxOf { it.id } + 1, name, avatar, nowMillis(), file)
         change { it.copy(profiles = it.profiles + profile) }
         return profile
     }
 
+    // Only the name changes. The file keeps the one it was made with, as downloads, backups, covers, the journal and the sync base are all found by it, and covers are saved as whole paths.
     fun rename(id: Long, name: String) = change { now ->
-        val renamed = now.profiles.map { if (it.id == id) it.copy(name = name) else it }
-        now.copy(profiles = renamed.map { if (it.id == id && id != now.activeId) settleFile(it, renamed) else it })
+        now.copy(profiles = now.profiles.map { if (it.id == id) it.copy(name = name) else it })
     }
 
     fun setAvatar(id: Long, avatar: String?) = change { now ->
@@ -127,14 +168,41 @@ class ProfileRegistry(
 
     fun setActive(id: Long) = change { it.copy(activeId = id) }
 
-    // Takes a profile off the list and gives it back, or null when it is the only one. Its files are for the caller to remove.
-    fun remove(id: Long): Profile? {
-        val now = mutable.value
-        val doomed = now.profiles.firstOrNull { it.id == id } ?: return null
-        if (now.profiles.size <= 1) return null
-        val rest = now.profiles.filter { it.id != id }
-        change { it.copy(profiles = rest, activeId = if (it.activeId == id) rest.first().id else it.activeId) }
-        return doomed
+    // Moves a profile to the trash without touching its files, and gives it back, or null for the one that is open or the only one.
+    fun trash(id: Long, now: Long): Profile? {
+        val state = mutable.value
+        val leaving = state.profiles.firstOrNull { it.id == id } ?: return null
+        if (id == state.activeId || state.profiles.size <= 1) return null
+        val trashed = leaving.copy(deletedAt = now)
+        change { it.copy(profiles = it.profiles - leaving, trash = it.trash + trashed) }
+        return trashed
+    }
+
+    // Puts a profile back at the end of the list, unless its days are over.
+    fun restore(id: Long, now: Long): Boolean {
+        val back = mutable.value.trash.firstOrNull { it.id == id } ?: return false
+        if (back.trashEnded(now)) return false
+        change { it.copy(profiles = it.profiles + back.copy(deletedAt = null), trash = it.trash - back) }
+        return true
+    }
+
+    fun expired(now: Long): List<Profile> = mutable.value.trash.filter { it.trashEnded(now) }
+
+    // Ends the wait of a profile in the trash. It is saved before anything is deleted, so one half deleted can never be brought back.
+    fun doom(id: Long): Boolean {
+        if (mutable.value.trash.none { it.id == id }) return false
+        change { state -> state.copy(trash = state.trash.map { if (it.id == id) it.copy(deletedAt = 0) else it }) }
+        return true
+    }
+
+    // Deletes the files of a doomed profile, and takes it off the list only once all of them are gone.
+    fun purge(id: Long): Boolean {
+        val state = mutable.value
+        val doomed = state.trash.firstOrNull { it.id == id && it.deletedAt == 0L } ?: return false
+        val others = state.profiles + state.trash.filter { it.id != id }
+        if (!purgeProfileFiles(doomed, others, ::fileOf, avatarsFolder, system)) return false
+        change { now -> now.copy(trash = now.trash.filter { it.id != id }) }
+        return true
     }
 
     // A path in the avatars folder for a new picture.
@@ -148,11 +216,5 @@ class ProfileRegistry(
         if (path == null) return
         val target = path.toPath()
         if (target.parent == avatarsFolder) runCatching { system.delete(target) }
-    }
-
-    // Removes the file of a profile, with the journal beside it. The first profile has the file the app had before profiles.
-    fun deleteFiles(profile: Profile) {
-        val file = fileOf(profile)
-        for (suffix in listOf("", "-wal", "-shm")) runCatching { system.delete(file.parent!! / (file.name + suffix)) }
     }
 }

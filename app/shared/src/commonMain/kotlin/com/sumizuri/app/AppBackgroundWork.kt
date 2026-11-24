@@ -35,7 +35,7 @@ import kotlinx.coroutines.flow.first
 private const val DueLookEveryMs = 10 * 60 * 1000L
 
 // How often the open app asks the sync server whether another device sent a newer copy.
-private const val ChangeLookEveryMs = 60_000L
+private const val ChangeLookEveryMs = 30_000L
 
 // The checks that use the network wait this long after the app opens, so the first screen and its covers load first.
 internal const val StartQuietMs = 10_000L
@@ -117,7 +117,7 @@ internal fun AppBackgroundWork(container: AppContainer, loader: ImageLoader) {
             .distinctUntilChanged()
             .collect { (minutes, background, wifi) -> TrackerPlatform.plan(minutes, background, wifi) }
     }
-    // While the app is open it looks every minute whether another device synced, and if so syncs, so changes arrive quickly without a whole sync each time.
+    // While the app is open it looks every half minute whether another device synced, and if so syncs, so changes arrive quickly without a whole sync each time.
     LaunchedEffect(container) {
         delay(StartQuietMs)
         while (true) {

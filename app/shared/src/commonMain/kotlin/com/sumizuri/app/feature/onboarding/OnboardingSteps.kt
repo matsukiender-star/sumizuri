@@ -230,7 +230,7 @@ private fun AvatarRing(modifier: Modifier) {
 }
 
 // Writes the picture to the avatars folder, squared as the profile page squares it, and gives its path, or null when it is no picture.
-private suspend fun keepAvatar(host: ProfileHost, picture: ByteArray): String? = withContext(Dispatchers.IO) {
+internal suspend fun keepAvatar(host: ProfileHost, picture: ByteArray): String? = withContext(Dispatchers.IO) {
     val square = squareAvatar(picture, AvatarSize) ?: return@withContext null
     val path = host.registry.newAvatarPath()
     FileSystem.SYSTEM.write(path) { write(square) }

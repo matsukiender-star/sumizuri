@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="suki_trash_delete_message">Se irá a la papelera. Tienes %1$d días para recuperarlo. Después se elimina para siempre, con sus descargas y respaldos.</string>
+    <string name="suki_trash_title">Papelera</string>
+    <string name="suki_trash_row">Papelera (%1$d)</string>
+    <plurals name="suki_trash_days">
+        <item quantity="one">Se elimina en %1$d día</item>
+        <item quantity="many">Se elimina en %1$d días</item>
+        <item quantity="other">Se elimina en %1$d días</item>
+    </plurals>
+    <string name="suki_trash_today">Se elimina hoy</string>
+    <string name="suki_trash_deleting">Se está eliminando. Si no termina, se vuelve a intentar.</string>
+    <string name="suki_trash_restore">Recuperar</string>
+    <string name="suki_trash_delete_now">Eliminar ahora</string>
+    <string name="suki_trash_delete_now_title">¿Eliminar %1$s para siempre?</string>
+    <string name="suki_trash_delete_now_message">Su biblioteca, descargas, respaldos y ajustes se borran de este dispositivo. No se puede deshacer.</string>
+</resources>

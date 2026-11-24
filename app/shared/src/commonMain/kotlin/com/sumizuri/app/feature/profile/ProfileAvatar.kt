@@ -33,8 +33,10 @@ fun ProfileAvatar(name: String, avatar: String?, size: Dp, modifier: Modifier = 
             fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.onPrimaryContainer,
         )
+        val preset = presetAvatarOf(avatar)
         when {
             chosen != null -> Image(chosen, null, Modifier.size(size), contentScale = ContentScale.Crop)
+            preset != null -> PresetAvatarBadge(preset, size)
             avatar != null -> AsyncImage(avatar.toPath(), null, Modifier.size(size), contentScale = ContentScale.Crop)
         }
     }

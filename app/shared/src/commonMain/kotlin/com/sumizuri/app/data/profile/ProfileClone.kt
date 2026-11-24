@@ -16,7 +16,7 @@ private val Emptied = listOf(
     "DELETE FROM title",
     "DELETE FROM category",
     "DELETE FROM log",
-    "DELETE FROM setting WHERE name LIKE 'session.%' OR name LIKE 'cover.focus.%' OR name LIKE 'reader.title.%' OR name = 'library.category'",
+    "DELETE FROM setting WHERE name LIKE 'session.%' OR name LIKE 'cover.focus.%' OR name LIKE 'reader.title.%' OR name LIKE 'memo.live.%' OR name = 'library.category'",
     "DELETE FROM setting WHERE name IN ('${SettingKey.SyncLibraryId}', '${LibrarySyncer.LastAtKey}', '${LibrarySyncer.HistoryKey}')",
 )
 

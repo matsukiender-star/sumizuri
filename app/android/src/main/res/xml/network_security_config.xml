@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Android allows plain http for the whole app or for none of it. Live needs it for the lists of its channels, so it is allowed here and the app turns it down itself everywhere else (PlainHttp.kt). -->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="true" />
+</network-security-config>
