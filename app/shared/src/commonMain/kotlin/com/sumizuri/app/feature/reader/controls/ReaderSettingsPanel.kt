@@ -181,6 +181,7 @@ private fun TextPart(
     onSettings: (ReaderSettings) -> Unit,
 ) {
     SettingsSection(Res.string.novel_group_text) {
+        padded { WattpadLookButton(settings, onSettings) }
         padded {
             ChoiceSetting(Res.string.reader_font, ReaderFont.entries, settings.font, {
                 stringResource(it.label)
