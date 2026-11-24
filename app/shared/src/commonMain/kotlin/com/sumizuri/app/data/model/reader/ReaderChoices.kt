@@ -12,6 +12,8 @@ import com.sumizuri.app.shared.resources.reader_dual_cover
 import com.sumizuri.app.shared.resources.reader_dual_off
 import com.sumizuri.app.shared.resources.reader_dual_on
 import com.sumizuri.app.shared.resources.reader_font_dyslexic
+import com.sumizuri.app.shared.resources.reader_font_sans
+import com.sumizuri.app.shared.resources.reader_font_serif
 import com.sumizuri.app.shared.resources.reader_font_system
 import com.sumizuri.app.shared.resources.reader_orientation_free
 import com.sumizuri.app.shared.resources.reader_orientation_landscape
@@ -91,6 +93,10 @@ enum class ReaderDual(val label: StringResource) {
 enum class ReaderFont(val label: StringResource) {
     System(Res.string.reader_font_system),
     OpenDyslexic(Res.string.reader_font_dyslexic),
+
+    // Suki: the book and the plain faces every system has.
+    Serif(Res.string.reader_font_serif),
+    Sans(Res.string.reader_font_sans),
 }
 
 // How the phone is held while the reader is open. Free follows the phone, and the others keep the screen upright or on its side.
